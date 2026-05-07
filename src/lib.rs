@@ -56,10 +56,11 @@ impl<T> Tools<T> {
             None=>None
         }
     }
-    
+
     pub fn next_span<S: SpanSet<T>>(&self,start: &S, list: &Vec<S>) ->Option<(Box<dyn SpanSet<T>>,Vec<usize>)> {
         let begin=(self.next_el)(start.get_end());
         let mut target: Option<&T>=None;
+        let mut alt: Option<&T>=None;
         let lt=&self.lt;
         let mut overlaps: Vec<usize>=Vec::new();
         for (i,check ) in list.iter().enumerate() {
@@ -74,11 +75,49 @@ impl<T> Tools<T> {
                     }
                     _=>target=Some(test)
                 }
+            } else {
+                let end=check.get_end();
+                if lt(&begin,end) {
+                    match alt {
+                        Some(cmp)=>{
+                            if lt(end,cmp) {
+                                alt=Some(end)
+                            }
+                        },
+                        _=>alt=Some(end)
+                    }
+                }
             }
         }
         match target {
             Some(end)=>Some(((self.new_span)(&begin,end),overlaps)),
-            _=>None
+            _=>{
+                match alt {
+                    Some(begin)=>{
+                        target=None;
+
+                        for (i,check ) in list.iter().enumerate() {
+                            if self.span_contains(check, begin) {
+                                let end=check.get_end();
+                                overlaps.push(i);
+                                match target {
+                                    Some(cmp)=> {
+                                        if lt(end,cmp) {
+                                            target=Some(end)
+                                        }
+                                    }
+                                    _=>target=Some(end)
+                                }
+                            }
+                        }
+                        match target {
+                            Some(end)=>Some(((self.new_span)(begin,end),overlaps)),
+                            _=>None
+                        }
+                    },
+                    _=>None
+                }
+            }
         }
     }
 
