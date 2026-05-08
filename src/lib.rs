@@ -1,5 +1,5 @@
 
-
+use std::ops::Deref;
 pub struct Span<T> {
     begin: T,
     end: T,
@@ -26,15 +26,26 @@ impl<T> Span<T> {
     }
 }
 
-pub struct Tools<T> {
+pub struct Tools<T,D> 
+  {
   lt: fn(&T,&T) ->bool,
   next_el: fn(&T) ->T,
-  new_span: fn(begin: &T,end: &T) -> Box<dyn SpanSet<T>>,
+  new_span: fn(begin: &T,end: &T) -> D 
 }
 
-impl<T> Tools<T> {
+impl<T,D> Tools<T,D> 
+  where 
+    D: Deref<Target=dyn SpanSet<T>>, 
+    {
+    pub fn new(lt: fn(&T,&T) ->bool,next_el: fn(&T)->T, new_span: fn(&T,&T)->D) ->Self {
+        Self {
+            lt: lt,
+            new_span: new_span,
+            next_el: next_el,
+        }
+    }
     
-    pub fn get_first<S: SpanSet<T>>(&self, list: &Vec<S>) -> Option<Box<dyn SpanSet<T>>> {
+    pub fn get_first(&self, list: &Vec<D>) -> Option<D> {
         match list.get(0) {
             Some(first)=>{
                 let mut  begin=first.get_begin();
@@ -57,14 +68,15 @@ impl<T> Tools<T> {
         }
     }
 
-    pub fn next_span<S: SpanSet<T>>(&self,start: &S, list: &Vec<S>) ->Option<(Box<dyn SpanSet<T>>,Vec<usize>)> {
+
+    pub fn next_span(&self,start: &D, list: &Vec<D>) ->Option<(D,Vec<usize>)> {
         let begin=(self.next_el)(start.get_end());
         let mut target: Option<&T>=None;
         let mut alt: Option<&T>=None;
         let lt=&self.lt;
         let mut overlaps: Vec<usize>=Vec::new();
         for (i,check ) in list.iter().enumerate() {
-            if self.span_contains(check, &begin) {
+            if self.span_contains(&*check, &begin) {
                 let test=check.get_end();
                 overlaps.push(i);
                 match target {
@@ -122,17 +134,54 @@ impl<T> Tools<T> {
     }
 
 
-    pub fn span_contains<S: SpanSet<T>>(&self, check: &S, value: &T) -> bool {
+    pub fn span_contains(&self, check: &D, value: &T) -> bool {
         let lt=&self.lt;
         !(lt(value,check.get_begin()) || lt(check.get_end(),value))
     }
 
-    pub fn contains_span<S: SpanSet<T>>(&self, a: &S, b: &S) ->bool {
+    pub fn contains_span(&self, a: &D, b: &D) ->bool {
         self.span_contains(a, b.get_begin()) || self.span_contains(a, b.get_end())
     }
 
-    pub fn spans_overlap<S: SpanSet<T>>(&self, a: &S, b: &S) ->bool {
+    pub fn spans_overlap(&self, a: &D, b: &D) ->bool {
         self.contains_span(a, b) || self.contains_span(b, a)
     }
 
+}
+
+
+#[cfg(test)]
+mod basic_tests {
+    use super::*;
+
+    #[test]
+    fn new_span() {
+        let span=Span::new(0, 1);
+        assert_eq!(span.get_begin(),&0);
+        assert_eq!(span.get_end(),&1);
+    }
+
+    fn build_tools() ->Tools<i32,Box<dyn SpanSet<i32>>> {
+        return Tools::new(
+            |a,b| a<b, 
+            |c |c+1,
+            |a ,b | { 
+                let x: Box<dyn SpanSet<i32>>=Box::new(Span::new(a+0,b+0));
+                return x;
+            }
+        )
+    }
+    #[test]
+    fn new_tools_ok() {
+        let tools: Tools<i32,Box<dyn SpanSet<i32>>>=build_tools();
+        let span=(tools.new_span)(&0,&1);
+        assert_eq!(span.get_begin(),&0);
+        assert_eq!(span.get_end(),&1);
+
+        assert!(tools.span_contains(&span, &1));
+        assert!(tools.span_contains(&span, &0));
+        assert!(!tools.span_contains(&span, &2));
+        assert!(!tools.span_contains(&span, &-1));
+        assert!(tools.spans_overlap(&span, &span))
+    }
 }
