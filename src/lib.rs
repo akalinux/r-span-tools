@@ -1,10 +1,10 @@
 
-
+use std::cell::Cell;
 use std::ops::Deref;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 
-pub enum SpanPosition {
+pub enum SpanRelation {
     Before,
     Overlap,
     After,
@@ -29,28 +29,41 @@ impl<T> SpanSet<T> for Span<T> {
     }
 }
 
-pub trait SpanTool<T,B> 
+pub trait Core<V,B> 
  where 
-    B: Deref<Target=dyn SpanSet<T>> + Borrow<dyn SpanSet<T>>
+    B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>>,
    {
-    fn lt(&self,a: &T,b: &T)->bool;
-    fn next_value(&self, current: &T) ->T;
-    fn new_span(&self, a: &T, b: &T) ->B;
+    fn lt(&self,a: &V,b: &V)->bool;
+    fn next_value(&self, current: &V) ->V;
+    fn new_span(&self, a: &V, b: &V) ->B;
+    
+    fn build_core(&self)->Self;
 
 
-    fn span_contains(&self, check: &dyn SpanSet<T>, value: &T) -> bool {
+    fn span_contains(&self, check: &dyn SpanSet<V>, value: &V) -> bool {
         !(self.lt(value,check.get_begin()) || self.lt(check.get_end(),value))
     }
 
-    fn contains_span(&self, a: &dyn SpanSet<T>, b: &dyn SpanSet<T>) ->bool {
-        self.span_contains(a, b.get_begin()) || self.span_contains(a, b.get_end())
+    fn span_contains_begin_or_end(&self, outer: &dyn SpanSet<V>, inner: &dyn SpanSet<V>) ->bool {
+        self.span_contains(outer, inner.get_begin()) || self.span_contains(outer, inner.get_end())
     }
 
-    fn spans_overlap(&self, a: &dyn SpanSet<T>, b: &dyn SpanSet<T>) ->bool {
-        self.contains_span(a, b) || self.contains_span(b, a)
+    fn spans_overlap(&self, a: &dyn SpanSet<V>, b: &dyn SpanSet<V>) ->bool {
+        self.span_contains_begin_or_end(a, b) || self.span_contains_begin_or_end(b, a)
     }
 
-    fn cmp_spans(&self,a:&dyn SpanSet<T>, b: &dyn SpanSet<T>) ->Ordering {
+    fn span_relation(&self, point: &dyn SpanSet<V>,check: &dyn SpanSet<V> ) ->SpanRelation {
+        if self.lt( check.get_end(),point.get_begin()) {
+            return SpanRelation::Before;
+        } else if self.lt(point.get_end(),check.get_begin()) {
+            return SpanRelation::After;
+        } 
+
+        return SpanRelation::Overlap;
+
+    }
+
+    fn cmp_spans(&self,a:&dyn SpanSet<V>, b: &dyn SpanSet<V>) ->Ordering {
 
         if self.lt(b.get_begin(),a.get_begin()) {
             return Ordering::Greater;
@@ -67,7 +80,7 @@ pub trait SpanTool<T,B>
         return Ordering::Equal;
     }
 
-    fn cmp_spans_fn(&self) ->impl FnMut(&dyn SpanSet<T>,&dyn SpanSet<T>) ->Ordering {
+    fn cmp_spans_fn(&self) ->impl FnMut(&dyn SpanSet<V>,&dyn SpanSet<V>) ->Ordering {
         return |a,b|self.cmp_spans(a, b)
     }
 
@@ -99,10 +112,10 @@ pub trait SpanTool<T,B>
         }
     }
 
-    fn next_span(&self,start: &dyn SpanSet<T>, list: &Vec<B>) ->Option<B> {
+    fn next_span(&self,start: &dyn SpanSet<V>, list: &Vec<B>) ->Option<B> {
         let begin=self.next_value(start.get_end());
-        let mut target: Option<&T>=None;
-        let mut alt: Option<&T>=None;
+        let mut target: Option<&V>=None;
+        let mut alt: Option<&V>=None;
         for check in list {
             if self.span_contains(check.borrow(), &begin) {
                 let test=check.get_end();
@@ -161,16 +174,59 @@ pub trait SpanTool<T,B>
     }
 }
 
-
-
 impl<T> Span<T> {
     pub fn new(begin: T, end: T) ->Self {
         Self { begin: begin, end: end, }
     }
 }
 
+pub struct SpanItr<C: Core<V,B>,V,B> 
+where 
+  B: Deref<Target=dyn SpanSet<V>>+ Borrow<dyn SpanSet<V>>
+    {
+    list: Vec<B>,
+    core: C,
+    next: Cell<Option<B>>,
+}
 
+impl<C: Core<V,B>,V,B> SpanItr<C,V,B> 
+  where 
+    B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>>,
+  {
+    pub fn new(core: C, list:Vec<B>) ->Self {
+        let next: Cell<Option<B>>=Cell::new(core.get_first_span(&list));
+        return Self { 
+            list: list, 
+            core: core, 
+            next: next,
+        }
+    }
 
+    pub fn update_cell(&mut self,i: usize, value: B) {
+        self.list[i]=value;
+    }
+}
+
+impl<C: Core<V,B>,V,B>  Iterator for  SpanItr<C,V,B>
+where 
+    B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>>,
+ {
+    type Item = B;
+    fn next(&mut self) -> Option<Self::Item> {
+        let next=self.next.take();
+
+        match next {
+            Some(check)=>{
+                self.next.set(self.core.next_span(check.borrow(), &self.list));
+                return Some(check);
+            },
+            _=>{
+                self.next.set(None);
+                return None;
+            }
+        }
+    } 
+}
 
 #[cfg(test)]
 mod basic_tests {
@@ -181,6 +237,80 @@ mod basic_tests {
         let span=Span::new(0, 1);
         assert_eq!(span.get_begin(),&0);
         assert_eq!(span.get_end(),&1);
+    }
+
+    struct Tools { }
+
+    type S=Box<dyn SpanSet<i32>>;
+    impl  Core<i32,S> for Tools {
+        fn new_span(&self, begin: &i32,end: &i32) ->S {
+            let span: Span<i32>=Span::new(begin+0,end+0);
+            return Box::new(span);
+        }
+
+        fn lt(&self, a:&i32,b:&i32) ->bool {
+            return a<b
+        }
+
+        fn next_value(&self, current: &i32) ->i32 {
+            return current +1;
+        }
+        fn build_core(&self) ->Self {
+            return Self{}
+        }
+    }
+
+    fn build_core() ->Tools {
+        return Tools {};
+    }
+
+    #[test]
+    fn basic_core_tests() {
+        let core=build_core();
+
+        let span=core.new_span(&1, &2);
+
+        assert_eq!(span.get_begin(),&1);
+        assert_eq!(span.get_end(),&2);
+
+        // positive test
+        assert!(core.span_contains(span.borrow(), &1));
+        assert!(core.span_contains(span.borrow(), &2));
+
+        // negative test
+        assert!(!core.span_contains(span.borrow(), &3));
+        assert!(!core.span_contains(span.borrow(), &0));
+
+        assert!(core.span_contains_begin_or_end(span.borrow(), span.borrow()));
+
+        let before=core.new_span(&-1, &0);
+        let after=core.new_span(&3, &3);
+
+        assert!(!core.span_contains_begin_or_end(span.borrow(), before.borrow()));
+        assert!(!core.span_contains_begin_or_end(span.borrow(), after.borrow()));
+
+        let all=core.new_span(&-2, &4);
+        assert!(!core.span_contains_begin_or_end(span.borrow(), all.borrow()));
+
+        assert!(core.spans_overlap(all.borrow(), span.borrow()));
+        assert!(core.spans_overlap(span.borrow(), all.borrow()));
+
+        assert!(!core.spans_overlap(before.borrow(), after.borrow()));
+
+
+    }
+
+    #[test]
+    fn relation_tests() {
+
+        let core=build_core();
+        let before=core.new_span(&-1, &0);
+        let after=core.new_span(&3, &3);
+        let all=core.new_span(&-2, &4);
+        assert!(matches!(core.span_relation(before.borrow(), after.borrow()),SpanRelation::After));
+        assert!(matches!(core.span_relation(after.borrow(), before.borrow()),SpanRelation::Before));
+        assert!(matches!(core.span_relation(all.borrow(), before.borrow()),SpanRelation::Overlap));
+        assert!(matches!(core.span_relation(all.borrow(), after.borrow()),SpanRelation::Overlap));
     }
 
 }
