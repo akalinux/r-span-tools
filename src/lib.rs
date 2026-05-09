@@ -1,5 +1,5 @@
 
-use std::cell::Cell;
+use std::mem;
 use std::ops::Deref;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -186,7 +186,7 @@ where
     {
     list: Vec<B>,
     core: C,
-    next: Cell<Option<B>>,
+    next: Option<B>,
 }
 
 impl<C: Core<V,B>,V,B> SpanItr<C,V,B> 
@@ -194,7 +194,7 @@ impl<C: Core<V,B>,V,B> SpanItr<C,V,B>
     B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>>,
   {
     pub fn new(core: C, list:Vec<B>) ->Self {
-        let next: Cell<Option<B>>=Cell::new(core.get_first_span(&list));
+        let next=core.get_first_span(&list);
         return Self { 
             list: list, 
             core: core, 
@@ -209,23 +209,26 @@ impl<C: Core<V,B>,V,B> SpanItr<C,V,B>
 
 impl<C: Core<V,B>,V,B>  Iterator for  SpanItr<C,V,B>
 where 
-    B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>>,
+    B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>> +SpanSet<V>,
  {
     type Item = B;
     fn next(&mut self) -> Option<Self::Item> {
-        let next=self.next.take();
-
-        match next {
-            Some(check)=>{
-                self.next.set(self.core.next_span(check.borrow(), &self.list));
-                return Some(check);
-            },
-            _=>{
-                self.next.set(None);
-                return None;
+        let mut target:Option<B>=None;
+        {
+            let next=&self.next;
+            match next {
+                Some(check)=>target=self.core.next_span(check, &self.list),
+                _=>(),
             }
         }
+        match target {
+            Some(span)=>{
+                return mem::replace(&mut self.next, Some(span));
+            }
+            _=>None
+         }
     } 
+
 }
 
 #[cfg(test)]
