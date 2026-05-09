@@ -222,10 +222,8 @@ where
             }
         }
         match target {
-            Some(span)=>{
-                return mem::replace(&mut self.next, Some(span));
-            }
-            _=>None
+            Some(span)=>mem::replace(&mut self.next, Some(span)),
+            _=>None,
          }
     } 
 
