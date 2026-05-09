@@ -180,7 +180,7 @@ impl<T> Span<T> {
     }
 }
 
-pub struct SpanItr<C: Core<V,B>,V,B> 
+pub struct SpanIter<C: Core<V,B>,V,B> 
 where 
   B: Deref<Target=dyn SpanSet<V>>+ Borrow<dyn SpanSet<V>>
     {
@@ -189,7 +189,7 @@ where
     next: Option<B>,
 }
 
-impl<C: Core<V,B>,V,B> SpanItr<C,V,B> 
+impl<C: Core<V,B>,V,B> SpanIter<C,V,B> 
   where 
     B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>>,
   {
@@ -207,7 +207,7 @@ impl<C: Core<V,B>,V,B> SpanItr<C,V,B>
     }
 }
 
-impl<C: Core<V,B>,V,B>  Iterator for  SpanItr<C,V,B>
+impl<C: Core<V,B>,V,B>  Iterator for  SpanIter<C,V,B>
 where 
     B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>> +SpanSet<V>,
  {
