@@ -112,7 +112,7 @@ pub trait Core<V,B>
         }
     }
 
-    fn next_span(&self,start: &dyn SpanSet<V>, list: &Vec<B>) ->Option<B> {
+    fn get_next_span(&self,start: &dyn SpanSet<V>, list: &Vec<B>) ->Option<B> {
         let begin=self.next_value(start.get_end());
         let mut target: Option<&V>=None;
         let mut alt: Option<&V>=None;
@@ -128,15 +128,15 @@ pub trait Core<V,B>
                     _=>target=Some(test)
                 }
             } else {
-                let end=check.get_end();
-                if self.lt(&begin,end) {
+                let start=check.get_begin();
+                if self.lt(&begin,start) {
                     match alt {
                         Some(cmp)=>{
-                            if self.lt(end,cmp) {
-                                alt=Some(end)
+                            if self.lt(start,cmp) {
+                                alt=Some(start)
                             }
                         },
-                        _=>alt=Some(end)
+                        _=>alt=Some(start)
                     }
                 }
             }
@@ -150,14 +150,30 @@ pub trait Core<V,B>
 
                         for check in list {
                             if self.span_contains(check.borrow(), begin) {
+                                let start=check.get_begin();
                                 let end=check.get_end();
+
                                 match target {
                                     Some(cmp)=> {
-                                        if self.lt(end,cmp) {
+                                        if self.lt(begin,start) && self.lt(start,cmp) {
+                                            target=Some(start)
+                                        } else if self.lt(end,cmp) {
                                             target=Some(end)
                                         }
                                     }
-                                    _=>target=Some(end)
+                                    _=>target=Some(if self.lt(begin,start) { start } else { end})
+                                }
+                            } else {
+                                let start=check.get_begin();
+                                if self.lt(begin, start) {
+                                    match target {
+                                        Some(cmp)=>{
+                                            if self.lt(start,cmp) {
+                                                target=Some(start)
+                                            }
+                                        },
+                                        _=>target=Some(start)
+                                    }
                                 }
                             }
                         }
@@ -182,7 +198,7 @@ impl<T> Span<T> {
 
 pub struct SpanIter<C: Core<V,B>,V,B> 
 where 
-  B: Deref<Target=dyn SpanSet<V>>+ Borrow<dyn SpanSet<V>>
+    B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>>,
     {
     list: Vec<B>,
     core: C,
@@ -209,7 +225,7 @@ impl<C: Core<V,B>,V,B> SpanIter<C,V,B>
 
 impl<C: Core<V,B>,V,B>  Iterator for  SpanIter<C,V,B>
 where 
-    B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>> +SpanSet<V>,
+    B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>> ,
  {
     type Item = B;
     fn next(&mut self) -> Option<Self::Item> {
@@ -217,7 +233,7 @@ where
         {
             let next=&self.next;
             match next {
-                Some(check)=>target=self.core.next_span(check, &self.list),
+                Some(check)=>target=self.core.get_next_span(check.borrow(), &self.list),
                 _=>(),
             }
         }
@@ -274,16 +290,19 @@ mod basic_tests {
         assert_eq!(span.get_begin(),&1);
         assert_eq!(span.get_end(),&2);
 
-        // positive test
+        // positive contains value test(s)
         assert!(core.span_contains(span.borrow(), &1));
         assert!(core.span_contains(span.borrow(), &2));
 
-        // negative test
+        // negative contains value test(s)
         assert!(!core.span_contains(span.borrow(), &3));
         assert!(!core.span_contains(span.borrow(), &0));
 
+
+        // positive contains begin or end test(s)
         assert!(core.span_contains_begin_or_end(span.borrow(), span.borrow()));
 
+        // negative contains begin or end test(s)
         let before=core.new_span(&-1, &0);
         let after=core.new_span(&3, &3);
 
@@ -293,6 +312,8 @@ mod basic_tests {
         let all=core.new_span(&-2, &4);
         assert!(!core.span_contains_begin_or_end(span.borrow(), all.borrow()));
 
+
+        // positive overlap tests
         assert!(core.spans_overlap(all.borrow(), span.borrow()));
         assert!(core.spans_overlap(span.borrow(), all.borrow()));
 
@@ -312,6 +333,99 @@ mod basic_tests {
         assert!(matches!(core.span_relation(after.borrow(), before.borrow()),SpanRelation::Before));
         assert!(matches!(core.span_relation(all.borrow(), before.borrow()),SpanRelation::Overlap));
         assert!(matches!(core.span_relation(all.borrow(), after.borrow()),SpanRelation::Overlap));
+    }
+
+    #[test]
+    fn first_span_tests() {
+        let core=build_core();
+        // positive testing
+        let mut list=vec![
+            core.new_span(&4, &5),
+            core.new_span(&0, &3),
+            core.new_span(&1, &2),
+        ];
+
+        if let Some(span)=core.get_first_span(&list) {
+            check_span(span.borrow(), 0, 2);
+        }
+
+        // negative testing
+        list.clear();
+        assert!(matches!(core.get_first_span(&list),None));
+    }
+
+    fn check_span(check: &dyn SpanSet<i32>,a: i32,b: i32) {
+
+        print!("    Expected: {}->{}, Got: {}->{}\n",a,b,check.get_begin(),check.get_end());
+        assert_eq!(check.get_begin(),&a);
+        assert_eq!(check.get_end(),&b);
+    }
+    #[test]
+    fn next_span_tests() {
+        let core=build_core();
+        // positive testing
+        let mut list=vec![
+            core.new_span(&4, &5),
+            core.new_span(&4, &6),
+            core.new_span(&0, &3),
+            core.new_span(&1, &2),
+            // gap 1
+            core.new_span(&8, &11),
+            // gap 2
+            core.new_span(&13, &22),
+            core.new_span(&15, &19),
+        ];
+
+        let mut point=core.new_span(&0, &2);
+
+        let mut checkset=vec![
+            (3,3),
+            (4,5),
+            (6,6),
+            (8,11),
+            (13,15),
+            (16,19),
+            (20,22),
+        ];
+
+        for (a,b) in checkset {
+            if let Some(next)=core.get_next_span(point.borrow(), &list) {
+                check_span(next.borrow(), a, b);
+                point=next;
+            }
+        }
+
+        assert!(matches!(core.get_next_span(point.borrow(), &list),None));
+
+        // we really only have 1 negative test..  IE empty list!
+        list.clear();
+        assert!(matches!(core.get_next_span(point.borrow(), &list),None));
+
+
+        // validate smallest default gap in reversal of 
+        point=core.new_span(&8, &11);
+        list=vec![
+            // reversing  the order of the gap for coverage
+            core.new_span(&15, &19),
+            core.new_span(&13, &22),
+            // order should never mater
+            core.new_span(&8, &11),
+        ];
+
+        checkset=vec![
+            (13,15),
+            (16,19),
+            (20,22),
+        ];
+
+        for (a,b) in checkset {
+            if let Some(next)=core.get_next_span(point.borrow(), &list) {
+                check_span(next.borrow(), a, b);
+                point=next;
+            }
+        }
+        assert!(matches!(core.get_next_span(point.borrow(), &list),None));
+
     }
 
 }
