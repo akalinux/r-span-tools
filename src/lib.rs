@@ -1,23 +1,163 @@
 
 use std::mem;
-use std::ops::Deref;
+use std::ops::{Deref, RangeInclusive};
 use std::borrow::Borrow;
 use std::cmp::Ordering;
-
-pub enum SpanRelation {
+pub enum RangeRelation {
     Before,
     Overlap,
     After,
+    Empty,
 }
 pub struct Span<T> {
     begin: T,
     end: T,
 }
 
-
 pub trait SpanSet<T> {
     fn get_begin(&self) -> &T;
     fn get_end(&self) -> &T;
+    fn try_rangeinclusive(&self)->Option<RangeInclusive<T>> {
+        return None
+    }
+
+}
+pub trait CmpClone: PartialOrd +Clone  {}
+impl<C: PartialOrd + Clone> CmpClone for C {}
+
+impl <T: CmpClone> SpanSet<T> for RangeInclusive<T> {
+    fn get_begin(&self) -> &T {
+        self.start()
+    }
+
+    fn get_end(&self) -> &T {
+        self.end()
+    }
+
+    fn try_rangeinclusive(&self)->Option<RangeInclusive<T>> {
+        return Some(self.clone())
+    }
+}
+
+fn new_range<T: CmpClone>(start: &T, end: &T) -> RangeInclusive<T> {
+    start.clone()..=end.clone()
+}
+
+fn lt<T: CmpClone>(a: &T, b: &T) ->bool {
+    return a<b;
+}
+
+struct RangeVecIterBuilder<'a,T: CmpClone> {
+    list: &'a Vec<RangeInclusive<T>>,
+}
+
+pub trait SpanSetIter<T> {
+    fn iter(&mut self) -> impl Iterator<Item = Box<dyn SpanSet<T>>>;
+}
+
+impl<'a,T:CmpClone> RangeVecIterBuilder<'a,T> {
+    fn new(list: &'a Vec<RangeInclusive<T>>) ->Self {
+        Self { list }
+    }
+}
+
+impl<'a,T:CmpClone +'static > SpanSetIter<T> for RangeVecIterBuilder<'a,T> {
+    fn iter(&mut self) ->impl Iterator<Item=Box<dyn SpanSet<T>>>{
+      
+        return RangeIter::new(&self.list);
+        
+    }
+}
+
+struct RangeIter<'a,T: CmpClone> {
+    list: &'a Vec<RangeInclusive<T>>,
+    pos: usize,
+}
+
+impl <'a,T: CmpClone> RangeIter<'a,T> {
+    fn new(list: &'a Vec<RangeInclusive<T>>) ->Self {
+        return Self {
+            list: list,
+            pos:0,
+        }
+    }
+}
+
+impl<'a,T> Iterator for RangeIter<'a,T> 
+  where T: CmpClone +'static
+  {
+    type Item=Box<dyn SpanSet<T>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.list.len()!=0 && self.list.len() > self.pos {
+            let next=&self.list[self.pos];
+            let res=Box::new(next.clone());
+            self.pos+=1;
+            return Some(res);
+        }
+        return None;
+    }
+
+}
+
+
+fn get_first_range<T: CmpClone>(list: &Vec<RangeInclusive<T>>) -> Option<impl SpanSet<T>> {
+    let mut start: Option<(usize,&RangeInclusive<T>)>=None;
+    for (idx,span) in list.iter().enumerate() {
+        if !span.is_empty() {
+            start=Some((idx,span));
+            break;
+        }
+    }
+    match start {
+        Some((idx,first))=>{
+            let mut begin=first.start();
+            let mut end =first.end();
+            for i in idx..list.len()  {
+                let next=&list[i];
+                let mut cmp=next.start();
+                if cmp < begin {
+                    begin=cmp
+                }
+                cmp=next.end();
+                if cmp < end {
+                    end=cmp
+                }
+            }
+            return Some(new_range(begin,end));
+        }
+        None=>None
+    }
+}
+
+
+pub trait NextRangeBegin<C> {
+    fn begin(&mut self, end:&C) ->C;
+}
+
+#[cfg(test)]
+mod range_tests {
+    use crate::{NextRangeBegin, new_range};
+
+    struct NextBegin {}
+
+    impl NextRangeBegin<i32> for NextBegin {
+        fn begin(&mut self, end: &i32) ->i32 {
+            return end+1;
+        }
+    }
+
+    #[test]
+    fn test_next_begin() {
+        let mut n=NextBegin{};
+        assert_eq!(n.begin(&1),2);
+    }
+
+    #[test]
+    fn test_new_range() {
+        let r=new_range(&1,&2);
+        assert_eq!(r,1..=2);
+    }
 }
 
 impl<T> SpanSet<T> for Span<T> {
@@ -52,14 +192,14 @@ pub trait Core<V,B>
         self.span_contains_begin_or_end(a, b) || self.span_contains_begin_or_end(b, a)
     }
 
-    fn span_relation(&self, point: &dyn SpanSet<V>,check: &dyn SpanSet<V> ) ->SpanRelation {
+    fn span_relation(&self, point: &dyn SpanSet<V>,check: &dyn SpanSet<V> ) ->RangeRelation {
         if self.lt( check.get_end(),point.get_begin()) {
-            return SpanRelation::Before;
+            return RangeRelation::Before;
         } else if self.lt(point.get_end(),check.get_begin()) {
-            return SpanRelation::After;
+            return RangeRelation::After;
         } 
 
-        return SpanRelation::Overlap;
+        return RangeRelation::Overlap;
 
     }
 
@@ -246,7 +386,7 @@ where
 }
 
 #[cfg(test)]
-mod basic_tests {
+mod span_tests {
     use super::*;
 
     #[test]
@@ -329,10 +469,10 @@ mod basic_tests {
         let before=core.new_span(&-1, &0);
         let after=core.new_span(&3, &3);
         let all=core.new_span(&-2, &4);
-        assert!(matches!(core.span_relation(before.borrow(), after.borrow()),SpanRelation::After));
-        assert!(matches!(core.span_relation(after.borrow(), before.borrow()),SpanRelation::Before));
-        assert!(matches!(core.span_relation(all.borrow(), before.borrow()),SpanRelation::Overlap));
-        assert!(matches!(core.span_relation(all.borrow(), after.borrow()),SpanRelation::Overlap));
+        assert!(matches!(core.span_relation(before.borrow(), after.borrow()),RangeRelation::After));
+        assert!(matches!(core.span_relation(after.borrow(), before.borrow()),RangeRelation::Before));
+        assert!(matches!(core.span_relation(all.borrow(), before.borrow()),RangeRelation::Overlap));
+        assert!(matches!(core.span_relation(all.borrow(), after.borrow()),RangeRelation::Overlap));
     }
 
     #[test]
