@@ -8,6 +8,7 @@ pub enum SpanRelation {
     Before,
     Overlap,
     After,
+    None,
 }
 pub struct Span<T> {
     begin: T,
@@ -34,11 +35,10 @@ pub trait Core<V,B>
     B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>>,
    {
     fn lt(&self,a: &V,b: &V)->bool;
-    fn next_value(&self, current: &V) ->V;
+    fn next_end(&self, current: &V) ->Option<V>;
     fn new_span(&self, a: &V, b: &V) ->B;
     
-    fn build_core(&self)->Self;
-
+    //fn build_core(&self)->Self;
 
     fn span_contains(&self, check: &dyn SpanSet<V>, value: &V) -> bool {
         !(self.lt(value,check.get_begin()) || self.lt(check.get_end(),value))
@@ -80,17 +80,10 @@ pub trait Core<V,B>
         return Ordering::Equal;
     }
 
-    fn cmp_spans_fn(&self) ->impl FnMut(&dyn SpanSet<V>,&dyn SpanSet<V>) ->Ordering {
-        return |a,b|self.cmp_spans(a, b)
-    }
-
-    fn cmp_spans_vec_fn(&self) ->impl FnMut(&B,&B) ->Ordering {
-        let mut cmp=self.cmp_spans_fn();
-        return move |a,b| cmp(a.borrow(),b.borrow())
-    }
 
         
-    fn get_first_span(&self, list: &Vec<B>) -> Option<B> {
+    fn get_first_span(&self, src: &dyn AsRef<[B]>) -> Option<B> {
+        let list=src.as_ref();
         match list.get(0) {
             Some(first)=>{
                 let mut begin=first.get_begin();
@@ -112,11 +105,12 @@ pub trait Core<V,B>
         }
     }
 
-    fn get_next_span(&self,start: &dyn SpanSet<V>, list: &Vec<B>) ->Option<B> {
-        let begin=self.next_value(start.get_end());
+    fn get_next_span(&self,start: &dyn SpanSet<V>, src: &dyn AsRef<[B]>) ->Option<B> {
+        let list=src.as_ref();
+        if let Some(begin)=self.next_end(start.get_end()) {
         let mut target: Option<&V>=None;
         let mut alt: Option<&V>=None;
-        for check in list {
+        for check in list.into_iter() {
             if self.span_contains(check.borrow(), &begin) {
                 let test=check.get_end();
                 match target {
@@ -148,7 +142,7 @@ pub trait Core<V,B>
                     Some(begin)=>{
                         target=None;
 
-                        for check in list {
+                        for check in list.into_iter() {
                             if self.span_contains(check.borrow(), begin) {
                                 let start=check.get_begin();
                                 let end=check.get_end();
@@ -178,16 +172,19 @@ pub trait Core<V,B>
                             }
                         }
                         match target {
-                            Some(end)=>{
-                                Some(self.new_span(begin,end))},
-                            _=>None
+                            Some(end)=>return Some(self.new_span(begin,end)),
+                            _=>return None
                         }
                     },
-                    _=>None
+                    _=>return None
                 }
             }
         }
+        } else {
+           return None
+        }
     }
+
 }
 
 impl<T> Span<T> {
@@ -209,19 +206,23 @@ impl<C: Core<V,B>,V,B> SpanIter<C,V,B>
   where 
     B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>>,
   {
-    pub fn new(core: C, list:Vec<B>) ->Self {
+    pub fn new(core: C, list: Vec<B>) ->Self {
+
         let next=core.get_first_span(&list);
         return Self { 
-            list: list, 
-            core: core, 
+            list: list,
+            core: core,
             next: next,
         }
     }
 
     pub fn update_cell(&mut self,i: usize, value: B) {
         self.list[i]=value;
+        
     }
 }
+
+
 
 impl<C: Core<V,B>,V,B>  Iterator for  SpanIter<C,V,B>
 where 
@@ -269,12 +270,10 @@ mod basic_tests {
             return a<b
         }
 
-        fn next_value(&self, current: &i32) ->i32 {
-            return current +1;
+        fn next_end(&self, current: &i32) ->Option<i32> {
+            return current.checked_add(1);
         }
-        fn build_core(&self) ->Self {
-            return Self{}
-        }
+  
     }
 
     fn build_core() ->Tools {
