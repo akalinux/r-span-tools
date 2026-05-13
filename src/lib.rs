@@ -1,69 +1,237 @@
-
-use std::mem;
-use std::ops::Deref;
-use std::borrow::Borrow;
 use std::cmp::Ordering;
-
+use std::mem;
+use std::ops::{Add, Deref};
+use std::panic::{UnwindSafe, catch_unwind};
 pub enum SpanRelation {
     Before,
     Overlap,
     After,
     None,
 }
-pub struct Span<T> {
+
+pub trait CoreValue: Deref + Clone + PartialOrd {}
+impl<T: Deref + Clone + PartialOrd<Self>> CoreValue for T {}
+
+pub trait CoreAddValue: CoreValue + Add<Self, Output = Self> + UnwindSafe {}
+impl<T: CoreValue + Add<T, Output = T> + UnwindSafe> CoreAddValue for T {}
+
+pub fn safe_add_value<T: CoreAddValue>(a: &T, b: &T) -> Option<T> {
+    let x = a.clone();
+    let y = b.clone();
+
+    let result = catch_unwind(|| x + y);
+
+    match result {
+        Ok(begin) => Some(begin),
+        Err(_) => None,
+    }
+}
+
+pub trait RangeSet<T: CoreValue> {
+    fn get_begin(&self) -> &T;
+    fn get_end(&self) -> &T;
+
+    fn contains_value(&self, value: &T) -> bool {
+        !(value < self.get_begin() || value > self.get_end())
+    }
+
+    fn contains(&self, check: &dyn RangeSet<T>) -> bool {
+        return self.contains_value(check.get_begin()) || self.contains_value(check.get_end());
+    }
+
+    fn overlap(&self, check: &dyn RangeSet<T>) -> bool {
+        return self.contains(check)
+            || check.contains_value(&self.get_begin())
+            || check.contains_value(&self.get_end());
+    }
+
+    fn is_empty(&self) -> bool {
+        return self.get_begin() > self.get_end();
+    }
+}
+
+/// Static sort method for SpanSet<T>.
+pub fn partial_cmp<T: CoreValue>(a: &dyn RangeSet<T>, b: &dyn RangeSet<T>) -> Ordering {
+    if b.get_begin() < a.get_begin() {
+        return Ordering::Greater;
+    } else if a.get_begin() < b.get_begin() {
+        return Ordering::Less;
+
+    // anything below this point both begin values are the same
+    } else if a.get_end() < b.get_end() {
+        return Ordering::Greater;
+    } else if b.get_end() < a.get_end() {
+        return Ordering::Less;
+    }
+    // if we get here, begin and end are equal
+    return Ordering::Equal;
+}
+
+pub fn first_range_begin_end<T: CoreValue, R>(src: &dyn AsRef<[R]>) -> Option<(T, T)>
+where
+    R: Deref<Target = dyn RangeSet<T>>,
+{
+    let mut begin: Option<&T> = None;
+    let mut end: Option<&T> = None;
+
+    let list = src.as_ref();
+    for span in list {
+        let mut cmp = span.get_begin();
+        if let Some(check) = begin
+            && cmp < check
+        {
+            begin = Some(cmp)
+        }
+        cmp = span.get_end();
+        if let Some(check) = end
+            && cmp < check
+        {
+            end = Some(cmp)
+        }
+    }
+
+    match begin {
+        Some(begin) => match end {
+            Some(end) => Some((begin.clone(), end.clone())),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+pub fn next_range_begin_end<T: CoreValue, R>(begin: T, src: &dyn AsRef<[R]>) -> Option<(T, T)>
+where
+    R: Deref<Target = dyn RangeSet<T>> 
+{
+    let list = src.as_ref();
+    let mut target: Option<&T> = None;
+    let mut alt: Option<&T> = None;
+    for check in list {
+        if check.contains_value(&begin) {
+            let test = check.get_end();
+            match target {
+                Some(cmp) => {
+                    if test < cmp {
+                        target = Some(test)
+                    }
+                }
+                _ => target = Some(test),
+            }
+        } else {
+            let start = check.get_begin();
+            if &begin < start {
+                match alt {
+                    Some(cmp) => {
+                        if start < cmp {
+                            alt = Some(start)
+                        }
+                    }
+                    _ => alt = Some(start),
+                }
+            }
+        }
+    }
+    match target {
+        Some(end) => Some((begin.clone(), end.clone())),
+        _ => match alt {
+            Some(begin) => {
+                target = None;
+
+                for check in list {
+                    if check.contains_value(begin) {
+                        let start = check.get_begin();
+                        let end = check.get_end();
+
+                        match target {
+                            Some(cmp) => {
+                                if begin < start && start < cmp {
+                                    target = Some(start)
+                                } else if end < cmp {
+                                    target = Some(end)
+                                }
+                            }
+                            _ => target = Some(if begin < start { start } else { end }),
+                        }
+                    } else {
+                        let start = check.get_begin();
+                        if begin < start {
+                            match target {
+                                Some(cmp) => {
+                                    if start < cmp {
+                                        target = Some(start)
+                                    }
+                                }
+                                _ => target = Some(start),
+                            }
+                        }
+                    }
+                }
+                match target {
+                    Some(end) => return Some((begin.clone(), end.clone())),
+                    _ => return None,
+                }
+            }
+            _ => return None,
+        },
+    }
+}
+
+pub struct Span<T: CoreValue> {
     begin: T,
     end: T,
 }
 
-
-pub trait SpanSet<T> {
-    fn get_begin(&self) -> &T;
-    fn get_end(&self) -> &T;
-}
-
-impl<T> SpanSet<T> for Span<T> {
+impl<T: CoreValue> RangeSet<T> for Span<T> {
     fn get_begin(&self) -> &T {
         &self.begin
     }
+
     fn get_end(&self) -> &T {
         &self.end
     }
 }
 
-pub trait Core<V,B> 
- where 
-    B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>>,
+impl<T: CoreAddValue> Span<T> {
+    pub fn new(begin: T, end: T) -> Self {
+        return Span { begin, end };
+    }
+}
+
+/*
+pub trait Core<V,B>
+ where
+    B: Deref<Target=dyn RangeSet<V>> + Borrow<dyn RangeSet<V>>,
    {
     fn lt(&self,a: &V,b: &V)->bool;
     fn next_end(&self, current: &V) ->Option<V>;
     fn new_span(&self, a: &V, b: &V) ->B;
-    
+
     //fn build_core(&self)->Self;
 
-    fn span_contains(&self, check: &dyn SpanSet<V>, value: &V) -> bool {
+    fn span_contains(&self, check: &dyn RangeSet<V>, value: &V) -> bool {
         !(self.lt(value,check.get_begin()) || self.lt(check.get_end(),value))
     }
 
-    fn span_contains_begin_or_end(&self, outer: &dyn SpanSet<V>, inner: &dyn SpanSet<V>) ->bool {
+    fn span_contains_begin_or_end(&self, outer: &dyn RangeSet<V>, inner: &dyn RangeSet<V>) ->bool {
         self.span_contains(outer, inner.get_begin()) || self.span_contains(outer, inner.get_end())
     }
 
-    fn spans_overlap(&self, a: &dyn SpanSet<V>, b: &dyn SpanSet<V>) ->bool {
+    fn spans_overlap(&self, a: &dyn RangeSet<V>, b: &dyn RangeSet<V>) ->bool {
         self.span_contains_begin_or_end(a, b) || self.span_contains_begin_or_end(b, a)
     }
 
-    fn span_relation(&self, point: &dyn SpanSet<V>,check: &dyn SpanSet<V> ) ->SpanRelation {
+    fn span_relation(&self, point: &dyn RangeSet<V>,check: &dyn RangeSet<V> ) ->SpanRelation {
         if self.lt( check.get_end(),point.get_begin()) {
             return SpanRelation::Before;
         } else if self.lt(point.get_end(),check.get_begin()) {
             return SpanRelation::After;
-        } 
+        }
 
         return SpanRelation::Overlap;
 
     }
 
-    fn cmp_spans(&self,a:&dyn SpanSet<V>, b: &dyn SpanSet<V>) ->Ordering {
+    fn cmp_spans(&self,a:&dyn RangeSet<V>, b: &dyn RangeSet<V>) ->Ordering {
 
         if self.lt(b.get_begin(),a.get_begin()) {
             return Ordering::Greater;
@@ -81,7 +249,7 @@ pub trait Core<V,B>
     }
 
 
-        
+
     fn get_first_span(&self, src: &dyn AsRef<[B]>) -> Option<B> {
         let list=src.as_ref();
         match list.get(0) {
@@ -105,7 +273,7 @@ pub trait Core<V,B>
         }
     }
 
-    fn get_next_span(&self,start: &dyn SpanSet<V>, src: &dyn AsRef<[B]>) ->Option<B> {
+    fn get_next_span(&self,start: &dyn RangeSet<V>, src: &dyn AsRef<[B]>) ->Option<B> {
         let list=src.as_ref();
         if let Some(begin)=self.next_end(start.get_end()) {
         let mut target: Option<&V>=None;
@@ -193,23 +361,23 @@ impl<T> Span<T> {
     }
 }
 
-pub struct SpanIter<C: Core<V,B>,V,B> 
-where 
-    B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>>,
+pub struct SpanIter<C: Core<V,B>,V,B>
+where
+    B: Deref<Target=dyn RangeSet<V>> + Borrow<dyn RangeSet<V>>,
     {
     list: Vec<B>,
     core: C,
     next: Option<B>,
 }
 
-impl<C: Core<V,B>,V,B> SpanIter<C,V,B> 
-  where 
-    B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>>,
+impl<C: Core<V,B>,V,B> SpanIter<C,V,B>
+  where
+    B: Deref<Target=dyn RangeSet<V>> + Borrow<dyn RangeSet<V>>,
   {
     pub fn new(core: C, list: Vec<B>) ->Self {
 
         let next=core.get_first_span(&list);
-        return Self { 
+        return Self {
             list: list,
             core: core,
             next: next,
@@ -218,15 +386,15 @@ impl<C: Core<V,B>,V,B> SpanIter<C,V,B>
 
     pub fn update_cell(&mut self,i: usize, value: B) {
         self.list[i]=value;
-        
+
     }
 }
 
 
 
 impl<C: Core<V,B>,V,B>  Iterator for  SpanIter<C,V,B>
-where 
-    B: Deref<Target=dyn SpanSet<V>> + Borrow<dyn SpanSet<V>> ,
+where
+    B: Deref<Target=dyn RangeSet<V>> + Borrow<dyn RangeSet<V>> ,
  {
     type Item = B;
     fn next(&mut self) -> Option<Self::Item> {
@@ -242,7 +410,7 @@ where
             Some(span)=>mem::replace(&mut self.next, Some(span)),
             _=>None,
          }
-    } 
+    }
 
 }
 
@@ -259,7 +427,7 @@ mod basic_tests {
 
     struct Tools { }
 
-    type S=Box<dyn SpanSet<i32>>;
+    type S=Box<dyn RangeSet<i32>>;
     impl  Core<i32,S> for Tools {
         fn new_span(&self, begin: &i32,end: &i32) ->S {
             let span: Span<i32>=Span::new(begin+0,end+0);
@@ -273,7 +441,7 @@ mod basic_tests {
         fn next_end(&self, current: &i32) ->Option<i32> {
             return current.checked_add(1);
         }
-  
+
     }
 
     fn build_core() ->Tools {
@@ -353,7 +521,7 @@ mod basic_tests {
         assert!(matches!(core.get_first_span(&list),None));
     }
 
-    fn check_span(check: &dyn SpanSet<i32>,a: i32,b: i32) {
+    fn check_span(check: &dyn RangeSet<i32>,a: i32,b: i32) {
 
         print!("    Expected: {}->{}, Got: {}->{}\n",a,b,check.get_begin(),check.get_end());
         assert_eq!(check.get_begin(),&a);
@@ -401,7 +569,7 @@ mod basic_tests {
         assert!(matches!(core.get_next_span(point.borrow(), &list),None));
 
 
-        // validate smallest default gap in reversal of 
+        // validate smallest default gap in reversal of
         point=core.new_span(&8, &11);
         list=vec![
             // reversing  the order of the gap for coverage
@@ -428,3 +596,4 @@ mod basic_tests {
     }
 
 }
+    */
