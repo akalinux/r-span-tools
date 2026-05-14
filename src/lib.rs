@@ -1,7 +1,8 @@
+//! # R Span Tools
+//!
+//! `r_span_tools` is a library that, can be used to find all common intersection values for generic typs.
 use std::cmp::Ordering;
 use std::mem;
-use std::ops::{Add, Deref};
-use std::panic::{UnwindSafe, catch_unwind};
 
 pub enum RangeRelation {
     Before,
@@ -9,25 +10,138 @@ pub enum RangeRelation {
     After,
 }
 
-pub trait CoreValue: Clone + PartialOrd {}
-impl<T: Clone + PartialOrd<Self>> CoreValue for T {}
-
-pub trait CoreAddValue: CoreValue + Add<Self, Output = Self> + UnwindSafe {}
-impl<T: CoreValue + Add<T, Output = T> + UnwindSafe> CoreAddValue for T {}
-
-pub fn safe_add_value<T: CoreAddValue>(a: &T, b: &T) -> Option<T> {
-    let x = a.clone();
-    let y = b.clone();
-
-    let result = catch_unwind(|| x + y);
-
-    match result {
-        Ok(begin) => Some(begin),
-        Err(_) => None,
-    }
+/// Trait representing incrementing or decrementing via a checked value.  It is always assumed
+/// that, self.checked_inc(rhs) Some(Self) will always return a larger value than either self or rhs.
+/// Likewise it is always assumed that self.checked_dec(rhs) Some(Self) will always return a value smaller
+/// than self.
+///
+/// # Examples
+///
+/// When imported the trait is added to integer and floating point primitives.
+/// ```
+/// use r_span_tools::SafeIncDec;
+///
+/// fn main() {
+///    // Increment examples
+///    assert!( matches!(1.checked_inc(2), Some(3) ));      // Number went up by 2!
+///    assert!( matches!(0.checked_inc(0), None ));         // Number did not go up
+///    assert!( matches!(0.checked_inc(-2), None ));        // Number did not go up
+///    assert!( matches!(i32::MAX.checked_inc(1), None ));  // Catch overflow
+///
+///    // Decrement examples
+///    assert!( matches!(1.checked_dec(2), Some(-1) ));     // Number went down by 2!
+///    assert!( matches!(0.checked_dec(0), None ));         // Number did not go down
+///    assert!( matches!(0.checked_dec(-2), None ));        // Number did not go down
+///    assert!( matches!(i32::MIN.checked_dec(1), None ));  // Catch undeflow
+/// }
+///
+/// ```
+///
+/// ## Implementation Example
+///
+/// This example shows how to safely grow or shrik a struct called `MilkSupply`.
+///
+/// Note: Incrementing by a negative number will result in None and decrementing by a
+/// negative number will result in None.
+///
+/// ```
+/// use r_span_tools::SafeIncDec;
+///
+/// #[derive(Debug, Copy, Clone, PartialEq)]
+/// struct MilkSupply { gallons: i32 }
+///
+/// impl SafeIncDec for MilkSupply {
+///    fn checked_inc(self,rhs: Self) ->Option<Self> {
+///      // if we add the number must always go up!
+///      if self.gallons==0 && rhs.gallons==0 || rhs.gallons <0 { return None }
+///      // check for overflow
+///      let next=self.gallons.checked_add(rhs.gallons);
+///      match next {
+///         Some(gallons)=>Some(MilkSupply { gallons } ),
+///         None=>None,
+///      }
+///    }
+///
+///    fn checked_dec(self,rhs: Self) ->Option<Self> {
+///      // if we subtract the number must always go down!
+///      if self.gallons==0 && rhs.gallons==0 ||  rhs.gallons <0{ return None }
+///      let next=self.gallons.checked_sub(rhs.gallons);
+///      match next {
+///         Some(gallons)=>Some(MilkSupply { gallons } ),
+///         None=>None,
+///      }
+///    }
+/// }
+///
+/// ```
+pub trait SafeIncDec: Sized {
+    /// Should capture overflow and the returned Self should be: gt self &&  ltrhs.
+    fn checked_inc(self, rhs: Self) -> Option<Self>;
+    /// Should capture overflow and the returned Self should be: tt self && lt rhs.
+    fn checked_dec(self, rhs: Self) -> Option<Self>;
 }
 
-pub trait RangeSet<T: CoreValue> {
+macro_rules! impl_checked_inc_sub_u {
+    ($($t:ty),*) => {
+        $(
+            impl SafeIncDec for $t {
+                fn checked_dec(self, rhs: Self) ->Option<Self> {
+                    if rhs==0  { return None }
+                    return self.checked_sub(rhs);
+                }
+                fn checked_inc(self, rhs: Self) -> Option<Self> {
+                    if rhs==0 { return None }
+                    return self.checked_add(rhs)
+                }
+            }
+        )*
+    };
+}
+
+macro_rules! impl_checked_inc_sub_i {
+    ($($t:ty),*) => {
+        $(
+            impl SafeIncDec for $t {
+                fn checked_dec(self, rhs: Self) ->Option<Self> {
+                    if rhs<=0 { return None}
+                    return self.checked_sub(rhs);
+                }
+                fn checked_inc(self, rhs: Self) -> Option<Self> {
+                    if rhs<=0 { return None}
+                    return self.checked_add(rhs)
+                }
+            }
+        )*
+    };
+}
+macro_rules! impl_checked_inc_sub_f {
+    ($($t:ty),*) => {
+        $(
+            impl SafeIncDec for $t {
+                fn checked_dec(self, rhs: Self) ->Option<Self> {
+                    let res=self - rhs;
+                    if res.is_nan() || res.is_infinite() || res >=self || res >=rhs { None } else { Some(res) }
+                }
+                fn checked_inc(self, rhs: Self) -> Option<Self> {
+                    let res=self + rhs;
+                    if res.is_nan() || res.is_infinite() || res <=self || res<=rhs { None } else { Some(res) }
+                }
+            }
+        )*
+    };
+}
+
+impl_checked_inc_sub_u!(u8, u16, u32, u64, u128, usize);
+impl_checked_inc_sub_i!(i8, i16, i32, i64, i128, isize);
+impl_checked_inc_sub_f!(f32, f64);
+
+pub trait RangeValue: Clone + PartialOrd {}
+impl<T: Clone + PartialOrd<Self>> RangeValue for T {}
+
+pub trait RangeAddSubValue: RangeValue + SafeIncDec {}
+impl<T: RangeValue + SafeIncDec> RangeAddSubValue for T {}
+
+pub trait RangeSet<T: RangeValue> {
     fn get_begin(&self) -> &T;
     fn get_end(&self) -> &T;
 
@@ -61,7 +175,7 @@ pub trait RangeSet<T: CoreValue> {
 }
 
 /// Static sort method for SpanSet<T>.
-pub fn partial_cmp<T: CoreValue>(a: &dyn RangeSet<T>, b: &dyn RangeSet<T>) -> Ordering {
+pub fn partial_cmp<T: RangeValue, R: RangeSet<T>>(a: &R, b: &R) -> Ordering {
     if b.get_begin() < a.get_begin() {
         return Ordering::Greater;
     } else if a.get_begin() < b.get_begin() {
@@ -77,10 +191,7 @@ pub fn partial_cmp<T: CoreValue>(a: &dyn RangeSet<T>, b: &dyn RangeSet<T>) -> Or
     return Ordering::Equal;
 }
 
-pub fn first_range_begin_end<T: CoreValue, R>(src: &[R]) -> Option<(T, T)>
-where
-    R: Deref<Target = dyn RangeSet<T>>,
-{
+pub fn first_range_begin_end<T: RangeValue, R: RangeSet<T>>(src: &[R]) -> Option<(T, T)> {
     let mut begin: Option<&T> = None;
     let mut end: Option<&T> = None;
 
@@ -108,10 +219,7 @@ where
     }
 }
 
-pub fn next_range_begin_end<T: CoreValue, R>(begin: T, src: &[R]) -> Option<(T, T)>
-where
-    R: Deref<Target = dyn RangeSet<T>>,
-{
+pub fn next_range_begin_end<T: RangeValue, R: RangeSet<T>>(begin: T, src: &[R]) -> Option<(T, T)> {
     let mut target: Option<&T> = None;
     let mut alt: Option<&T> = None;
     for check in src {
@@ -184,12 +292,12 @@ where
     }
 }
 
-pub struct Span<T: CoreValue> {
+pub struct Span<T: RangeValue> {
     begin: T,
     end: T,
 }
 
-impl<T: CoreValue> RangeSet<T> for Span<T> {
+impl<T: RangeValue> RangeSet<T> for Span<T> {
     fn get_begin(&self) -> &T {
         &self.begin
     }
@@ -199,25 +307,19 @@ impl<T: CoreValue> RangeSet<T> for Span<T> {
     }
 }
 
-impl<T: CoreAddValue> Span<T> {
+impl<T: RangeAddSubValue> Span<T> {
     pub fn new(begin: T, end: T) -> Self {
         return Span { begin, end };
     }
 }
 
-pub struct SpanIter<'a, T: CoreAddValue, R>
-where
-    R: Deref<Target = dyn RangeSet<T>>,
-{
+pub struct SpanIter<'a, T: RangeAddSubValue, R: RangeSet<T>> {
     src: &'a mut [R],
     next: Option<Span<T>>,
     step: T,
 }
 
-impl<'a, T: CoreAddValue, R> SpanIter<'a, T, R>
-where
-    R: Deref<Target = dyn RangeSet<T>>,
-{
+impl<'a, T: RangeAddSubValue, R: RangeSet<T>> SpanIter<'a, T, R> {
     pub fn new(src: &'a mut [R], step: T) -> Self {
         let mut next: Option<Span<T>> = None;
         if let Some((begin, end)) = first_range_begin_end(src) {
@@ -227,17 +329,14 @@ where
     }
 
     pub fn update_column(&mut self, span: R, idx: usize) {
-        if idx> self.src.len() {
+        if idx > self.src.len() {
             return;
         }
-        *&mut self.src[idx]=span;
+        *&mut self.src[idx] = span;
     }
 }
 
-impl<'a, T: CoreAddValue, R> Iterator for SpanIter<'a, T, R>
-where
-    R: Deref<Target = dyn RangeSet<T>>,
-{
+impl<'a, T: RangeAddSubValue, R: RangeSet<T>> Iterator for SpanIter<'a, T, R> {
     type Item = Span<T>;
     fn next(&mut self) -> Option<Span<T>> {
         let mut next: Option<Span<T>> = None;
@@ -251,32 +350,90 @@ where
                 }
             }
             if let Some(span) = current {
-                if let Some(start) = safe_add_value(span.get_end(), &self.step) {
-                    if let Some((begin, end)) = next_range_begin_end(start, self.src) {
-                        next= Some(Span { begin,end })
+                let check = span.get_end().clone();
+                if let Some(start) = check.checked_inc(self.step.clone()) {
+                    if let Some((begin, end)) = next_range_begin_end(start.clone(), self.src) {
+                        next = Some(Span { begin, end })
                     }
                 }
             }
         }
         match next {
-            Some(span)=> mem::replace(&mut self.next, Some(span)),
-            None=>mem::replace(&mut self.next, None)
+            Some(span) => mem::replace(&mut self.next, Some(span)),
+            None => mem::replace(&mut self.next, None),
         }
     }
 }
 
 #[cfg(test)]
 mod span_tests {
-    use crate::safe_add_value;
+    use crate::SafeIncDec;
 
     #[test]
-    fn test_add() {
-        // positive test
-        let mut nv: Option<u8> = safe_add_value(&1, &2);
-        assert!(matches!(nv, Some(3)));
+    fn test_safe_add_sub_doc_example() {
+        assert!(matches!(1.checked_inc(2), Some(3))); // Number went up by 2!
+        assert!(matches!(0.checked_inc(0), None)); // Number did not go up
+        assert!(matches!(0.checked_inc(-2), None)); // Number did not go up
+        assert!(matches!(i32::MAX.checked_inc(1), None)); // Catch overflow
+
+        // Decrement examples
+        assert!(matches!(1.checked_dec(2), Some(-1))); // Number went down by 2!
+        assert!(matches!(0.checked_dec(0), None)); // Number did not go down
+        assert!(matches!(0.checked_dec(-2), None)); // Number did not go down
+        assert!(matches!(i32::MIN.checked_dec(1), None)); // Catch undeflow
+    }
+    #[test]
+    fn test_add_sub() {
+        // int positive test
+        let mut i: Option<u8> = 1.checked_inc(2);
+        assert!(matches!(i, Some(3)));
+        i = 1.checked_dec(1);
+        assert!(matches!(i, Some(0)));
 
         // negative test
-        nv = safe_add_value(&255, &1);
-        assert!(matches!(nv, None));
+        for (a, b) in [(255, 1), (0, 0)] {
+            i = a.checked_inc(b);
+            assert!(matches!(i, None));
+        }
+        for (a, b) in [(0, 1), (0, 0)] {
+            i = a.checked_dec(b);
+            assert!(matches!(i, None));
+        }
+
+        // float tests
+        let mut f: Option<f32> = 1.0.checked_inc(1.0);
+        if let Some(c) = f {
+            assert!(c > 1.0)
+        } else {
+            assert!(false);
+        }
+        f = 1.0.checked_dec(1.0);
+        if let Some(c) = f {
+            assert!(c < 1.0)
+        } else {
+            assert!(false);
+        }
+
+        for (a, b) in [(f32::INFINITY, 1.0), (0.0, 0.0)] {
+            f = a.checked_inc(b);
+            assert!(matches!(f, None));
+        }
+
+        let mut u: Option<i8> = 1.checked_inc(2);
+        assert!(matches!(u, Some(3)));
+        u = 1.checked_dec(1);
+        assert!(matches!(u, Some(0)));
+        u = (-1).checked_dec(1);
+        assert!(matches!(u, Some(-2)));
+
+        // negative test
+        for (a, b) in [(127, 1), (0, 0)] {
+            u = a.checked_inc(b);
+            assert!(matches!(u, None));
+        }
+        for (a, b) in [(-128, 1), (0, 0), (1, -1)] {
+            u = a.checked_dec(b);
+            assert!(matches!(u, None));
+        }
     }
 }
