@@ -18,6 +18,8 @@ pub enum RangeRelation {
 /// # Examples
 ///
 /// When imported the trait is added to integer and floating point primitives.
+/// This example demonstrates the feature behavior using i32.
+/// 
 /// ```
 /// use r_span_tools::SafeIncDec;
 ///
@@ -48,26 +50,26 @@ pub enum RangeRelation {
 /// use r_span_tools::SafeIncDec;
 ///
 /// #[derive(Debug, Copy, Clone, PartialEq)]
-/// struct MilkSupply { gallons: i32 }
+/// struct MilkSupply { hundreths: i64 }
 ///
 /// impl SafeIncDec for MilkSupply {
 ///    fn checked_inc(self,rhs: Self) ->Option<Self> {
 ///      // if we add the number must always go up!
-///      if self.gallons==0 && rhs.gallons==0 || rhs.gallons <0 { return None }
+///      if self.hundreths==0 && rhs.hundreths==0 || rhs.hundreths <0 { return None }
 ///      // check for overflow
-///      let next=self.gallons.checked_add(rhs.gallons);
+///      let next=self.hundreths.checked_add(rhs.hundreths);
 ///      match next {
-///         Some(gallons)=>Some(MilkSupply { gallons } ),
+///         Some(hundreths)=>Some(MilkSupply { hundreths } ),
 ///         None=>None,
 ///      }
 ///    }
 ///
 ///    fn checked_dec(self,rhs: Self) ->Option<Self> {
 ///      // if we subtract the number must always go down!
-///      if self.gallons==0 && rhs.gallons==0 ||  rhs.gallons <0{ return None }
-///      let next=self.gallons.checked_sub(rhs.gallons);
+///      if self.hundreths==0 && rhs.hundreths==0 ||  rhs.hundreths <0{ return None }
+///      let next=self.hundreths.checked_sub(rhs.hundreths);
 ///      match next {
-///         Some(gallons)=>Some(MilkSupply { gallons } ),
+///         Some(hundreths)=>Some(MilkSupply { hundreths } ),
 ///         None=>None,
 ///      }
 ///    }
@@ -81,6 +83,7 @@ pub trait SafeIncDec: Sized {
     fn checked_dec(self, rhs: Self) -> Option<Self>;
 }
 
+#[macro_export]
 macro_rules! impl_checked_inc_sub_u {
     ($($t:ty),*) => {
         $(
@@ -98,6 +101,7 @@ macro_rules! impl_checked_inc_sub_u {
     };
 }
 
+#[macro_export]
 macro_rules! impl_checked_inc_sub_i {
     ($($t:ty),*) => {
         $(
@@ -114,6 +118,8 @@ macro_rules! impl_checked_inc_sub_i {
         )*
     };
 }
+
+#[macro_export]
 macro_rules! impl_checked_inc_sub_f {
     ($($t:ty),*) => {
         $(
