@@ -26,6 +26,9 @@ pub fn first_range_begin_end<T: RangeValue, R: RangeSet<T>>(src: &[R]) -> Option
 
     for span in src {
         let mut cmp = span.get_begin();
+        if !span.is_valid() {
+            continue;
+        }
         if let Some(check) = begin
             && cmp < check
         {
@@ -48,11 +51,14 @@ pub fn first_range_begin_end<T: RangeValue, R: RangeSet<T>>(src: &[R]) -> Option
     }
 }
 
-pub fn next_range_begin_end<T: RangeValue, R: RangeSet<T>>(begin: T, src: &[R]) -> Option<(T, T)> {
+pub fn next_range_begin_end<T: RangeValue, R: RangeSet<T>>(begin: &T, src: &[R]) -> Option<(T, T)> {
     let mut target: Option<&T> = None;
     let mut alt: Option<&T> = None;
     for check in src {
-        if check.contains_value(&begin) {
+        if !check.is_valid() {
+            continue;
+        }
+        if check.contains_value(begin) {
             let test = check.get_end();
             match target {
                 Some(cmp) => {
@@ -64,7 +70,7 @@ pub fn next_range_begin_end<T: RangeValue, R: RangeSet<T>>(begin: T, src: &[R]) 
             }
         } else {
             let start = check.get_begin();
-            if &begin < start {
+            if begin < start {
                 match alt {
                     Some(cmp) => {
                         if start < cmp {
@@ -83,8 +89,11 @@ pub fn next_range_begin_end<T: RangeValue, R: RangeSet<T>>(begin: T, src: &[R]) 
                 target = None;
 
                 for check in src {
+                    if !check.is_valid() {
+                        continue;
+                    }
+                    let start = check.get_begin();
                     if check.contains_value(begin) {
-                        let start = check.get_begin();
                         let end = check.get_end();
 
                         match target {
@@ -98,7 +107,6 @@ pub fn next_range_begin_end<T: RangeValue, R: RangeSet<T>>(begin: T, src: &[R]) 
                             _ => target = Some(if begin < start { start } else { end }),
                         }
                     } else {
-                        let start = check.get_begin();
                         if begin < start {
                             match target {
                                 Some(cmp) => {
