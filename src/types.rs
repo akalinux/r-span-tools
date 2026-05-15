@@ -1,30 +1,12 @@
 /// Trait representing incrementing or decrementing via a checked value.  It is always assumed
-/// that, self.checked_inc(rhs) Some(Self) will always return a larger value than either self or rhs.
+/// that, self.checked_inc(rhs) Some(Self) will always return a larger value than either self.
 /// Likewise it is always assumed that self.checked_dec(rhs) Some(Self) will always return a value smaller
 /// than self.
-///
-/// ## Notes on f32 and f64
-///
-/// Boundries between floating points is not an exact science,  so some sort of practical work needs to exist.
-/// The work around for (f32, f64) is as follows: self.ceil() is applied for incrementing and self.floor() is applied for decrementing.
-///
-/// The Option::None value is determined by any of the following conditions being true.
-///
-/// None For incrementing: if let Some(result) = self.checked_inc(rhs) { ... }
-///
-/// 1. result is less than self or result is less than rhs.
-/// 2. if result.is_nan()
-/// 3. if result.is_infinite()
-///
-/// None For decrementing: if let Some(result) = self.checked_dec(rhs) { ... }
-///
-/// 1. if result is greater than self or result is greater than rhs.
-/// 2. if result.is_nan()
-/// 3. if result.is_infinite()
 ///
 /// # Examples
 ///
 /// When imported the trait is added to integer and floating point primitives.
+/// So the examples provided for i32,u32,f32 holds true for all other number primitives.
 ///
 /// ```
 /// use common_range_tools::types::SafeIncDec;
@@ -37,34 +19,38 @@
 ///    assert!( matches!(0.checked_inc(0), None ));         // Number did not go up
 ///    assert!( matches!(0.checked_inc(-2), None ));        // Number did not go up
 ///    assert!( matches!(i32::MAX.checked_inc(1), None ));  // Catch overflow
-///
-///    // Decrement examples
 ///    assert!( matches!(1.checked_dec(2), Some(-1) ));     // Number went down by 2!
 ///    assert!( matches!(0.checked_dec(0), None ));         // Number did not go down
 ///    assert!( matches!(0.checked_dec(-2), None ));        // Number did not go down
 ///    assert!( matches!(i32::MIN.checked_dec(1), None ));  // Catch undeflow
 ///
 ///    // u32 xample(s)
-///    // Increment examples
 ///    assert!( matches!(1_u32.checked_inc(2), Some(3) )); // Number went up by 2!
 ///    assert!( matches!(0_u32.checked_inc(0), None ));    // Number did not go up
 ///    assert!( matches!(u32::MAX.checked_inc(1), None )); // Catch overflow
-///
-///    // Decrement examples
 ///    assert!( matches!(3_u32.checked_dec(2), Some(1) )); // Number went down by 2!
 ///    assert!( matches!(0_u32.checked_dec(0), None ));    // Number did not go down
 ///    assert!( matches!(u32::MIN.checked_dec(1), None )); // Catch undeflow
 ///
 ///    // f32 example(s)
-///    // in the case of floats, self.ceil() is applied
-///    assert!(matches!((0.2).checked_inc(0.5), Some(1.5)));
-///    assert!(matches!((0.2).checked_dec(0.5), Some(-0.5)));
-///    assert!(matches!((1.7).checked_inc(-0.5), None ));
-///    assert!(matches!((1.7).checked_dec(-0.5), None ));
-///    assert!(matches!((f32::INFINITY).checked_inc(0.5), None ));
-///    assert!(matches!((f32::INFINITY).checked_dec(0.5), None ));
+///    assert!(matches!((0.2).checked_inc(0.5), Some(1.5)));  // becomes self.ceil() +0.5
+///    assert!(matches!((0.2).checked_dec(0.5), Some(-0.5))); // becomes self.floor() -0.5
+///    assert!(matches!((1.7).checked_inc(-0.5), None ));     // Number did not go up
+///    assert!(matches!((1.7).checked_dec(-0.5), None ));     // Number did not go down
+/// 
+///    // Adding or sub tracting infinity from a number is valid
+///    assert!(matches!((1.0).checked_inc(f32::INFINITY), Some(f32::INFINITY) ));
+///    assert!(matches!((1.0).checked_dec(f32::INFINITY), Some(f32::NEG_INFINITY) ));  
+/// 
+///    // Infinity cannot be incremented or decremented.. so all  of these will fail!
+///    assert!(matches!((f32::INFINITY).checked_inc(0.5), None ));            
+///    assert!(matches!((f32::INFINITY).checked_dec(0.5), None ));            
 ///    assert!(matches!((f32::INFINITY).checked_inc(f32::INFINITY), None ));
 ///    assert!(matches!((f32::INFINITY).checked_dec(f32::INFINITY), None ));
+/// 
+///    // in this case we cannot increment or decrement by negetive infinity!
+///    assert!(matches!( (1.0).checked_dec(f32::NEG_INFINITY), None));
+///    assert!(matches!( (1.0).checked_inc(f32::NEG_INFINITY), None));
 ///
 /// }
 ///
@@ -168,12 +154,14 @@ macro_rules! impl_checked_inc_sub_f {
         $(
             impl SafeIncDec for $t {
                 fn checked_dec(self, rhs: Self) ->Option<Self> {
-                    let res=self.floor() - rhs;
-                    if res.is_nan() || res.is_infinite() || res >=self || res >=rhs { None } else { Some(res) }
+                    let floor=self.floor();
+                    let res=floor - rhs;
+                    if res.is_nan() || res >=floor { None } else { Some(res) }
                 }
                 fn checked_inc(self, rhs: Self) -> Option<Self> {
-                    let res=self.ceil() + rhs;
-                    if res.is_nan() || res.is_infinite() || res <=self || res<=rhs { None } else { Some(res) }
+                    let ceil=self.ceil();
+                    let res=ceil + rhs;
+                    if res.is_nan() || res <=ceil { None } else { Some(res) }
                 }
             }
         )*
@@ -221,6 +209,10 @@ mod safe_sub_add_tests {
         assert!(matches!(3_u32.checked_dec(2), Some(1))); // Number went down by 2!
         assert!(matches!(0_u32.checked_dec(0), None)); // Number did not go down
         assert!(matches!(u32::MIN.checked_dec(1), None)); // Catch undeflow
+        assert!(matches!( (1.0).checked_inc(f32::INFINITY), Some(f32::INFINITY)));
+        assert!(matches!( (1.0).checked_dec(f32::INFINITY), Some(f32::NEG_INFINITY))); 
+        assert!(matches!( (1.0).checked_dec(f32::NEG_INFINITY), None));
+        assert!(matches!( (1.0).checked_inc(f32::NEG_INFINITY), None));
     }
 
     #[test]
