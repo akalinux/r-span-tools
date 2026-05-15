@@ -60,19 +60,16 @@
 ///
 /// This example shows how to safely grow or shrik a struct called `MilkSupply`.
 ///
-/// Note: Incrementing by a negative number will result in None and decrementing by a
-/// negative number will result in None.
-///
 /// ```
 /// use common_range_tools::types::SafeIncDec;
 ///
 /// #[derive(Debug, Copy, Clone, PartialEq)]
-/// struct MilkSupply { hundreths: i64 }
+/// struct MilkSupply { hundreths: u64 }
 ///
 /// impl SafeIncDec for MilkSupply {
 ///    fn checked_inc(self,rhs: Self) ->Option<Self> {
 ///      // if we add the number must always go up!
-///      if self.hundreths==0 && rhs.hundreths==0 || rhs.hundreths <0 { return None }
+///      if rhs.hundreths ==0 { return None }
 ///      // check for overflow
 ///      let next=self.hundreths.checked_add(rhs.hundreths);
 ///      match next {
@@ -83,7 +80,8 @@
 ///
 ///    fn checked_dec(self,rhs: Self) ->Option<Self> {
 ///      // if we subtract the number must always go down!
-///      if self.hundreths==0 && rhs.hundreths==0 ||  rhs.hundreths <0{ return None }
+///      if rhs.hundreths==0 { return None }
+///      // check for overflow
 ///      let next=self.hundreths.checked_sub(rhs.hundreths);
 ///      match next {
 ///         Some(hundreths)=>Some(MilkSupply { hundreths } ),
