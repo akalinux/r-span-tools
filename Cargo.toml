@@ -1,4 +1,4 @@
 [package]
-name = "r-span-tools"
+name = "common-range-tools"
 version = "0.1.0"
 edition = "2024"

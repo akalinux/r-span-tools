@@ -27,7 +27,7 @@
 /// When imported the trait is added to integer and floating point primitives.
 ///
 /// ```
-/// use r_span_tools::types::SafeIncDec;
+/// use common_range_tools::types::SafeIncDec;
 ///
 /// fn main() {
 ///
@@ -78,7 +78,7 @@
 /// negative number will result in None.
 ///
 /// ```
-/// use r_span_tools::types::SafeIncDec;
+/// use common_range_tools::types::SafeIncDec;
 ///
 /// #[derive(Debug, Copy, Clone, PartialEq)]
 /// struct MilkSupply { hundreths: i64 }

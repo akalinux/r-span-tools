@@ -1,11 +1,11 @@
-//! # R Span Tools
+//! # Common Range tools
 //!
-//! `r_span_tools` is a library that, can be used to find all common intersections of ranges for generic typs.
+//! The `common-range-tool` is a library that, can be used to find all common intersections of ranges for generic types.
 
 use core::range::RangeInclusive;
 
 #[doc(inline)]
-use crate::types::{RangeAddSubValue, RangeValue};
+use crate::types::{RangeValue};
 pub mod iter;
 pub mod types;
 pub mod utils;
@@ -30,8 +30,8 @@ pub trait RangeSet<T: RangeValue> {
 
     fn overlap(&self, check: &dyn RangeSet<T>) -> bool {
         return self.contains_range(check)
-            || check.contains_value(&self.get_begin())
-            || check.contains_value(&self.get_end());
+            || check.contains_value(self.get_begin())
+            || check.contains_value(self.get_end());
     }
 
     fn is_valid(&self) -> bool {
@@ -62,23 +62,5 @@ impl<T: RangeValue> RangeSet<T> for RangeInclusive<T> {
     }
 }
 
-pub struct Span<T: RangeValue> {
-    begin: T,
-    end: T,
-}
 
-impl<T: RangeValue> RangeSet<T> for Span<T> {
-    fn get_begin(&self) -> &T {
-        &self.begin
-    }
 
-    fn get_end(&self) -> &T {
-        &self.end
-    }
-}
-
-impl<T: RangeAddSubValue> Span<T> {
-    pub fn new(begin: T, end: T) -> Self {
-        return Span { begin, end };
-    }
-}
