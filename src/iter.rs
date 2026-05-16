@@ -16,7 +16,7 @@ impl<'a, T: RangeAddSubValue, R: RangeSet<T>> OverlapIter<'a, T, R> {
     }
 
     pub fn update_column(&mut self, span: R, idx: usize) -> Result<(), &'static str> {
-        if self.src.len() == 0 {
+        if self.src.is_empty() {
             return Err(&"Iterator is empty");
         } else if idx > self.src.len() - 1 {
             return Err(&"idx: is out of bounds");
