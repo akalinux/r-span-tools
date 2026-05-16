@@ -25,7 +25,7 @@
 
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// "postCreateCommand": "rustc --version",
-	"postCreateCommand": "if [ -e /host-home-folder/vscode_common/vscode.bash ];then /bin/bash /host-home-folder/vscode_common/vscode.bash;fi",
+	"postCreateCommand": "if [ -e /host-home-folder/vscode_common/vscode.bash ];then /bin/bash /host-home-folder/vscode_common/vscode.bash;fi;cargo install --locked cargo-vet"
 
 	// Configure tool-specific properties.
 	// "customizations": {},
