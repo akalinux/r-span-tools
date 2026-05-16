@@ -37,17 +37,17 @@
 ///    assert!(matches!((0.2).checked_dec(0.5), Some(-0.5))); // becomes self.floor() -0.5
 ///    assert!(matches!((1.7).checked_inc(-0.5), None ));     // Number did not go up
 ///    assert!(matches!((1.7).checked_dec(-0.5), None ));     // Number did not go down
-/// 
+///
 ///    // Adding or sub tracting infinity from a number is valid
 ///    assert!(matches!((1.0).checked_inc(f32::INFINITY), Some(f32::INFINITY) ));
 ///    assert!(matches!((1.0).checked_dec(f32::INFINITY), Some(f32::NEG_INFINITY) ));  
-/// 
+///
 ///    // Infinity cannot be incremented or decremented.. so all  of these will fail!
 ///    assert!(matches!((f32::INFINITY).checked_inc(0.5), None ));            
 ///    assert!(matches!((f32::INFINITY).checked_dec(0.5), None ));            
 ///    assert!(matches!((f32::INFINITY).checked_inc(f32::INFINITY), None ));
 ///    assert!(matches!((f32::INFINITY).checked_dec(f32::INFINITY), None ));
-/// 
+///
 ///    // in this case we cannot increment or decrement by negetive infinity!
 ///    assert!(matches!( (1.0).checked_dec(f32::NEG_INFINITY), None));
 ///    assert!(matches!( (1.0).checked_inc(f32::NEG_INFINITY), None));
@@ -187,10 +187,6 @@ mod safe_sub_add_tests {
         assert!(matches!(0.checked_dec(-2), None)); // Number did not go down
         assert!(matches!(i32::MIN.checked_dec(1), None)); // Catch undeflow
 
-        if let Some(value) = (0.5).checked_dec(0.5) {
-            println!(" Result value: {}", value);
-        }
-
         assert!(matches!((0.2).checked_inc(0.5), Some(1.5)));
         assert!(matches!((0.5).checked_dec(0.5), Some(-0.5)));
         assert!(matches!((1.7).checked_inc(-0.5), None));
@@ -207,10 +203,16 @@ mod safe_sub_add_tests {
         assert!(matches!(3_u32.checked_dec(2), Some(1))); // Number went down by 2!
         assert!(matches!(0_u32.checked_dec(0), None)); // Number did not go down
         assert!(matches!(u32::MIN.checked_dec(1), None)); // Catch undeflow
-        assert!(matches!( (1.0).checked_inc(f32::INFINITY), Some(f32::INFINITY)));
-        assert!(matches!( (1.0).checked_dec(f32::INFINITY), Some(f32::NEG_INFINITY))); 
-        assert!(matches!( (1.0).checked_dec(f32::NEG_INFINITY), None));
-        assert!(matches!( (1.0).checked_inc(f32::NEG_INFINITY), None));
+        assert!(matches!(
+            (1.0).checked_inc(f32::INFINITY),
+            Some(f32::INFINITY)
+        ));
+        assert!(matches!(
+            (1.0).checked_dec(f32::INFINITY),
+            Some(f32::NEG_INFINITY)
+        ));
+        assert!(matches!((1.0).checked_dec(f32::NEG_INFINITY), None));
+        assert!(matches!((1.0).checked_inc(f32::NEG_INFINITY), None));
     }
 
     #[test]
