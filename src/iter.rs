@@ -1,7 +1,8 @@
-use crate::RangeSet;
 use crate::types::RangeAddSubValue;
 use crate::utils::{first_range_begin_end, next_range_begin_end};
+use crate::{Mrs, RangeSet};
 use std::mem;
+use std::ops::{Bound, RangeBounds};
 
 pub struct OverlapIter<'a, T: RangeAddSubValue, R: RangeSet<T>> {
     src: &'a mut [R],
@@ -30,8 +31,129 @@ impl<'a, T: RangeAddSubValue, R: RangeSet<T>> Iterator for OverlapIter<'a, T, R>
     type Item = (T, T);
     fn next(&mut self) -> Option<Self::Item> {
         if let Some((_, end)) = &self.next {
-            if let Some(begin) = end.clone().checked_inc(self.step.clone()) {
+            if let Some(begin) = end.checked_inc(&self.step) {
                 return mem::replace(&mut self.next, next_range_begin_end(&begin, &self.src));
+            }
+        }
+        return None;
+    }
+}
+
+pub struct RangeOverlapIter<T: RangeAddSubValue> {
+    next: Option<(Bound<T>, Bound<T>)>,
+    list: Vec<Mrs<T>>,
+    step: T,
+}
+
+fn flstart<T: RangeAddSubValue>(lstart: &mut Option<T>, start: T, begin: &mut Option<T>) {
+    match &begin {
+        Some(cmp) => {
+            if cmp < &start {
+                *begin = Some(cmp.clone());
+            }
+        }
+        _ => *begin = Some(start.clone()),
+    }
+    lstart.replace(start);
+}
+fn flfinish<T: RangeAddSubValue>(lfinish: &mut Option<T>, finish: T, end: &mut Option<T>) {
+    match &end {
+        Some(cmp) => {
+            if cmp > &finish {
+                *end = Some(cmp.clone());
+            }
+        }
+        _ => *end = Some(finish.clone()),
+    }
+    lfinish.replace(finish);
+}
+impl<T: RangeAddSubValue> RangeOverlapIter<T> {
+    pub fn new<S: RangeBounds<T>>(src: &[S], step: T) -> Self {
+        let mut list: Vec<Mrs<T>> = Vec::new();
+        let mut next: Option<(Bound<T>, Bound<T>)> = None;
+
+        let mut begin: Option<T> = None;
+        let mut end: Option<T> = None;
+        let mut state: u8 = 0;
+
+        for range in src {
+            let mut lstart: Option<T> = None;
+            let mut lfinish: Option<T> = None;
+            if state & 1 != 1 {
+                match range.start_bound() {
+                    Bound::Included(start) => flstart(&mut lstart, start.clone(), &mut begin),
+                    Bound::Excluded(start) => {
+                        if let Some(start) = start.checked_dec(&step) {
+                            flstart(&mut lstart, start, &mut begin)
+                        }
+                    }
+                    Bound::Unbounded => state |= 1,
+                }
+            }
+            if state & 2 != 2 {
+                match range.end_bound() {
+                    Bound::Included(finish) => flfinish(&mut lfinish, finish.clone(), &mut end),
+                    Bound::Excluded(finish) => {
+                        if let Some(finish) = finish.checked_inc(&step) {
+                            flfinish(&mut lfinish, finish, &mut end)
+                        }
+                    }
+                    Bound::Unbounded => {
+                        state |= 2;
+                    }
+                }
+            }
+            if state == 3 {
+                break;
+            } else if state == 0
+                && let Some(start) = lstart
+                && let Some(finish) = lfinish
+            {
+                list.push(Mrs::new(start.clone(), finish.clone()))
+            }
+        }
+
+        if state == 3 {
+            next = Some((Bound::Unbounded, Bound::Unbounded));
+        } else if state == 1 {
+            match end {
+                Some(finish) => next = Some((Bound::Unbounded, Bound::Included(finish))),
+                _ => next = None,
+            }
+        } else if state == 2 {
+            match begin {
+                Some(start) => next = Some((Bound::Included(start), Bound::Unbounded)),
+                _ => next = None,
+            }
+        } else if let Some((begin, end)) = first_range_begin_end(&list) {
+            next = Some((Bound::Included(begin), Bound::Included(end)));
+        }
+
+        Self { next, list, step }
+    }
+}
+
+impl<T: RangeAddSubValue> Iterator for RangeOverlapIter<T> {
+    type Item = (Bound<T>, Bound<T>);
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some((begin, end)) = &self.next {
+            if let Bound::Included(_) = begin
+                && let Bound::Included(end) = end
+            {
+                match end.checked_inc(&self.step) {
+                    Some(new_begin) => match next_range_begin_end(&new_begin, &self.list) {
+                        Some((a, b)) => {
+                            return mem::replace(
+                                &mut self.next,
+                                Some((Bound::Included(a), Bound::Included(b))),
+                            );
+                        }
+                        None => return mem::replace(&mut self.next, None),
+                    },
+                    None => return mem::replace(&mut self.next, None),
+                }
+            } else {
+                return mem::replace(&mut self.next, None);
             }
         }
         return None;
