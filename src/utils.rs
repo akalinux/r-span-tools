@@ -2,10 +2,9 @@ use std::cmp::Ordering;
 
 use crate::{GetBeginEnd, RangeSet, types::RangeValue};
 
-#[derive(Clone)]
-pub struct IncDecCpCmp {}
+pub struct BlanketIncDecCpCmp {}
 
-impl IncDecCpCmp {
+impl BlanketIncDecCpCmp {
     pub fn new() -> Self {
         Self {}
     }
@@ -14,13 +13,14 @@ impl IncDecCpCmp {
 /// Acts as the general helper trait for creating and comparing values outside of ranges.
 /// Note that incrementing and decrementing are of 2 differnt types, but do not have to be.
 ///
-/// Example
+/// ## Blanket implementation
 ///
 /// ```
-/// use common_range_tools::utils::{IncDecCpCmp, IncDecCpCmpTrait};
+/// use common_range_tools::utils::{BlanketIncDecCpCmp, IncDecCpCmpTrait};
 ///
 /// fn main() {
-///     let l=IncDecCpCmp::new();
+///     
+///     let l=BlanketIncDecCpCmp::new();
 ///     // i32 Increment examples
 ///     assert_eq!(l.inc(&1, &2), Some(3)); // Number went up by 2!
 ///     assert_eq!(l.inc(&1, &0), None); // Number did not go up
@@ -158,12 +158,99 @@ pub trait IncDecCpCmpTrait<T, V> {
     }
 }
 
-/// Creates signed integer behabior of IncDecCpCmpTrait for Latus.
-#[macro_export]
+macro_rules! impl_single_idcc_i {
+    ($struct:ident,$name:ident,$t:ty) => {
+        pub struct $struct;
+        impl $struct {
+            pub fn new() -> Self {
+                Self {}
+            }
+        }
+        #[cfg(test)]
+        mod $name {
+            use crate::utils::{IncDecCpCmpTrait, $struct};
+            #[test]
+            fn test_inc() {
+                let l = $struct::new();
+                assert_eq!(l.inc(&1, &2), Some(3)); // Number went up by 2!
+                assert_eq!(l.inc(&1, &0), None); // Number did not go up
+                assert_eq!(l.inc(&0, &-2), None); // Number did not go up
+                assert_eq!(l.inc(&<$t>::MAX, &1), None); // Catch overflow
+            }
+            #[test]
+            fn test_dec() {
+                let l = <$struct>::new();
+                assert_eq!(l.dec(&1, &2), Some(-1)); // Number went down by 2!
+                assert_eq!(l.dec(&0, &0), None); // Number did not go down
+                assert_eq!(l.dec(&0, &-2), None); // Number did not go down
+                assert_eq!(l.dec(&<$t>::MIN, &1), None); // Catch undeflow
+            }
+            #[test]
+            fn inc_dec_compare_all() {
+                let l = <$struct>::new();
+
+                assert!(l.lt(&1, &2));
+                assert!(l.le(&1, &2));
+                assert!(l.eq(&2, &2));
+                assert!(l.gt(&4, &3));
+                assert!(l.ge(&4, &3));
+                assert!(l.ne(&4, &3));
+
+                assert!(!l.ne(&4, &4));
+                assert!(!l.eq(&3, &4));
+                assert!(!l.le(&6, &5));
+                assert!(!l.ge(&4, &5));
+                assert!(!l.lt(&4, &3));
+                assert!(!l.gt(&4, &5));
+            }
+
+            #[test]
+            fn contains_tests() {
+                let l = <$struct>::new();
+                // Contains Examples
+                assert!(l.contains(&1, &3, &1));
+                assert!(!l.contains(&1, &2, &0));
+                assert!(!l.contains(&0, &0, &1));
+                assert!(!l.contains(&0, &0, &2));
+            }
+
+            #[test]
+            fn overlaps() {
+                let l = <$struct>::new();
+                // Overlap Examples
+                assert!(l.overlap(&1, &2, &0, &1));
+                assert!(!l.overlap(&1, &2, &0, &0));
+            }
+        }
+        impl IncDecCpCmpTrait<$t, $t> for $struct {
+            fn dec(&self, a: &$t, b: &$t) -> Option<$t> {
+                if *b <= 0 {
+                    return None;
+                }
+                return a.clone().checked_sub(b.clone());
+            }
+
+            fn inc(&self, a: &$t, b: &$t) -> Option<$t> {
+                if *b <= 0 {
+                    return None;
+                }
+                return a.clone().checked_add(b.clone());
+            }
+
+            fn cp(&self, v: &$t) -> $t {
+                return v.clone();
+            }
+
+            fn lt(&self, a: &$t, b: &$t) -> bool {
+                return a < b;
+            }
+        }
+    };
+}
 macro_rules! impl_inc_dec_cp_cmp_trait_i {
     ($($t:ty),*) => {
         $(
-            impl IncDecCpCmpTrait<$t,$t> for IncDecCpCmp {
+            impl IncDecCpCmpTrait<$t,$t> for BlanketIncDecCpCmp {
                 fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
                     if *b<=0 { return None}
                     return a.clone().checked_sub(b.clone());
@@ -186,12 +273,10 @@ macro_rules! impl_inc_dec_cp_cmp_trait_i {
     };
 }
 
-/// Creates unsigned integer behabior of IncDecCpCmpTrait for IncDecCpCmp.
-#[macro_export]
 macro_rules! impl_inc_dec_cp_cmp_trait_u {
     ($($t:ty),*) => {
         $(
-            impl IncDecCpCmpTrait<$t,$t> for IncDecCpCmp {
+            impl IncDecCpCmpTrait<$t,$t> for BlanketIncDecCpCmp {
                 fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
                     if *b==0 { return None}
                     return a.clone().checked_sub(b.clone());
@@ -214,12 +299,10 @@ macro_rules! impl_inc_dec_cp_cmp_trait_u {
     };
 }
 
-/// Creates unsigned float behabior of IncDecCpCmpTrait for IncDecCpCmp.
-#[macro_export]
 macro_rules! impl_inc_dec_cp_cmp_trait_f {
     ($($t:ty),*) => {
         $(
-            impl IncDecCpCmpTrait<$t,$t> for IncDecCpCmp {
+            impl IncDecCpCmpTrait<$t,$t> for BlanketIncDecCpCmp {
                 fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
                     let floor=a.floor();
                     let res=floor - *b;
@@ -248,13 +331,20 @@ impl_inc_dec_cp_cmp_trait_u!(u8, u16, u32, u64, u128, usize);
 impl_inc_dec_cp_cmp_trait_i!(i8, i16, i32, i64, i128, isize);
 impl_inc_dec_cp_cmp_trait_f!(f32, f64);
 
+impl_single_idcc_i!(I8IncDecCpCmp, i8_inc_dec_cp_cmp_tests, i8);
+impl_single_idcc_i!(I16IncDecCpCmp, i16_inc_dec_cp_cmp_tests, i16);
+impl_single_idcc_i!(I32IncDecCpCmp, i32_inc_dec_cp_cmp_tests, i32);
+impl_single_idcc_i!(I64IncDecCpCmp, i64_inc_dec_cp_cmp_tests, i64);
+impl_single_idcc_i!(I128IncDecCpCmp, i128_inc_dec_cp_cmp_tests, i128);
+impl_single_idcc_i!(ISizeIncDecCpCmp, isize_inc_dec_cp_cmp_tests, isize);
+
 #[cfg(test)]
 mod lattice_tests {
 
-    use crate::utils::{IncDecCpCmp, IncDecCpCmpTrait};
+    use crate::utils::{BlanketIncDecCpCmp, IncDecCpCmpTrait};
     #[test]
     fn inc_dec_behavior() {
-        let l = IncDecCpCmp::new();
+        let l = BlanketIncDecCpCmp::new();
 
         // i32 Increment examples
         assert_eq!(l.inc(&1, &2), Some(3)); // Number went up by 2!
@@ -297,7 +387,7 @@ mod lattice_tests {
 
     #[test]
     fn inc_dec_compare_all() {
-        let l = IncDecCpCmp::new();
+        let l = BlanketIncDecCpCmp::new();
 
         // positive examples
         assert!(l.lt(&1, &2));
@@ -626,23 +716,26 @@ pub fn next_range_begin_end_idcc<T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd
 mod tests {
     use crate::utils::{first_range_begin_end, next_range_begin_end};
     use crate::{
-        GetBeginEnd, IncDecCpCmp, IncDecCpCmpTrait, Mrs, RangeSet, first_range_begin_end_idcc,
-        next_range_begin_end_idcc, partial_cmp,
+        BlanketIncDecCpCmp, GetBeginEnd, IncDecCpCmpTrait, Mrs, RangeSet,
+        first_range_begin_end_idcc, next_range_begin_end_idcc, partial_cmp,
     };
 
     #[test]
     fn test_first_range() {
-        let t = IncDecCpCmp::new();
+        let t = BlanketIncDecCpCmp::new();
 
         // Empty set test
         assert!(matches!(first_range_begin_end::<i32, Mrs<i32>>(&[]), None));
         assert_eq!(
-            first_range_begin_end_idcc::<i32, i32, IncDecCpCmp, Mrs<i32>>(&[], &t),
+            first_range_begin_end_idcc::<i32, i32, BlanketIncDecCpCmp, Mrs<i32>>(&[], &t),
             None
         );
 
         assert_eq!(
-            first_range_begin_end_idcc::<i32, i32, IncDecCpCmp, Mrs<i32>>(&[Mrs::new(0, -1)], &t),
+            first_range_begin_end_idcc::<i32, i32, BlanketIncDecCpCmp, Mrs<i32>>(
+                &[Mrs::new(0, -1)],
+                &t
+            ),
             None
         );
 
@@ -708,7 +801,7 @@ mod tests {
         }
         assert_eq!(next_range_begin_end(&point, &check), None,);
 
-        let t = IncDecCpCmp::new();
+        let t = BlanketIncDecCpCmp::new();
         assert_eq!(next_range_begin_end_idcc(&point, &check, &t), None,);
 
         checkset = vec![(8, 11), (13, 15), (16, 19), (20, 22)];
@@ -764,7 +857,7 @@ mod tests {
                 <Mrs<i32> as RangeSet<i32>>::get_end(good),
             );
         }
-        let t = IncDecCpCmp::new();
+        let t = BlanketIncDecCpCmp::new();
         check = vec![
             // reversing  the order of the gap for coverage
             Mrs::new(15, 19),

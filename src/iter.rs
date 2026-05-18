@@ -1,9 +1,46 @@
 use crate::types::RangeAddSubValue;
 use crate::utils::{first_range_begin_end, next_range_begin_end};
-use crate::{Mrs, RangeSet};
+use crate::{
+    GetBeginEnd, IncDecCpCmpTrait, Mrs, RangeSet, first_range_begin_end_idcc,
+    next_range_begin_end_idcc,
+};
+use std::cell::RefCell;
 use std::mem;
 use std::ops::{Bound, RangeBounds};
+use std::rc::Rc;
+pub struct OverlapIDCC<T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>> {
+    cols: Rc<RefCell<[R]>>,
+    cmp: Rc<C>,
+    next: Option<(T, T)>,
+    step: Rc<V>,
+    _marker: std::marker::PhantomData<(T, V)>,
+}
 
+impl<T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>> OverlapIDCC<T, V, C, R> {
+    pub fn new(cols: &Rc<RefCell<[R]>>, step: &Rc<V>, cmp: &Rc<C>) -> Self {
+        Self {
+            cols: Rc::clone(cols),
+            cmp: Rc::clone(cmp),
+            step: Rc::clone(step),
+            next: first_range_begin_end_idcc(&*cols.borrow(), cmp.as_ref()),
+            _marker: std::marker::PhantomData,
+        }
+    }
+}
+
+impl<T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>> Iterator for OverlapIDCC<T, V, C, R> {
+    type Item = (T, T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut target: Option<(T, T)> = None;
+        if let Some((_, finish)) = &self.next {
+            if let Some(begin) = self.cmp.inc(finish, self.step.as_ref()) {
+                target = next_range_begin_end_idcc(&begin, &*self.cols.borrow(), self.cmp.as_ref())
+            }
+        }
+        return mem::replace(&mut self.next, target);
+    }
+}
 pub struct OverlapIter<'a, T: RangeAddSubValue, R: RangeSet<T>> {
     src: &'a mut [R],
     next: Option<(T, T)>,
