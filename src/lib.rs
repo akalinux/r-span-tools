@@ -29,6 +29,19 @@ impl<T: RangeValue> Mrs<T> {
     }
 }
 
+impl<T> GetBeginEnd<T> for Mrs<T> {
+    fn get_begin(&self) -> &T {
+        return &self.a;
+    }
+    fn get_end(&self) -> &T {
+        return &self.z;
+    }
+}
+pub trait GetBeginEnd<T> {
+    fn get_begin(&self) -> &T;
+    fn get_end(&self) -> &T;
+}
+
 impl<T: RangeValue> RangeSet<T> for Mrs<T> {
     fn get_begin(&self) -> &T {
         return &self.a;
