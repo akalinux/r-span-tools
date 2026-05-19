@@ -1,7 +1,10 @@
-use crate::{GetBeginEnd, IncDecCpCmpTrait, Mrs, first_range_begin_end, next_range_begin_end};
+use crate::builder::IncDecCpCmpTrait;
+use crate::{
+    GetBeginEnd, Mrs, first_range_begin_end, next_range_begin_end, range_bounds_to_values,
+};
 use std::cell::RefCell;
 use std::mem;
-use std::ops::{Bound, RangeBounds};
+use std::ops::RangeBounds;
 
 pub struct Intersector<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> {
     iter: OwnedMrsOverlapIter<'v, 'c, T, V, C>,
@@ -20,26 +23,8 @@ impl<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> Intersector<'v, 'c, T, V, C> {
         let mut list: Vec<Mrs<T>> = Vec::new();
 
         for range in src {
-            let a;
-            let b;
-            match range.start_bound() {
-                Bound::Included(begin) => a = Some(cmp.cp(begin)),
-                Bound::Excluded(begin) => a = cmp.inc(begin, rebound),
-                Bound::Unbounded => a = Some(cmp.min()),
-            }
-            match range.end_bound() {
-                Bound::Included(end) => b = Some(cmp.cp(end)),
-                Bound::Excluded(end) => b = cmp.dec(end, rebound),
-                Bound::Unbounded => b = Some(cmp.max()),
-            }
-            if let Some(a) = a
-                && let Some(b) = b
-            {
-                if cmp.is_invalid_set(&a, &b) {
-                    continue;
-                }
-                list.push(Mrs::new(a, b));
-            }
+            let (a, z) = range_bounds_to_values(range, rebound, cmp);
+            list.push(Mrs::new(a, z));
         }
 
         Self {

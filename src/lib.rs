@@ -1,10 +1,9 @@
-//! # Common Range tools
-//!
-//! The `common-range-tool` is a library that, can be used to find all common intersections for ranges of generic types, but
-//! also interoperates with the built in range types for rust.
+#![doc = include_str!("../README.md")]
 
 use std::ops::{Bound, RangeBounds};
 
+#[doc(inline)]
+pub use crate::builder::*;
 #[doc(inline)]
 pub use crate::iter::*;
 #[doc(inline)]
@@ -12,9 +11,29 @@ pub use crate::utils::*;
 pub mod iter;
 pub mod utils;
 
+pub mod builder;
+
 /// [`crate::Mrs`] **Minimal Range Span**
 ///
 /// In a nut shell this is the absolut minimal struct to represent a range.
+/// Requires that [crate::GetBeginEnd] and [std::ops::RangeBounds] be imported to use all implemented traits.
+///
+/// ```
+/// use common_range_tools::{
+///   Mrs,
+///   GetBeginEnd  // only required for the self.get_begin() and self.get_end() methods.
+/// };
+/// use std::ops::{RangeBounds,Bound};
+///
+/// fn main () {
+///    let r=Mrs::new(1,2);
+///    assert_eq!(r.start_bound(),Bound::Included(&1));
+///    assert_eq!(r.end_bound(),Bound::Included(&2));
+///    assert_eq!(r.get_begin(),&1);
+///    assert_eq!(r.get_end(),&2);
+/// }
+///
+/// ```
 pub struct Mrs<T> {
     a: T,
     z: T,
@@ -26,7 +45,7 @@ pub trait GetBeginEnd<T> {
 }
 
 impl<T> Mrs<T> {
-    pub fn new(a: T, z: T) -> Self {
+    pub const fn new(a: T, z: T) -> Self {
         Self { a, z }
     }
 }
@@ -40,10 +59,10 @@ impl<T> GetBeginEnd<T> for Mrs<T> {
 }
 
 impl<T> RangeBounds<T> for Mrs<T> {
-    fn start_bound(&self) -> std::ops::Bound<&T> {
+    fn start_bound(&self) -> Bound<&T> {
         return Bound::Included(&self.a);
     }
-    fn end_bound(&self) -> std::ops::Bound<&T> {
+    fn end_bound(&self) -> Bound<&T> {
         return Bound::Included(&self.z);
     }
 }
