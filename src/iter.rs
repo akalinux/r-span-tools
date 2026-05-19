@@ -16,7 +16,7 @@ impl<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> Iterator for Intersector<'v, 'c, T
 }
 
 impl<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> Intersector<'v, 'c, T, V, C> {
-    pub fn new<S: RangeBounds<T>>(src: &[S], step: &'v V, cmp: &'c C) -> Self {
+    pub fn new<S: RangeBounds<T>>(src: &[S], step: &'v V, rebound: &V, cmp: &'c C) -> Self {
         let mut list: Vec<Mrs<T>> = Vec::new();
 
         for range in src {
@@ -24,12 +24,12 @@ impl<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> Intersector<'v, 'c, T, V, C> {
             let b;
             match range.start_bound() {
                 Bound::Included(begin) => a = Some(cmp.cp(begin)),
-                Bound::Excluded(begin) => a = cmp.dec(begin, step),
+                Bound::Excluded(begin) => a = cmp.inc(begin, rebound),
                 Bound::Unbounded => a = Some(cmp.min()),
             }
             match range.end_bound() {
                 Bound::Included(end) => b = Some(cmp.cp(end)),
-                Bound::Excluded(end) => b = cmp.inc(end, step),
+                Bound::Excluded(end) => b = cmp.dec(end, rebound),
                 Bound::Unbounded => b = Some(cmp.max()),
             }
             if let Some(a) = a
@@ -41,9 +41,10 @@ impl<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> Intersector<'v, 'c, T, V, C> {
                 list.push(Mrs::new(a, b));
             }
         }
-        let iter = OwnedMrsOverlapIter::new(list, step, cmp);
 
-        Self { iter: iter }
+        Self {
+            iter: OwnedMrsOverlapIter::new(list, step, cmp),
+        }
     }
 }
 
