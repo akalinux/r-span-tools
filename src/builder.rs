@@ -1,27 +1,22 @@
+use crate::GetBeginEnd;
 use std::cmp::Ordering;
 
-use crate::GetBeginEnd;
-
-pub struct BlanketIncDecCpCmp {}
-
-/// As the name suggests, this is a blanket implementation type for the native primitive number types in rust.
-impl BlanketIncDecCpCmp {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-/// This enum is used to represent positional relationships in 3 states.
-pub enum RangeRelation {
+/// This enum is used to represent positional relationships in 3 states
+///  - before a range
+///  - overlap with a range
+///  - after a range
+pub enum RangeRelation<T> {
     /// Range a is before range b
     Before,
     /// Range a and b overlap
-    Overlap,
+    Overlap(T),
     /// Range a is after range b
     After,
 }
 
-/// Acts as the general helper trait for creating and comparing values outside of ranges.
+/// The **Blanket Implementation** of [crate::IncDecCpCmpTrait].  
+///
+/// Acts as the general helper for creating and comparing values outside of ranges.
 /// Note that incrementing and decrementing are of 2 differnt types, but do not have to be.
 ///
 /// ```
@@ -114,13 +109,57 @@ pub enum RangeRelation {
 ///     }
 ///
 ///     // Compare Range Positional relationships
-///     assert!(matches!(l.range_relation(&Mrs::new(1, 2), &Mrs::new(1, 2)),RangeRelation::Overlap)); // a and b overlap
-///     assert!(matches!(l.range_relation(&Mrs::new(1, 1), &Mrs::new(1, 2)),RangeRelation::Overlap)); // a and b overlap
-///     assert!(matches!(l.range_relation(&Mrs::new(2, 2), &Mrs::new(1, 2)),RangeRelation::Overlap)); // a and b overlap
+///     assert!(matches!(l.range_relation(&Mrs::new(1, 2), &Mrs::new(1, 2)),RangeRelation::Overlap(()) )); // a and b overlap
+///     assert!(matches!(l.range_relation(&Mrs::new(1, 1), &Mrs::new(1, 2)),RangeRelation::Overlap(()) )); // a and b overlap
+///     assert!(matches!(l.range_relation(&Mrs::new(2, 2), &Mrs::new(1, 2)),RangeRelation::Overlap(()) )); // a and b overlap
 ///     assert!(matches!(l.range_relation(&Mrs::new(0, 0), &Mrs::new(1, 2)),RangeRelation::Before));  // a is before b
 ///     assert!(matches!(l.range_relation(&Mrs::new(3, 4), &Mrs::new(1, 2)),RangeRelation::After));   // a is after b
 /// }
 /// ```
+pub struct BlanketIncDecCpCmp {}
+
+impl BlanketIncDecCpCmp {
+    /// General constructor.
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+
+/// **Increment, Decrement, Copy, Compare Values and Ranges**
+///
+/// This is the base trait used to represent range manipulation by [crate].  
+/// In general this library implements the proxy or wrapper approach to range and value manipulation as apposed to
+/// manipulation by value.  This means the trait implementation for values does not need to be implemented on the generic type.
+/// Since the operations are not implemented by the values, this frees us from the worry of conflicting trait resoltion.   This
+/// also means we can quickly implement how the values and ranges are manipualted for the same data for a different task.
+///
+/// Example Implementation
+///
+/// ```
+/// use common_range_tools::IncDecCpCmpTrait;
+///
+/// struct MyTrait {}
+/// impl IncDecCpCmpTrait<i32,i32> for MyTrait {
+///
+///     fn dec(&self, a: &i32, b:&i32) ->Option<i32> {
+///         if *b<=0 { return None}
+///         return a.clone().checked_sub(b.clone());
+///     }
+///
+///     fn min(&self) ->i32 { <i32>::MIN }
+///     fn max(&self) ->i32 { <i32>::MAX }
+///
+///     fn inc(&self, a: &i32, b: &i32) -> Option<i32> {
+///         if *b<=0 { return None}
+///         return a.clone().checked_add(b.clone())
+///     }
+///
+///     fn cp(&self,v: &i32) ->i32 { return v.clone() }
+///
+///     fn lt(&self,a:&i32,b: &i32) ->bool {  return a<b  }
+/// }
+/// ```
+///
 pub trait IncDecCpCmpTrait<T, V> {
     //. Should return a clone or copy of &T.
     fn cp(&self, v: &T) -> T;
@@ -222,14 +261,14 @@ pub trait IncDecCpCmpTrait<T, V> {
     /// - [`crate::RangeRelation::Before`] a is before b.
     /// - [`crate::RangeRelation::After`] a is after b.
     /// - [`crate::RangeRelation::Overlap`] a and b overlap to some degree.
-    fn range_relation<R: GetBeginEnd<T>>(&self, a: &R, b: &R) -> RangeRelation {
+    fn range_relation<R: GetBeginEnd<T>>(&self, a: &R, b: &R) -> RangeRelation<()> {
         if self.lt(a.get_end(), b.get_begin()) {
             return RangeRelation::Before;
         } else if self.lt(b.get_end(), a.get_begin()) {
             return RangeRelation::After;
         }
 
-        return RangeRelation::Overlap;
+        return RangeRelation::Overlap(());
     }
 
     /// Given the check and src return the common most Some(begin: T,end:T) from src else return None.
@@ -246,7 +285,7 @@ pub trait IncDecCpCmpTrait<T, V> {
         let mut end: Option<&T> = None;
         for range in src {
             match self.range_relation(check, range) {
-                RangeRelation::Overlap => (),
+                RangeRelation::Overlap(_) => (),
                 _ => continue,
             }
             if self.is_invalid_set(range.get_begin(), range.get_end()) {
@@ -276,6 +315,11 @@ pub trait IncDecCpCmpTrait<T, V> {
         return None;
     }
 }
+
+pub trait DefaultValues<V> {
+    fn default_step(&self) -> V;
+    fn default_rebound(&self) -> V;
+}
 macro_rules! impl_inc_dec_cp_cmp_trait_i {
     ($($t:ty),*) => {
         $(
@@ -300,6 +344,11 @@ macro_rules! impl_inc_dec_cp_cmp_trait_i {
                 fn lt(&self,a:&$t,b: &$t) ->bool {
                     return a<b;
                 }
+            }
+
+            impl DefaultValues<$t> for BlanketIncDecCpCmp {
+                fn default_step(&self) ->$t { return 1}
+                fn default_rebound(&self) ->$t { return 1}
             }
         )*
     };
@@ -328,6 +377,11 @@ macro_rules! impl_inc_dec_cp_cmp_trait_u {
                 fn lt(&self,a:&$t,b: &$t) ->bool {
                     return a<b;
                 }
+            }
+
+            impl DefaultValues<$t> for BlanketIncDecCpCmp {
+                fn default_step(&self) ->$t { return 1}
+                fn default_rebound(&self) ->$t { return 1}
             }
         )*
     };
@@ -359,6 +413,11 @@ macro_rules! impl_inc_dec_cp_cmp_trait_f {
                 fn lt(&self,a:&$t,b: &$t) ->bool {
                     return a<b;
                 }
+            }
+
+            impl DefaultValues<$t> for BlanketIncDecCpCmp {
+                fn default_step(&self) ->$t { return 1.0}
+                fn default_rebound(&self) ->$t { return 1.0 }
             }
         )*
     };

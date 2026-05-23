@@ -1,40 +1,14 @@
 use crate::builder::IncDecCpCmpTrait;
 use crate::{
-    GetBeginEnd, Mrs, first_range_begin_end, next_range_begin_end, range_bounds_to_values,
+    BlanketIncDecCpCmp, DefaultValues, GetBeginEnd, Mrs, first_range_begin_end,
+    next_range_begin_end, range_bounds_to_values,
 };
 use std::cell::RefCell;
 use std::mem;
 use std::ops::RangeBounds;
 
-pub struct Intersector<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> {
-    iter: OwnedMrsOverlapIter<'v, 'c, T, V, C>,
-}
-
-impl<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> Iterator for Intersector<'v, 'c, T, V, C> {
-    type Item = (T, T);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        return self.iter.next();
-    }
-}
-
-impl<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> Intersector<'v, 'c, T, V, C> {
-    pub fn new<S: RangeBounds<T>>(src: &[S], step: &'v V, rebound: &V, cmp: &'c C) -> Self {
-        let mut list: Vec<Mrs<T>> = Vec::new();
-
-        for range in src {
-            let (a, z) = range_bounds_to_values(range, rebound, cmp);
-            list.push(Mrs::new(a, z));
-        }
-
-        Self {
-            iter: OwnedMrsOverlapIter::new(list, step, cmp),
-        }
-    }
-}
-
 pub struct OverlapIter<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>> {
-    src: &'r mut [R],
+    src: &'r [R],
     step: &'v V,
     cmp: &'c C,
     next: Option<(T, T)>,
@@ -44,7 +18,7 @@ pub struct OverlapIter<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginE
 impl<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>>
     OverlapIter<'r, 'v, 'c, T, V, C, R>
 {
-    pub fn new(src: &'r mut [R], step: &'v V, cmp: &'c C) -> Self {
+    pub fn new(src: &'r [R], step: &'v V, cmp: &'c C) -> Self {
         let next = first_range_begin_end(&*src, cmp);
         Self {
             src,
@@ -53,13 +27,6 @@ impl<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>>
             next,
             _marker: std::marker::PhantomData,
         }
-    }
-    pub fn update_col(&mut self, idx: usize, range: R) -> Result<(), &'static str> {
-        if let Some(col) = self.src.get_mut(idx) {
-            *col = range;
-            return Ok(());
-        }
-        return Err(&"idex out of bounds");
     }
 }
 
@@ -79,17 +46,17 @@ impl<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>> Iterator
     }
 }
 
-pub struct OwnedMrsOverlapIter<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> {
+pub struct OwnedOverlapIter<T, V, C: IncDecCpCmpTrait<T, V>> {
     cols: RefCell<Vec<Mrs<T>>>,
-    step: &'v V,
-    cmp: &'c C,
+    step: V,
+    cmp: C,
     next: Option<(T, T)>,
     _marker: std::marker::PhantomData<(T, V)>,
 }
 
-impl<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> OwnedMrsOverlapIter<'v, 'c, T, V, C> {
-    pub fn new(cols: Vec<Mrs<T>>, step: &'v V, cmp: &'c C) -> Self {
-        let next = first_range_begin_end(&*cols, cmp);
+impl<T, V, C: IncDecCpCmpTrait<T, V>> OwnedOverlapIter<T, V, C> {
+    pub fn new(cols: Vec<Mrs<T>>, step: V, cmp: C) -> Self {
+        let next = first_range_begin_end(&*cols, &cmp);
         Self {
             cols: RefCell::new(cols),
             step,
@@ -99,6 +66,10 @@ impl<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> OwnedMrsOverlapIter<'v, 'c, T, V, 
         }
     }
 
+    pub fn get_builder(&self) -> &C {
+        return &self.cmp;
+    }
+
     pub fn update_col(&mut self, idx: usize, range: Mrs<T>) -> Result<(), &'static str> {
         if let Some(col) = self.cols.get_mut().get_mut(idx) {
             *col = range;
@@ -106,18 +77,169 @@ impl<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> OwnedMrsOverlapIter<'v, 'c, T, V, 
         }
         return Err("idx out of bounds");
     }
+
+    pub fn replcae_cols(&self, cols: Vec<Mrs<T>>) -> Vec<Mrs<T>> {
+        return self.cols.replace(cols);
+    }
 }
 
-impl<'b, 'c, T, V, C: IncDecCpCmpTrait<T, V>> Iterator for OwnedMrsOverlapIter<'b, 'c, T, V, C> {
+impl<T, V, C: IncDecCpCmpTrait<T, V>> Iterator for OwnedOverlapIter<T, V, C> {
     type Item = (T, T);
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut target: Option<(T, T)> = None;
         if let Some((_, finish)) = &self.next {
-            if let Some(begin) = self.cmp.inc(finish, self.step) {
-                target = next_range_begin_end(&begin, &self.cols.borrow().as_ref(), self.cmp)
+            if let Some(begin) = self.cmp.inc(finish, &self.step) {
+                target = next_range_begin_end(&begin, &self.cols.borrow().as_ref(), &self.cmp)
             }
         }
         return mem::replace(&mut self.next, target);
+    }
+}
+
+pub struct Intersector<T, V, C: IncDecCpCmpTrait<T, V>> {
+    iter: OwnedOverlapIter<T, V, C>,
+}
+
+impl<T, V, C: IncDecCpCmpTrait<T, V>> Intersector<T, V, C> {
+    pub fn new<S: RangeBounds<T>>(src: &[S], step: V, rebound: V, cmp: C) -> Self {
+        let mut list: Vec<Mrs<T>> = Vec::new();
+
+        for range in src {
+            let (a, z) = range_bounds_to_values(range, &rebound, &cmp);
+            list.push(Mrs::new(a, z));
+        }
+
+        Self {
+            iter: OwnedOverlapIter::new(list, step, cmp),
+        }
+    }
+}
+
+impl<T, V> Intersector<T, V, BlanketIncDecCpCmp>
+where
+    BlanketIncDecCpCmp: IncDecCpCmpTrait<T, V> + DefaultValues<V>,
+{
+    pub fn defaults<S: RangeBounds<T>>(src: &[S]) -> Intersector<T, V, BlanketIncDecCpCmp> {
+        let t = BlanketIncDecCpCmp::new();
+        return Intersector::new(src, t.default_step(), t.default_rebound(), t);
+    }
+}
+
+impl<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> Iterator for Intersector<T, V, C> {
+    type Item = (T, T);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        return self.iter.next();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        BlanketIncDecCpCmp, DefaultValues, Intersector, Mrs, OverlapIter, OwnedOverlapIter,
+    };
+
+    #[test]
+    fn iter_test() {
+        let checkset = [
+            (0, 2),
+            (3, 3),
+            (4, 5),
+            (6, 6),
+            (8, 11),
+            (13, 15),
+            (16, 19),
+            (20, 22),
+        ];
+
+        let mut check = [
+            Mrs::new(4, 5),
+            Mrs::new(4, 6),
+            Mrs::new(0, 3),
+            Mrs::new(1, 2),
+            // gap 1 is 7-7
+            Mrs::new(8, 11),
+            // gap 2 is 12-12
+            Mrs::new(13, 22),
+            Mrs::new(15, 19),
+        ];
+        let t = BlanketIncDecCpCmp::new();
+        let iter = OverlapIter::new(&mut check, &1, &t);
+        for (i, res) in iter.enumerate() {
+            assert_eq!(res, checkset[i])
+        }
+    }
+
+    #[test]
+    fn owned_iter_test() {
+        let checkset = [
+            (0, 2),
+            (3, 3),
+            (4, 5),
+            (6, 6),
+            (8, 11),
+            (13, 15),
+            (16, 19),
+            (20, 22),
+        ];
+
+        let check = vec![
+            Mrs::new(4, 5),
+            Mrs::new(4, 6),
+            Mrs::new(0, 3),
+            Mrs::new(1, 2),
+            // gap 1 is 7-7
+            Mrs::new(8, 11),
+            // gap 2 is 12-12
+            Mrs::new(13, 22),
+            Mrs::new(15, 19),
+        ];
+        let t = BlanketIncDecCpCmp::new();
+        let iter = OwnedOverlapIter::new(check, 1, t);
+        for (i, res) in iter.enumerate() {
+            assert_eq!(res, checkset[i])
+        }
+    }
+
+    #[test]
+    fn intersector_test() {
+        let checkset = [
+            (0, 2),
+            (3, 3),
+            (4, 5),
+            (6, 6),
+            (8, 11),
+            (13, 15),
+            (16, 19),
+            (20, 22),
+        ];
+
+        let check = [4..=5, 4..=6, 0..=3, 1..=2, 8..=11, 13..=22, 15..=19];
+        let t = BlanketIncDecCpCmp::new();
+        let iter = Intersector::new(&check, t.default_step(), t.default_rebound(), t);
+        for (i, res) in iter.enumerate() {
+            assert_eq!(res, checkset[i])
+        }
+    }
+
+    #[test]
+    fn intersector_defaults_test() {
+        let checkset = [
+            (0, 2),
+            (3, 3),
+            (4, 5),
+            (6, 6),
+            (8, 11),
+            (13, 15),
+            (16, 19),
+            (20, 22),
+        ];
+
+        let check = [4..=5, 4..=6, 0..=3, 1..=2, 8..=11, 13..=22, 15..=19];
+        let iter = Intersector::defaults(&check);
+        for (i, res) in iter.enumerate() {
+            assert_eq!(res, checkset[i])
+        }
     }
 }
