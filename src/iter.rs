@@ -153,17 +153,27 @@ impl<T, V, C: IncDecCpCmpTrait<T, V>> Accumulate<T, V, C> {
         }
     }
 
-    pub fn add_range(&mut self, range: &impl RangeBounds<T>) -> Option<&Mrs<T>> {
+    pub fn add_range(&mut self, range: &impl RangeBounds<T>) -> bool {
         if let Some((a, z)) = range_bounds_to_values(range, &self.rebound, &self.builder) {
             let r = Mrs::new(a, z);
             self.list.push(r);
-            return Some(&self.list[self.list.len() - 1]);
+            return true;
         }
-        return None;
+        return false;
     }
 
     pub fn consume(self) -> OwnedOverlapIter<T, V, C> {
         return OwnedOverlapIter::new(self.list, self.step, self.builder);
+    }
+}
+
+impl<T, V> Accumulate<T, V, BlanketIncDecCpCmp>
+where
+    BlanketIncDecCpCmp: DefaultValues<T, V>,
+{
+    pub fn defaults() -> Self {
+        let t = BlanketIncDecCpCmp::new();
+        Accumulate::new(t.default_step(), t.default_rebound(), t)
     }
 }
 
