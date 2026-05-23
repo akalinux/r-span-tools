@@ -1,5 +1,6 @@
 use crate::GetBeginEnd;
-use std::cmp::Ordering;
+use std::{cmp::Ordering, ops::Bound};
+mod tests;
 
 /// This enum is used to represent positional relationships in 3 states
 ///  - before a range
@@ -19,103 +20,6 @@ pub enum RangeRelation<T> {
 /// Acts as the general helper for creating and comparing values outside of ranges.
 /// Note that incrementing and decrementing are of 2 differnt types, but do not have to be.
 ///
-/// ```
-/// use common_range_tools::{BlanketIncDecCpCmp, IncDecCpCmpTrait,RangeRelation,Mrs,GetBeginEnd};
-///
-/// fn main() {
-///     
-///     let l=BlanketIncDecCpCmp::new();
-///     // i32 Increment examples
-///     assert_eq!(l.inc(&1, &2), Some(3)); // Number went up by 2!
-///     assert_eq!(l.inc(&1, &0), None); // Number did not go up
-///     assert_eq!(l.inc(&0, &-2), None); // Number did not go up
-///     assert_eq!(l.inc(&i32::MAX, &1), None); // Catch overflow
-///
-///     // i32 Decrement examples
-///     assert_eq!(l.dec(&1, &2), Some(-1)); // Number went down by 2!
-///     assert_eq!(l.dec(&0, &0), None); // Number did not go down
-///     assert_eq!(l.dec(&0, &-2), None); // Number did not go down
-///     assert_eq!(l.dec(&i32::MIN, &1), None); // Catch undeflow
-///
-///     // u32 Increment examples
-///     assert_eq!(l.inc(&1, &2), Some(3)); // Number went up by 2!
-///     assert_eq!(l.inc(&0, &0), None); // Number did not go up
-///     assert_eq!(l.inc(&u32::MAX, &1), None); // Catch overflow
-///
-///     // i32 Decrement examples
-///     assert_eq!(l.dec(&3_u32, &2), Some(1)); // Number went down by 2!
-///     assert_eq!(l.dec(&3_u32, &0), None); // Number did not go down
-///     assert_eq!(l.dec(&u32::MIN, &1), None); // Catch undeflow
-///
-///     // f32 Increment examples
-///     assert_eq!(l.inc(&0.2, &0.5), Some(1.5));
-///     assert_eq!(l.inc(&1.7, &-0.5), None);
-///     assert_eq!(l.inc(&f32::INFINITY, &0.5), None);
-///     assert_eq!(l.inc(&f32::INFINITY, &f32::INFINITY), None);
-///     assert_eq!(l.inc(&1.0, &f32::INFINITY), Some(f32::INFINITY));
-///     assert_eq!(l.inc(&1.0, &f32::NEG_INFINITY), None);
-///
-///     // f32 Decrement examples
-///     assert_eq!(l.dec(&0.5, &0.5), Some(-0.5));
-///     assert_eq!(l.dec(&1.7, &-0.5), None);
-///     assert_eq!(l.dec(&f32::INFINITY, &0.5), None);
-///     assert_eq!(l.dec(&f32::INFINITY, &f32::INFINITY), None);
-///     assert_eq!(l.dec(&1.0, &f32::INFINITY), Some(f32::NEG_INFINITY));
-///     assert_eq!(l.dec(&1.0, &f32::NEG_INFINITY), None);
-///
-///     // positive compare examples
-///     assert!(l.lt(&1, &2));
-///     assert!(l.le(&1, &2));
-///     assert!(l.eq(&2, &2));
-///     assert!(l.gt(&4, &3));
-///     assert!(l.ge(&4, &3));
-///     assert!(l.ne(&4, &3));
-///
-///     // negative compare examples
-///     assert!(!l.ne(&4, &4));
-///     assert!(!l.eq(&3, &4));
-///     assert!(!l.le(&6, &5));
-///     assert!(!l.ge(&4, &5));
-///     assert!(!l.lt(&4, &3));
-///     assert!(!l.gt(&4, &5));
-///
-///     // Contains Examples
-///     assert!(l.contains(&1, &3, &1));
-///     assert!(!l.contains(&1, &2, &0));
-///     assert!(!l.contains(&0, &0, &1));
-///     assert!(!l.contains(&0, &0, &2));
-///
-///     // Overlap Examples
-///     assert!(l.overlap(&1, &2, &0, &1));
-///     assert!(!l.overlap(&1, &2, &0, &0));
-///
-///     // Sorting in consolidation order.
-///     let correct = vec![
-///         Mrs::new(8, 11),
-///         Mrs::new(8, 9),
-///         Mrs::new(13, 22),
-///         Mrs::new(15, 19),
-///     ];
-///     let mut check = vec![
-///         Mrs::new(15, 19),
-///         Mrs::new(13, 22),
-///         Mrs::new(8, 11),
-///         Mrs::new(8, 9),
-///     ];
-///     check.sort_by(|a, b| l.sortfn(a, b));
-///     for (i, good) in correct.iter().enumerate() {
-///         assert_eq!(check[i].get_begin(), good.get_begin());
-///         assert_eq!(check[i].get_end(), good.get_end());
-///     }
-///
-///     // Compare Range Positional relationships
-///     assert!(matches!(l.range_relation(&Mrs::new(1, 2), &Mrs::new(1, 2)),RangeRelation::Overlap(()) )); // a and b overlap
-///     assert!(matches!(l.range_relation(&Mrs::new(1, 1), &Mrs::new(1, 2)),RangeRelation::Overlap(()) )); // a and b overlap
-///     assert!(matches!(l.range_relation(&Mrs::new(2, 2), &Mrs::new(1, 2)),RangeRelation::Overlap(()) )); // a and b overlap
-///     assert!(matches!(l.range_relation(&Mrs::new(0, 0), &Mrs::new(1, 2)),RangeRelation::Before));  // a is before b
-///     assert!(matches!(l.range_relation(&Mrs::new(3, 4), &Mrs::new(1, 2)),RangeRelation::After));   // a is after b
-/// }
-/// ```
 pub struct BlanketIncDecCpCmp {}
 
 impl BlanketIncDecCpCmp {
@@ -314,10 +218,40 @@ pub trait IncDecCpCmpTrait<T, V> {
         }
         return None;
     }
+
+    /// Returns the raw adjusted start value.
+    ///   - [std::ops::Bound::Unbounded] becomes self.min()
+    ///   - [std::ops::Bound::Included] value is not changed
+    ///   - [std::ops::Bound::Excluded] value is incremented
+    fn rebound_start(&self, start: Bound<&T>, rebound: &V) -> Option<T> {
+        match start {
+            Bound::Included(begin) => Some(self.cp(begin)),
+            Bound::Excluded(begin) => self.inc(begin, rebound),
+            Bound::Unbounded => Some(self.min()),
+        }
+    }
+
+    /// Returns the raw adjusted end value.
+    ///   - [std::ops::Bound::Unbounded] becomes
+    ///   - [std::ops::Bound::Included] value is not changed
+    ///   - [std::ops::Bound::Excluded] value is decremented
+    fn rebound_end(&self, end: Bound<&T>, rebound: &V) -> Option<T> {
+        match end {
+            Bound::Included(end) => Some(self.cp(end)),
+            Bound::Excluded(end) => self.dec(end, rebound),
+            Bound::Unbounded => Some(self.max()),
+        }
+    }
 }
 
-pub trait DefaultValues<V> {
+/// **Default values**
+///
+/// Implemenations of this trait drive the internals used for [crate::iter::Intersector::defaults].
+pub trait DefaultValues<T, V>: IncDecCpCmpTrait<T, V> {
+    /// Returns the default value use for progressing a begin or end value of a range.
     fn default_step(&self) -> V;
+
+    /// Returns the value used to adjust a start or end value in the context of [std::ops::range::Bound::Excluded].
     fn default_rebound(&self) -> V;
 }
 macro_rules! impl_inc_dec_cp_cmp_trait_i {
@@ -346,7 +280,7 @@ macro_rules! impl_inc_dec_cp_cmp_trait_i {
                 }
             }
 
-            impl DefaultValues<$t> for BlanketIncDecCpCmp {
+            impl DefaultValues<$t,$t> for BlanketIncDecCpCmp {
                 fn default_step(&self) ->$t { return 1}
                 fn default_rebound(&self) ->$t { return 1}
             }
@@ -379,7 +313,7 @@ macro_rules! impl_inc_dec_cp_cmp_trait_u {
                 }
             }
 
-            impl DefaultValues<$t> for BlanketIncDecCpCmp {
+            impl DefaultValues<$t,$t> for BlanketIncDecCpCmp {
                 fn default_step(&self) ->$t { return 1}
                 fn default_rebound(&self) ->$t { return 1}
             }
@@ -415,7 +349,7 @@ macro_rules! impl_inc_dec_cp_cmp_trait_f {
                 }
             }
 
-            impl DefaultValues<$t> for BlanketIncDecCpCmp {
+            impl DefaultValues<$t,$t> for BlanketIncDecCpCmp {
                 fn default_step(&self) ->$t { return 1.0}
                 fn default_rebound(&self) ->$t { return 1.0 }
             }
@@ -426,82 +360,3 @@ macro_rules! impl_inc_dec_cp_cmp_trait_f {
 impl_inc_dec_cp_cmp_trait_u!(u8, u16, u32, u64, u128, usize);
 impl_inc_dec_cp_cmp_trait_i!(i8, i16, i32, i64, i128, isize);
 impl_inc_dec_cp_cmp_trait_f!(f32, f64);
-
-#[cfg(test)]
-mod lattice_tests {
-
-    use crate::builder::{BlanketIncDecCpCmp, IncDecCpCmpTrait};
-    #[test]
-    fn inc_dec_behavior() {
-        let l = BlanketIncDecCpCmp::new();
-
-        // i32 Increment examples
-        assert_eq!(l.inc(&1, &2), Some(3)); // Number went up by 2!
-        assert_eq!(l.inc(&1, &0), None); // Number did not go up
-        assert_eq!(l.inc(&0, &-2), None); // Number did not go up
-        assert_eq!(l.inc(&i32::MAX, &1), None); // Catch overflow
-
-        // i32 Decrement examples
-        assert_eq!(l.dec(&1, &2), Some(-1)); // Number went down by 2!
-        assert_eq!(l.dec(&0, &0), None); // Number did not go down
-        assert_eq!(l.dec(&0, &-2), None); // Number did not go down
-        assert_eq!(l.dec(&i32::MIN, &1), None); // Catch undeflow
-
-        // u32 Increment examples
-        assert_eq!(l.inc(&1, &2), Some(3)); // Number went up by 2!
-        assert_eq!(l.inc(&0, &0), None); // Number did not go up
-        assert_eq!(l.inc(&u32::MAX, &1), None); // Catch overflow
-
-        // i32 Decrement examples
-        assert_eq!(l.dec(&3_u32, &2), Some(1)); // Number went down by 2!
-        assert_eq!(l.dec(&3_u32, &0), None); // Number did not go down
-        assert_eq!(l.dec(&u32::MIN, &1), None); // Catch undeflow
-
-        // f32 Increment examples
-        assert_eq!(l.inc(&0.2, &0.5), Some(1.5));
-        assert_eq!(l.inc(&1.7, &-0.5), None);
-        assert_eq!(l.inc(&f32::INFINITY, &0.5), None);
-        assert_eq!(l.inc(&f32::INFINITY, &f32::INFINITY), None);
-        assert_eq!(l.inc(&1.0, &f32::INFINITY), Some(f32::INFINITY));
-        assert_eq!(l.inc(&1.0, &f32::NEG_INFINITY), None);
-
-        // f32 Decrement examples
-        assert_eq!(l.dec(&0.5, &0.5), Some(-0.5));
-        assert_eq!(l.dec(&1.7, &-0.5), None);
-        assert_eq!(l.dec(&f32::INFINITY, &0.5), None);
-        assert_eq!(l.dec(&f32::INFINITY, &f32::INFINITY), None);
-        assert_eq!(l.dec(&1.0, &f32::INFINITY), Some(f32::NEG_INFINITY));
-        assert_eq!(l.dec(&1.0, &f32::NEG_INFINITY), None);
-    }
-
-    #[test]
-    fn inc_dec_compare_all() {
-        let l = BlanketIncDecCpCmp::new();
-
-        // positive examples
-        assert!(l.lt(&1, &2));
-        assert!(l.le(&1, &2));
-        assert!(l.eq(&2, &2));
-        assert!(l.gt(&4, &3));
-        assert!(l.ge(&4, &3));
-        assert!(l.ne(&4, &3));
-
-        // negative examples
-        assert!(!l.ne(&4, &4));
-        assert!(!l.eq(&3, &4));
-        assert!(!l.le(&6, &5));
-        assert!(!l.ge(&4, &5));
-        assert!(!l.lt(&4, &3));
-        assert!(!l.gt(&4, &5));
-
-        // Contains Examples
-        assert!(l.contains(&1, &3, &1));
-        assert!(!l.contains(&1, &2, &0));
-        assert!(!l.contains(&0, &0, &1));
-        assert!(!l.contains(&0, &0, &2));
-
-        // Overlap Examples
-        assert!(l.overlap(&1, &2, &0, &1));
-        assert!(!l.overlap(&1, &2, &0, &0));
-    }
-}

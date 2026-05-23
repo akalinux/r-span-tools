@@ -1,5 +1,5 @@
 use crate::{GetBeginEnd, builder::IncDecCpCmpTrait};
-use std::ops::{Bound, RangeBounds};
+use std::ops::RangeBounds;
 
 /// **Range to value Conversion**
 ///
@@ -19,179 +19,18 @@ use std::ops::{Bound, RangeBounds};
 ///
 /// Example of range to number conversion.
 ///
-/// ```
-/// use common_range_tools::{BlanketIncDecCpCmp,range_bounds_to_values};
-/// use std::ops::{Bound, RangeBounds};
-///
-/// // demo range boundry container.
-/// struct Rd<T> {
-///     a: Bound<T>,
-///     z: Bound<T>,
-/// }
-///
-/// // example impl
-/// impl<T> RangeBounds<T> for Rd<T> {
-///     fn start_bound(&self) -> Bound<&T> {
-///         match &self.a {
-///             Bound::Excluded(a) => Bound::Excluded(a),
-///             Bound::Included(a) => Bound::Included(a),
-///             Bound::Unbounded => Bound::Unbounded,
-///         }
-///     }
-///     fn end_bound(&self) -> Bound<&T> {
-///         match &self.z {
-///             Bound::Excluded(z) => Bound::Excluded(z),
-///             Bound::Included(z) => Bound::Included(z),
-///             Bound::Unbounded => Bound::Unbounded,
-///         }
-///     }
-/// }
-///
-/// fn main() {
-///     let t = BlanketIncDecCpCmp::new();
-///     assert_eq!(
-///         range_bounds_to_values(
-///             &Rd {
-///                 // will become 1
-///                 a: Bound::Excluded(0),
-///                 // will become 2
-///                 z: Bound::Excluded(3),
-///             },
-///             &1,
-///             &t
-///         ),
-///         (1, 2)
-///     );
-///     assert_eq!(
-///         range_bounds_to_values(
-///             &Rd {
-///                 // litteral
-///                 a: Bound::Included(0),
-///                 // litteral
-///                 z: Bound::Included(3),
-///             },
-///             &1,
-///             &t
-///         ),
-///         (0, 3)
-///     );
-///     assert_eq!(
-///         range_bounds_to_values(
-///             &Rd {
-///                 // Converts to i32::MIN
-///                 a: Bound::Unbounded,
-///                 // Converts to i32::MAX
-///                 z: Bound::Unbounded,
-///             },
-///             &1,
-///             &t,
-///         ),
-///         (i32::MIN, i32::MAX)
-///     );
-///     assert_eq!(
-///         range_bounds_to_values(
-///             &Rd {
-///                 // litteral
-///                 a: Bound::Included(0),
-///                 // will become 2
-///                 z: Bound::Excluded(3),
-///             },
-///             &1,
-///             &t
-///         ),
-///         (0, 2)
-///     );
-///     assert_eq!(
-///         range_bounds_to_values(
-///             &Rd {
-///                 // will beocme 1
-///                 a: Bound::Excluded(0),
-///                 // litteral
-///                 z: Bound::Included(3),
-///             },
-///             &1,
-///             &t
-///         ),
-///         (1, 3)
-///     );
-///     assert_eq!(
-///         range_bounds_to_values(
-///             &Rd {
-///                 // becomes 1
-///                 a: Bound::Excluded(0),
-///                 // becomes i32::MAX
-///                 z: Bound::Unbounded,
-///             },
-///             &1,
-///             &t
-///         ),
-///         (1, i32::MAX)
-///     );
-///     assert_eq!(
-///         range_bounds_to_values(
-///             &Rd {
-///                 // litteral
-///                 a: Bound::Included(0),
-///                 // becomes i32::MAX
-///                 z: Bound::Unbounded,
-///             },
-///             &1,
-///             &t
-///         ),
-///         (0, i32::MAX)
-///     );
-///     assert_eq!(
-///         range_bounds_to_values(
-///             &Rd {
-///                 // becomes i32::MIN
-///                 a: Bound::Unbounded,
-///                 // litteral
-///                 z: Bound::Included(0),
-///             },
-///             &1,
-///             &t
-///         ),
-///         (i32::MIN, 0)
-///     );
-///     assert_eq!(
-///         range_bounds_to_values(
-///             &Rd {
-///                 // becomes i32::MIN
-///                 a: Bound::Unbounded,
-///                 // becomes -1
-///                 z: Bound::Excluded(0),
-///             },
-///             &1,
-///             &t
-///         ),
-///         (i32::MIN, -1)
-///     );
-/// }
-/// ```
 pub fn range_bounds_to_values<T, V>(
     range: &impl RangeBounds<T>,
     rebound: &V,
     cmp: &impl IncDecCpCmpTrait<T, V>,
-) -> (T, T) {
-    let a;
-    let b;
-    match range.start_bound() {
-        Bound::Included(begin) => a = Some(cmp.cp(begin)),
-        Bound::Excluded(begin) => a = cmp.inc(begin, rebound),
-        Bound::Unbounded => a = Some(cmp.min()),
-    }
-    match range.end_bound() {
-        Bound::Included(end) => b = Some(cmp.cp(end)),
-        Bound::Excluded(end) => b = cmp.dec(end, rebound),
-        Bound::Unbounded => b = Some(cmp.max()),
-    }
-    if let Some(a) = a
-        && let Some(b) = b
+) -> Option<(T, T)> {
+    if let Some(begin) = cmp.rebound_start(range.start_bound(), rebound)
+        && let Some(end) = cmp.rebound_end(range.end_bound(), rebound)
     {
-        return (a, b);
+        return Some((begin, end));
     }
-    // required for type completeness.. but the code never gets here
-    return (cmp.min(), cmp.max());
+
+    return None;
 }
 
 /// Computes the first common (begin: T, end: T) values for a list of [`crate::GetBeginEnd``].
@@ -322,12 +161,10 @@ pub fn next_range_begin_end<T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>>(
 
 #[cfg(test)]
 mod tests {
-    use std::ops::RangeBounds;
 
     use crate::{
-        GetBeginEnd, Mrs,
-        builder::{BlanketIncDecCpCmp, IncDecCpCmpTrait, RangeRelation},
-        first_range_begin_end, next_range_begin_end, range_bounds_to_values,
+        Mrs, builder::BlanketIncDecCpCmp, first_range_begin_end, next_range_begin_end,
+        range_bounds_to_values,
     };
 
     #[test]
@@ -410,184 +247,9 @@ mod tests {
     }
 
     #[test]
-    fn sort_func_tests() {
-        let correct = vec![
-            Mrs::new(8, 11),
-            Mrs::new(8, 9),
-            Mrs::new(13, 22),
-            Mrs::new(15, 19),
-        ];
-        let t = BlanketIncDecCpCmp::new();
-        let mut check = vec![
-            // reversing  the order of the gap for coverage
-            Mrs::new(15, 19),
-            Mrs::new(13, 22),
-            // order should never mater
-            Mrs::new(8, 11),
-            Mrs::new(8, 9),
-        ];
-        check.sort_by(|a, b| t.sortfn(a, b));
-
-        for (i, good) in correct.iter().enumerate() {
-            assert_eq!(check[i].get_begin(), good.get_begin());
-            assert_eq!(check[i].get_end(), good.get_end());
-        }
-    }
-    #[test]
-    fn overlap_check() {
-        let t = BlanketIncDecCpCmp::new();
-        assert!(matches!(
-            t.range_relation(&Mrs::new(1, 2), &Mrs::new(1, 2)),
-            RangeRelation::Overlap(())
-        ));
-        assert!(matches!(
-            t.range_relation(&Mrs::new(1, 1), &Mrs::new(1, 2)),
-            RangeRelation::Overlap(())
-        ));
-        assert!(matches!(
-            t.range_relation(&Mrs::new(2, 2), &Mrs::new(1, 2)),
-            RangeRelation::Overlap(())
-        ));
-        assert!(matches!(
-            t.range_relation(&Mrs::new(0, 0), &Mrs::new(1, 2)),
-            RangeRelation::Before
-        ));
-        assert!(matches!(
-            t.range_relation(&Mrs::new(3, 4), &Mrs::new(1, 2)),
-            RangeRelation::After
-        ));
-    }
-
-    use std::ops::Bound;
-    struct Rd<T> {
-        a: Bound<T>,
-        z: Bound<T>,
-    }
-
-    impl<T> RangeBounds<T> for Rd<T> {
-        fn start_bound(&self) -> Bound<&T> {
-            match &self.a {
-                Bound::Excluded(a) => Bound::Excluded(a),
-                Bound::Included(a) => Bound::Included(a),
-                Bound::Unbounded => Bound::Unbounded,
-            }
-        }
-
-        fn end_bound(&self) -> Bound<&T> {
-            match &self.z {
-                Bound::Excluded(z) => Bound::Excluded(z),
-                Bound::Included(z) => Bound::Included(z),
-                Bound::Unbounded => Bound::Unbounded,
-            }
-        }
-    }
-
-    #[test]
     fn range_conversion() {
         let t = BlanketIncDecCpCmp::new();
 
-        assert_eq!(
-            range_bounds_to_values(
-                &Rd {
-                    a: Bound::Excluded(0),
-                    z: Bound::Excluded(3),
-                },
-                &1,
-                &t
-            ),
-            (1, 2)
-        );
-        assert_eq!(
-            range_bounds_to_values(
-                &Rd {
-                    a: Bound::Included(0),
-                    z: Bound::Included(3),
-                },
-                &1,
-                &t
-            ),
-            (0, 3)
-        );
-        assert_eq!(
-            range_bounds_to_values(
-                &Rd {
-                    a: Bound::Unbounded,
-                    z: Bound::Unbounded,
-                },
-                &1,
-                &t,
-            ),
-            (i32::MIN, i32::MAX)
-        );
-        assert_eq!(
-            range_bounds_to_values(
-                &Rd {
-                    a: Bound::Included(0),
-                    z: Bound::Excluded(3),
-                },
-                &1,
-                &t
-            ),
-            (0, 2)
-        );
-
-        assert_eq!(
-            range_bounds_to_values(
-                &Rd {
-                    a: Bound::Excluded(0),
-                    z: Bound::Included(3),
-                },
-                &1,
-                &t
-            ),
-            (1, 3)
-        );
-        assert_eq!(
-            range_bounds_to_values(
-                &Rd {
-                    a: Bound::Excluded(0),
-                    z: Bound::Unbounded,
-                },
-                &1,
-                &t
-            ),
-            (1, i32::MAX)
-        );
-
-        assert_eq!(
-            range_bounds_to_values(
-                &Rd {
-                    a: Bound::Included(0),
-                    z: Bound::Unbounded,
-                },
-                &1,
-                &t
-            ),
-            (0, i32::MAX)
-        );
-
-        assert_eq!(
-            range_bounds_to_values(
-                &Rd {
-                    a: Bound::Unbounded,
-                    z: Bound::Included(0),
-                },
-                &1,
-                &t
-            ),
-            (i32::MIN, 0)
-        );
-
-        assert_eq!(
-            range_bounds_to_values(
-                &Rd {
-                    a: Bound::Unbounded,
-                    z: Bound::Excluded(0),
-                },
-                &1,
-                &t
-            ),
-            (i32::MIN, -1)
-        );
+        assert_eq!(range_bounds_to_values(&(1..=2), &1, &t), Some((1, 2)));
     }
 }

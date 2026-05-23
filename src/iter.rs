@@ -4,6 +4,7 @@ use crate::{
     next_range_begin_end, range_bounds_to_values,
 };
 use std::cell::RefCell;
+use std::marker::PhantomData;
 use std::mem;
 use std::ops::RangeBounds;
 
@@ -12,7 +13,7 @@ pub struct OverlapIter<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginE
     step: &'v V,
     cmp: &'c C,
     next: Option<(T, T)>,
-    _marker: std::marker::PhantomData<(T, V)>,
+    _marker: PhantomData<(T, V)>,
 }
 
 impl<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>>
@@ -106,8 +107,9 @@ impl<T, V, C: IncDecCpCmpTrait<T, V>> Intersector<T, V, C> {
         let mut list: Vec<Mrs<T>> = Vec::new();
 
         for range in src {
-            let (a, z) = range_bounds_to_values(range, &rebound, &cmp);
-            list.push(Mrs::new(a, z));
+            if let Some((a, z)) = range_bounds_to_values(range, &rebound, &cmp) {
+                list.push(Mrs::new(a, z));
+            }
         }
 
         Self {
@@ -118,7 +120,7 @@ impl<T, V, C: IncDecCpCmpTrait<T, V>> Intersector<T, V, C> {
 
 impl<T, V> Intersector<T, V, BlanketIncDecCpCmp>
 where
-    BlanketIncDecCpCmp: IncDecCpCmpTrait<T, V> + DefaultValues<V>,
+    BlanketIncDecCpCmp: DefaultValues<T, V>,
 {
     pub fn defaults<S: RangeBounds<T>>(src: &[S]) -> Intersector<T, V, BlanketIncDecCpCmp> {
         let t = BlanketIncDecCpCmp::new();
@@ -133,6 +135,53 @@ impl<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> Iterator for Intersector<T, V, C> 
         return self.iter.next();
     }
 }
+
+pub struct Accumulate<T, V, C: IncDecCpCmpTrait<T, V>> {
+    list: Vec<Mrs<T>>,
+    step: V,
+    rebound: V,
+    builder: C,
+}
+
+impl<T, V, C: IncDecCpCmpTrait<T, V>> Accumulate<T, V, C> {
+    pub fn new(step: V, rebound: V, builder: C) -> Self {
+        Self {
+            list: Vec::new(),
+            step,
+            rebound,
+            builder,
+        }
+    }
+
+    pub fn add_range(&mut self, range: &impl RangeBounds<T>) -> Option<&Mrs<T>> {
+        if let Some((a, z)) = range_bounds_to_values(range, &self.rebound, &self.builder) {
+            let r = Mrs::new(a, z);
+            self.list.push(r);
+            return Some(&self.list[self.list.len() - 1]);
+        }
+        return None;
+    }
+
+    pub fn consume(self) -> OwnedOverlapIter<T, V, C> {
+        return OwnedOverlapIter::new(self.list, self.step, self.builder);
+    }
+}
+
+/*
+pub struct BoxedIter<T, V, C: DefaultValues<T, V>> {
+    data: Box<[Mrs<T>]>,
+    next: Option<(T, T)>,
+    cmp: C,
+    _marker: PhantomData<V>,
+}
+pub struct IterBuilder<T>(Box<[Mrs<T>]>);
+
+impl<T> IterBuilder<T> {
+    pub fn new<V, C: DefaultValues<T, V>>(self) -> BoxedIter<T, V, C> {
+        let src = self.0.as_ref();
+    }
+}
+*/
 
 #[cfg(test)]
 mod tests {
