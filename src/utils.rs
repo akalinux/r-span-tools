@@ -17,7 +17,7 @@ use std::ops::{Bound, RangeBounds};
 ///
 /// See [crate::IncDecCpCmpTrait] for more details.
 ///
-/// Example of range to number conversion base on [crate::BlanketIncDecCpCmp].
+/// Example of range to number conversion.
 ///
 /// ```
 /// use common_range_tools::{BlanketIncDecCpCmp,range_bounds_to_values};
