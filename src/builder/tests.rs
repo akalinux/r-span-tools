@@ -3,7 +3,7 @@ use std::ops::Bound;
 
 use crate::{
     GetBeginEnd, Mrs, RangeRelation,
-    builder::{BlanketIncDecCpCmp, IncDecCpCmpTrait},
+    builder::{BlanketIncDecCpCmp, IncDecCpCmp},
 };
 
 #[test]
@@ -33,7 +33,7 @@ fn inc_dec_behavior() {
     assert_eq!(l.dec(&u32::MIN, &1), None); // Catch undeflow
 
     // f32 Increment examples
-    assert_eq!(l.inc(&0.2, &0.5), Some(1.5));
+    assert_eq!(l.inc(&0.2, &0.5), Some(0.7));
     assert_eq!(l.inc(&1.7, &-0.5), None);
     assert_eq!(l.inc(&f32::INFINITY, &0.5), None);
     assert_eq!(l.inc(&f32::INFINITY, &f32::INFINITY), None);
@@ -41,7 +41,7 @@ fn inc_dec_behavior() {
     assert_eq!(l.inc(&1.0, &f32::NEG_INFINITY), None);
 
     // f32 Decrement examples
-    assert_eq!(l.dec(&0.5, &0.5), Some(-0.5));
+    assert_eq!(l.dec(&0.5, &0.5), Some(-0.0));
     assert_eq!(l.dec(&1.7, &-0.5), None);
     assert_eq!(l.dec(&f32::INFINITY, &0.5), None);
     assert_eq!(l.dec(&f32::INFINITY, &f32::INFINITY), None);

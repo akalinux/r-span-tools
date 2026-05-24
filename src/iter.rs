@@ -1,5 +1,5 @@
 mod tests;
-use crate::builder::IncDecCpCmpTrait;
+use crate::builder::IncDecCpCmp;
 use crate::{
     BlanketIncDecCpCmp, DefaultValues, GetBeginEnd, Mrs, first_range_begin_end,
     next_range_begin_end, range_bounds_to_values,
@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::RangeBounds;
 
-pub struct OverlapIter<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>> {
+pub struct OverlapIter<'r, 'v, 'c, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> {
     src: &'r [R],
     step: &'v V,
     cmp: &'c C,
@@ -17,9 +17,12 @@ pub struct OverlapIter<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginE
     _marker: PhantomData<(T, V)>,
 }
 
-impl<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>>
+impl<'r, 'v, 'c, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>
     OverlapIter<'r, 'v, 'c, T, V, C, R>
 {
+    /// Creates a new [crate::OverlapIter] from the slice of R.
+    /// *If the any of the objects passed into the constructor are modified durring the lifetime of the
+    /// iteraotr then the behavior is undefined!*
     pub fn new(src: &'r [R], step: &'v V, cmp: &'c C) -> Self {
         let next = first_range_begin_end(&*src, cmp);
         Self {
@@ -27,12 +30,27 @@ impl<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>>
             step,
             cmp,
             next,
-            _marker: std::marker::PhantomData,
+            _marker: PhantomData,
+        }
+    }
+
+    /// Creates a new [crate::OverlapIter] from the [Vec] by creating a slice of the Vec<R>.  
+    /// *If the any of the objects passed into the constructor are modified durring the lifetime of the
+    /// iteraotr then the behavior is undefined!*
+    pub fn from_vec(list: &Vec<R>, step: &'v V, cmp: &'c C) -> Self {
+        let src = unsafe { mem::transmute::<&'_ [R], &'r [R]>(list.as_slice()) };
+        let next = first_range_begin_end(src, cmp);
+        Self {
+            src,
+            step,
+            cmp,
+            next,
+            _marker: PhantomData,
         }
     }
 }
 
-impl<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>> Iterator
+impl<'r, 'v, 'c, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> Iterator
     for OverlapIter<'r, 'v, 'c, T, V, C, R>
 {
     type Item = (T, T);
@@ -48,7 +66,7 @@ impl<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>> Iterator
     }
 }
 
-pub struct OwnedOverlapIter<T, V, C: IncDecCpCmpTrait<T, V>> {
+pub struct OwnedOverlapIter<T, V, C: IncDecCpCmp<T, V>> {
     cols: RefCell<Vec<Mrs<T>>>,
     step: V,
     cmp: C,
@@ -56,7 +74,7 @@ pub struct OwnedOverlapIter<T, V, C: IncDecCpCmpTrait<T, V>> {
     _marker: std::marker::PhantomData<(T, V)>,
 }
 
-impl<T, V, C: IncDecCpCmpTrait<T, V>> OwnedOverlapIter<T, V, C> {
+impl<T, V, C: IncDecCpCmp<T, V>> OwnedOverlapIter<T, V, C> {
     pub fn new(cols: Vec<Mrs<T>>, step: V, cmp: C) -> Self {
         let next = first_range_begin_end(&*cols, &cmp);
         Self {
@@ -85,7 +103,7 @@ impl<T, V, C: IncDecCpCmpTrait<T, V>> OwnedOverlapIter<T, V, C> {
     }
 }
 
-impl<T, V, C: IncDecCpCmpTrait<T, V>> Iterator for OwnedOverlapIter<T, V, C> {
+impl<T, V, C: IncDecCpCmp<T, V>> Iterator for OwnedOverlapIter<T, V, C> {
     type Item = (T, T);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -99,11 +117,11 @@ impl<T, V, C: IncDecCpCmpTrait<T, V>> Iterator for OwnedOverlapIter<T, V, C> {
     }
 }
 
-pub struct Intersector<T, V, C: IncDecCpCmpTrait<T, V>> {
+pub struct Intersector<T, V, C: IncDecCpCmp<T, V>> {
     iter: OwnedOverlapIter<T, V, C>,
 }
 
-impl<T, V, C: IncDecCpCmpTrait<T, V>> Intersector<T, V, C> {
+impl<T, V, C: IncDecCpCmp<T, V>> Intersector<T, V, C> {
     pub fn new<S: RangeBounds<T>>(src: &[S], step: V, rebound: V, cmp: C) -> Self {
         let mut list: Vec<Mrs<T>> = Vec::new();
 
@@ -129,7 +147,7 @@ where
     }
 }
 
-impl<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> Iterator for Intersector<T, V, C> {
+impl<'v, 'c, T, V, C: IncDecCpCmp<T, V>> Iterator for Intersector<T, V, C> {
     type Item = (T, T);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -137,14 +155,14 @@ impl<'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> Iterator for Intersector<T, V, C> 
     }
 }
 
-pub struct Accumulate<T, V, C: IncDecCpCmpTrait<T, V>> {
+pub struct Accumulate<T, V, C: IncDecCpCmp<T, V>> {
     list: Vec<Mrs<T>>,
     step: V,
     rebound: V,
     cmp: C,
 }
 
-impl<T, V, C: IncDecCpCmpTrait<T, V>> Accumulate<T, V, C> {
+impl<T, V, C: IncDecCpCmp<T, V>> Accumulate<T, V, C> {
     pub fn new(step: V, rebound: V, cmp: C) -> Self {
         Self {
             list: Vec::new(),
@@ -164,7 +182,7 @@ impl<T, V, C: IncDecCpCmpTrait<T, V>> Accumulate<T, V, C> {
     }
 }
 
-impl<T, V, C: IncDecCpCmpTrait<T, V>> IntoIterator for Accumulate<T, V, C> {
+impl<T, V, C: IncDecCpCmp<T, V>> IntoIterator for Accumulate<T, V, C> {
     type Item = (T, T);
 
     type IntoIter = OwnedOverlapIter<T, V, C>;
@@ -180,33 +198,5 @@ where
     pub fn defaults() -> Self {
         let t = BlanketIncDecCpCmp::new();
         Accumulate::new(t.default_step(), t.default_rebound(), t)
-    }
-}
-
-pub struct BoxedOverlapIter<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> {
-    _src: &'r [Mrs<T>],
-    iter: OverlapIter<'r, 'v, 'c, T, V, C, Mrs<T>>,
-}
-
-impl<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> BoxedOverlapIter<'r, 'v, 'c, T, V, C> {
-    pub fn new(nv: &Vec<Mrs<T>>, step: &'v V, cmp: &'c C) -> BoxedOverlapIter<'r, 'v, 'c, T, V, C>
-    where
-        BlanketIncDecCpCmp: DefaultValues<T, V>,
-        Mrs<T>: GetBeginEnd<T>,
-    {
-        let src: &'r [Mrs<T>] =
-            unsafe { mem::transmute::<&'_ [Mrs<T>], &'r [Mrs<T>]>(nv.as_slice()) };
-        let iter: OverlapIter<'r, 'v, 'c, T, V, C, Mrs<T>> = OverlapIter::new(src, step, cmp);
-
-        BoxedOverlapIter { _src: src, iter }
-    }
-}
-
-impl<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> Iterator
-    for BoxedOverlapIter<'r, 'v, 'c, T, V, C>
-{
-    type Item = (T, T);
-    fn next(&mut self) -> Option<Self::Item> {
-        return self.iter.next();
     }
 }

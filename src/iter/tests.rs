@@ -2,8 +2,7 @@
 use std::ops::RangeInclusive;
 
 use crate::{
-    Accumulate, BlanketIncDecCpCmp, BoxedOverlapIter, DefaultValues, Intersector, Mrs, OverlapIter,
-    OwnedOverlapIter,
+    Accumulate, BlanketIncDecCpCmp, DefaultValues, Intersector, Mrs, OverlapIter, OwnedOverlapIter,
 };
 
 fn checkset() -> [(i32, i32); 8] {
@@ -39,10 +38,23 @@ fn range_set() -> [RangeInclusive<i32>; 7] {
 fn iter_test() {
     let checkset = checkset();
 
-    let mut src = mrs_set();
+    let src = mrs_set();
     let t = BlanketIncDecCpCmp::new();
 
-    let iter = OverlapIter::new(src.as_mut_slice(), &1, &t);
+    let iter = OverlapIter::new(src.as_slice(), &1, &t);
+    for (i, res) in iter.enumerate() {
+        assert_eq!(res, checkset[i])
+    }
+}
+
+#[test]
+fn iter_from_vec_test() {
+    let checkset = checkset();
+
+    let src = mrs_set();
+    let t = BlanketIncDecCpCmp::new();
+
+    let iter = OverlapIter::from_vec(&src, &1, &t);
     for (i, res) in iter.enumerate() {
         assert_eq!(res, checkset[i])
     }
@@ -80,20 +92,6 @@ fn intersector_defaults_test() {
     let iter = Intersector::defaults(&check);
     for (i, res) in iter.enumerate() {
         assert_eq!(res, checkset[i])
-    }
-}
-#[test]
-fn boxed_iter() {
-    let src = mrs_set();
-    let t = BlanketIncDecCpCmp::new();
-    let step: i32 = <BlanketIncDecCpCmp as DefaultValues<i32, i32>>::default_step(&t);
-    let checkset = checkset();
-
-    for _ in 1..3 {
-        let iter = BoxedOverlapIter::new(&src, &step, &t);
-        for (i, res) in iter.enumerate() {
-            assert_eq!(res, checkset[i])
-        }
     }
 }
 

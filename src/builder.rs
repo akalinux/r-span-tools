@@ -15,11 +15,16 @@ pub enum RangeRelation<T> {
     After,
 }
 
-/// The **Blanket Implementation** of [crate::IncDecCpCmpTrait].  
+/// The **Blanket Implementation** of [crate::IncDecCpCmp].  
 ///
-/// Acts as the general helper for creating and comparing values outside of ranges.
+/// Acts as the general proxy layer for creating and comparing values  of ranges.
 /// Note that incrementing and decrementing are of 2 differnt types, but do not have to be.
 ///
+/// The following types implemented for [crate::BlanketIncDecCpCmp]
+///
+///  - Unsigned Int: u8, u16, u32, u64, u128, usize
+///  - Signed Int: i8, i16, i32, i64, i128, isize);
+///  - Float: f32, f64
 pub struct BlanketIncDecCpCmp {}
 
 impl BlanketIncDecCpCmp {
@@ -40,10 +45,10 @@ impl BlanketIncDecCpCmp {
 /// Example Implementation
 ///
 /// ```
-/// use common_range_tools::IncDecCpCmpTrait;
+/// use common_range_tools::IncDecCpCmp;
 ///
 /// struct MyTrait {}
-/// impl IncDecCpCmpTrait<i32,i32> for MyTrait {
+/// impl IncDecCpCmp<i32,i32> for MyTrait {
 ///
 ///     fn dec(&self, a: &i32, b:&i32) ->Option<i32> {
 ///         if *b<=0 { return None}
@@ -64,7 +69,7 @@ impl BlanketIncDecCpCmp {
 /// }
 /// ```
 ///
-pub trait IncDecCpCmpTrait<T, V> {
+pub trait IncDecCpCmp<T, V> {
     //. Should return a clone or copy of &T.
     fn cp(&self, v: &T) -> T;
 
@@ -247,17 +252,18 @@ pub trait IncDecCpCmpTrait<T, V> {
 /// **Default values**
 ///
 /// Implemenations of this trait drive the internals used for [crate::iter::Intersector::defaults].
-pub trait DefaultValues<T, V>: IncDecCpCmpTrait<T, V> {
+pub trait DefaultValues<T, V>: IncDecCpCmp<T, V> {
     /// Returns the default value use for progressing a begin or end value of a range.
     fn default_step(&self) -> V;
 
     /// Returns the value used to adjust a start or end value in the context of [std::ops::range::Bound::Excluded].
     fn default_rebound(&self) -> V;
 }
+
 macro_rules! impl_inc_dec_cp_cmp_trait_i {
     ($($t:ty),*) => {
         $(
-            impl IncDecCpCmpTrait<$t,$t> for BlanketIncDecCpCmp {
+            impl IncDecCpCmp<$t,$t> for BlanketIncDecCpCmp {
                 fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
                     if *b<=0 { return None}
                     return a.clone().checked_sub(b.clone());
@@ -291,7 +297,7 @@ macro_rules! impl_inc_dec_cp_cmp_trait_i {
 macro_rules! impl_inc_dec_cp_cmp_trait_u {
     ($($t:ty),*) => {
         $(
-            impl IncDecCpCmpTrait<$t,$t> for BlanketIncDecCpCmp {
+            impl IncDecCpCmp<$t,$t> for BlanketIncDecCpCmp {
                 fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
                     if *b==0 { return None}
                     return a.clone().checked_sub(b.clone());
@@ -324,20 +330,18 @@ macro_rules! impl_inc_dec_cp_cmp_trait_u {
 macro_rules! impl_inc_dec_cp_cmp_trait_f {
     ($($t:ty),*) => {
         $(
-            impl IncDecCpCmpTrait<$t,$t> for BlanketIncDecCpCmp {
+            impl IncDecCpCmp<$t,$t> for BlanketIncDecCpCmp {
                 fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
-                    let floor=a.floor();
-                    let res=floor - *b;
-                    if res.is_nan() || res >=floor { None } else { Some(res) }
+                    let res=a - b;
+                    if res.is_nan() || res >=*a { None } else { Some(res) }
                 }
 
                 fn min(&self) ->$t { <$t>::MIN }
                 fn max(&self) ->$t { <$t>::MAX }
 
                 fn inc(&self, a: &$t, b: &$t) -> Option<$t> {
-                    let ceil=a.ceil();
-                    let res=ceil + *b;
-                    if res.is_nan() || res <=ceil { None } else { Some(res) }
+                    let res=a + b;
+                    if res.is_nan() || res <=*a { None } else { Some(res) }
                 }
 
                 fn cp(&self,v: &$t) ->$t {

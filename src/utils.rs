@@ -1,4 +1,4 @@
-use crate::{GetBeginEnd, builder::IncDecCpCmpTrait};
+use crate::{GetBeginEnd, builder::IncDecCpCmp};
 use std::ops::RangeBounds;
 
 /// **Range to value Conversion**
@@ -15,14 +15,14 @@ use std::ops::RangeBounds;
 ///   - [std::ops::Bound::Included] value is not changed
 ///   - [std::ops::Bound::Excluded] value is decremented
 ///
-/// See [crate::IncDecCpCmpTrait] for more details.
+/// See [crate::IncDecCpCmp] for more details.
 ///
 /// Example of range to number conversion.
 ///
 pub fn range_bounds_to_values<T, V>(
     range: &impl RangeBounds<T>,
     rebound: &V,
-    cmp: &impl IncDecCpCmpTrait<T, V>,
+    cmp: &impl IncDecCpCmp<T, V>,
 ) -> Option<(T, T)> {
     if let Some(begin) = cmp.rebound_start(range.start_bound(), rebound)
         && let Some(end) = cmp.rebound_end(range.end_bound(), rebound)
@@ -33,10 +33,9 @@ pub fn range_bounds_to_values<T, V>(
     return None;
 }
 
-/// Computes the first common (begin: T, end: T) values for a list of [`crate::GetBeginEnd``].
-///
-pub fn first_range_begin_end<T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>>(
+fn range_init<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     src: &[R],
+    lt: &impl Fn(&T, &T) -> bool,
     t: &C,
 ) -> Option<(T, T)> {
     let mut begin: Option<&T> = None;
@@ -49,7 +48,7 @@ pub fn first_range_begin_end<T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>>
         let mut cmp = span.get_begin();
         match begin {
             Some(check) => {
-                if t.lt(cmp, check) {
+                if lt(cmp, check) {
                     begin = Some(cmp)
                 }
             }
@@ -58,7 +57,7 @@ pub fn first_range_begin_end<T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>>
         cmp = span.get_end();
         match end {
             Some(check) => {
-                if t.lt(cmp, check) {
+                if lt(cmp, check) {
                     end = Some(cmp)
                 }
             }
@@ -77,7 +76,23 @@ pub fn first_range_begin_end<T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>>
     }
 }
 
-pub fn next_range_begin_end<T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>>(
+/// Computes the first common (begin: T, end: T) values for a list of [crate::GetBeginEnd].
+pub fn first_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    src: &[R],
+    t: &C,
+) -> Option<(T, T)> {
+    return range_init(src, &|a: &T, b: &T| t.lt(a, b), t);
+}
+
+/// Computes the last common (begin: T, end: T) values for a list of [crate::GetBeginEnd].
+pub fn last_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    src: &[R],
+    t: &C,
+) -> Option<(T, T)> {
+    return range_init(src, &|a: &T, b: &T| t.gt(a, b), t);
+}
+
+pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     begin: &T,
     src: &[R],
     t: &C,
@@ -159,97 +174,4 @@ pub fn next_range_begin_end<T, V, C: IncDecCpCmpTrait<T, V>, R: GetBeginEnd<T>>(
     }
 }
 
-#[cfg(test)]
-mod tests {
-
-    use crate::{
-        Mrs, builder::BlanketIncDecCpCmp, first_range_begin_end, next_range_begin_end,
-        range_bounds_to_values,
-    };
-
-    #[test]
-    fn test_first_range() {
-        let t = BlanketIncDecCpCmp::new();
-
-        // Empty set test
-        assert_eq!(
-            first_range_begin_end::<i32, i32, BlanketIncDecCpCmp, Mrs<i32>>(&[], &t),
-            None
-        );
-
-        assert_eq!(
-            first_range_begin_end::<i32, i32, BlanketIncDecCpCmp, Mrs<i32>>(&[Mrs::new(0, -1)], &t),
-            None
-        );
-
-        assert_eq!(
-            first_range_begin_end(
-                &[
-                    Mrs::new(5, 7),
-                    Mrs::new(0, 2),
-                    Mrs::new(0, 1),
-                    Mrs::new(0, 0),
-                    Mrs::new(2, -1), // this should be invalid
-                ],
-                &t
-            ),
-            Some((0, 0))
-        );
-    }
-
-    #[test]
-    fn test_next_span() {
-        let mut checkset = vec![
-            (3, 3),
-            (4, 5),
-            (6, 6),
-            (8, 11),
-            (13, 15),
-            (16, 19),
-            (20, 22),
-        ];
-
-        let mut check = vec![
-            Mrs::new(4, 5),
-            Mrs::new(4, 6),
-            Mrs::new(0, 3),
-            Mrs::new(1, 2),
-            // gap 1 is 7-7
-            Mrs::new(8, 11),
-            // gap 2 is 12-12
-            Mrs::new(13, 22),
-            Mrs::new(15, 19),
-        ];
-        let mut point = 23;
-
-        let t = BlanketIncDecCpCmp::new();
-        assert_eq!(next_range_begin_end(&point, &check, &t), None,);
-
-        checkset = vec![(8, 11), (13, 15), (16, 19), (20, 22)];
-
-        // validate smallest default gap in reversal of
-        point = 7;
-        check = vec![
-            // reversing  the order of the gap for coverage
-            Mrs::new(15, 19),
-            Mrs::new(13, 22),
-            // order should never mater
-            Mrs::new(8, 11),
-        ];
-        for (a, b) in checkset {
-            assert_eq!(
-                next_range_begin_end(&point, &check, &t),
-                Some((a.clone(), b.clone()))
-            );
-            point = b + 1;
-        }
-        assert_eq!(next_range_begin_end(&23, &check, &t), None,);
-    }
-
-    #[test]
-    fn range_conversion() {
-        let t = BlanketIncDecCpCmp::new();
-
-        assert_eq!(range_bounds_to_values(&(1..=2), &1, &t), Some((1, 2)));
-    }
-}
+mod tests;
