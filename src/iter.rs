@@ -1,3 +1,4 @@
+mod tests;
 use crate::builder::IncDecCpCmpTrait;
 use crate::{
     BlanketIncDecCpCmp, DefaultValues, GetBeginEnd, Mrs, first_range_begin_end,
@@ -140,30 +141,35 @@ pub struct Accumulate<T, V, C: IncDecCpCmpTrait<T, V>> {
     list: Vec<Mrs<T>>,
     step: V,
     rebound: V,
-    builder: C,
+    cmp: C,
 }
 
 impl<T, V, C: IncDecCpCmpTrait<T, V>> Accumulate<T, V, C> {
-    pub fn new(step: V, rebound: V, builder: C) -> Self {
+    pub fn new(step: V, rebound: V, cmp: C) -> Self {
         Self {
             list: Vec::new(),
             step,
             rebound,
-            builder,
+            cmp,
         }
     }
 
     pub fn add_range(&mut self, range: &impl RangeBounds<T>) -> bool {
-        if let Some((a, z)) = range_bounds_to_values(range, &self.rebound, &self.builder) {
+        if let Some((a, z)) = range_bounds_to_values(range, &self.rebound, &self.cmp) {
             let r = Mrs::new(a, z);
             self.list.push(r);
             return true;
         }
         return false;
     }
+}
 
-    pub fn consume(self) -> OwnedOverlapIter<T, V, C> {
-        return OwnedOverlapIter::new(self.list, self.step, self.builder);
+impl<T, V, C: IncDecCpCmpTrait<T, V>> IntoIterator for Accumulate<T, V, C> {
+    type Item = (T, T);
+
+    type IntoIter = OwnedOverlapIter<T, V, C>;
+    fn into_iter(self) -> Self::IntoIter {
+        OwnedOverlapIter::new(self.list, self.step, self.cmp)
     }
 }
 
@@ -177,128 +183,30 @@ where
     }
 }
 
-/*
-pub struct BoxedIter<T, V, C: DefaultValues<T, V>> {
-    data: Box<[Mrs<T>]>,
-    next: Option<(T, T)>,
-    cmp: C,
-    _marker: PhantomData<V>,
+pub struct BoxedOverlapIter<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> {
+    _src: &'r [Mrs<T>],
+    iter: OverlapIter<'r, 'v, 'c, T, V, C, Mrs<T>>,
 }
-pub struct IterBuilder<T>(Box<[Mrs<T>]>);
 
-impl<T> IterBuilder<T> {
-    pub fn new<V, C: DefaultValues<T, V>>(self) -> BoxedIter<T, V, C> {
-        let src = self.0.as_ref();
+impl<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> BoxedOverlapIter<'r, 'v, 'c, T, V, C> {
+    pub fn new(nv: &Vec<Mrs<T>>, step: &'v V, cmp: &'c C) -> BoxedOverlapIter<'r, 'v, 'c, T, V, C>
+    where
+        BlanketIncDecCpCmp: DefaultValues<T, V>,
+        Mrs<T>: GetBeginEnd<T>,
+    {
+        let src: &'r [Mrs<T>] =
+            unsafe { mem::transmute::<&'_ [Mrs<T>], &'r [Mrs<T>]>(nv.as_slice()) };
+        let iter: OverlapIter<'r, 'v, 'c, T, V, C, Mrs<T>> = OverlapIter::new(src, step, cmp);
+
+        BoxedOverlapIter { _src: src, iter }
     }
 }
-*/
 
-#[cfg(test)]
-mod tests {
-    use crate::{
-        BlanketIncDecCpCmp, DefaultValues, Intersector, Mrs, OverlapIter, OwnedOverlapIter,
-    };
-
-    #[test]
-    fn iter_test() {
-        let checkset = [
-            (0, 2),
-            (3, 3),
-            (4, 5),
-            (6, 6),
-            (8, 11),
-            (13, 15),
-            (16, 19),
-            (20, 22),
-        ];
-
-        let mut check = [
-            Mrs::new(4, 5),
-            Mrs::new(4, 6),
-            Mrs::new(0, 3),
-            Mrs::new(1, 2),
-            // gap 1 is 7-7
-            Mrs::new(8, 11),
-            // gap 2 is 12-12
-            Mrs::new(13, 22),
-            Mrs::new(15, 19),
-        ];
-        let t = BlanketIncDecCpCmp::new();
-        let iter = OverlapIter::new(&mut check, &1, &t);
-        for (i, res) in iter.enumerate() {
-            assert_eq!(res, checkset[i])
-        }
-    }
-
-    #[test]
-    fn owned_iter_test() {
-        let checkset = [
-            (0, 2),
-            (3, 3),
-            (4, 5),
-            (6, 6),
-            (8, 11),
-            (13, 15),
-            (16, 19),
-            (20, 22),
-        ];
-
-        let check = vec![
-            Mrs::new(4, 5),
-            Mrs::new(4, 6),
-            Mrs::new(0, 3),
-            Mrs::new(1, 2),
-            // gap 1 is 7-7
-            Mrs::new(8, 11),
-            // gap 2 is 12-12
-            Mrs::new(13, 22),
-            Mrs::new(15, 19),
-        ];
-        let t = BlanketIncDecCpCmp::new();
-        let iter = OwnedOverlapIter::new(check, 1, t);
-        for (i, res) in iter.enumerate() {
-            assert_eq!(res, checkset[i])
-        }
-    }
-
-    #[test]
-    fn intersector_test() {
-        let checkset = [
-            (0, 2),
-            (3, 3),
-            (4, 5),
-            (6, 6),
-            (8, 11),
-            (13, 15),
-            (16, 19),
-            (20, 22),
-        ];
-
-        let check = [4..=5, 4..=6, 0..=3, 1..=2, 8..=11, 13..=22, 15..=19];
-        let t = BlanketIncDecCpCmp::new();
-        let iter = Intersector::new(&check, t.default_step(), t.default_rebound(), t);
-        for (i, res) in iter.enumerate() {
-            assert_eq!(res, checkset[i])
-        }
-    }
-
-    #[test]
-    fn intersector_defaults_test() {
-        let checkset = [
-            (0, 2),
-            (3, 3),
-            (4, 5),
-            (6, 6),
-            (8, 11),
-            (13, 15),
-            (16, 19),
-            (20, 22),
-        ];
-
-        let check = [4..=5, 4..=6, 0..=3, 1..=2, 8..=11, 13..=22, 15..=19];
-        let iter = Intersector::defaults(&check);
-        for (i, res) in iter.enumerate() {
-            assert_eq!(res, checkset[i])
-        }
+impl<'r, 'v, 'c, T, V, C: IncDecCpCmpTrait<T, V>> Iterator
+    for BoxedOverlapIter<'r, 'v, 'c, T, V, C>
+{
+    type Item = (T, T);
+    fn next(&mut self) -> Option<Self::Item> {
+        return self.iter.next();
     }
 }

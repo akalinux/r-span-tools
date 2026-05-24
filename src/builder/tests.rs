@@ -1,9 +1,6 @@
-#![allow(dead_code)]
-#![allow(unused_imports)]
+#![cfg(test)]
 use std::ops::Bound;
 
-use crate::DefaultValues;
-#[cfg(test)]
 use crate::{
     GetBeginEnd, Mrs, RangeRelation,
     builder::{BlanketIncDecCpCmp, IncDecCpCmpTrait},
