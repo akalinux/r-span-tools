@@ -139,7 +139,7 @@ pub trait IncDecCpCmp<T, V> {
     /// - GetBeginEnd.get_begin() asc
     /// - GetBeginEnd.get_end() desc
     ///
-    fn sortfn<R: GetBeginEnd<T>>(&self, a: &R, b: &R) -> Ordering {
+    fn sort_forward<R: GetBeginEnd<T>>(&self, a: &R, b: &R) -> Ordering {
         if self.lt(b.get_begin(), a.get_begin()) {
             return Ordering::Greater;
         } else if self.lt(a.get_begin(), b.get_begin()) {

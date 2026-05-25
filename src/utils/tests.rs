@@ -65,9 +65,8 @@ fn test_last_range() {
     );
 }
 
-#[test]
-fn test_next_span() {
-    let mut checkset = vec![
+fn checkset_a() -> Vec<(i32, i32)> {
+    return vec![
         (3, 3),
         (4, 5),
         (6, 6),
@@ -76,8 +75,10 @@ fn test_next_span() {
         (16, 19),
         (20, 22),
     ];
+}
 
-    let mut check = vec![
+fn mrs_set_a() -> Vec<Mrs<i32>> {
+    return vec![
         Mrs::new(4, 5),
         Mrs::new(4, 6),
         Mrs::new(0, 3),
@@ -88,22 +89,66 @@ fn test_next_span() {
         Mrs::new(13, 22),
         Mrs::new(15, 19),
     ];
-    let mut point = 23;
+}
 
-    let t = BlanketIncDecCpCmp::new();
-    assert_eq!(next_range_begin_end(&point, &check, &t), None,);
-
-    checkset = vec![(8, 11), (13, 15), (16, 19), (20, 22)];
-
-    // validate smallest default gap in reversal of
-    point = 7;
-    check = vec![
+fn mrs_set_b() -> Vec<Mrs<i32>> {
+    return vec![
         // reversing  the order of the gap for coverage
         Mrs::new(15, 19),
         Mrs::new(13, 22),
         // order should never mater
         Mrs::new(8, 11),
     ];
+}
+
+fn checkset_b() -> Vec<(i32, i32)> {
+    return vec![(8, 11), (13, 15), (16, 19), (20, 22)];
+}
+
+fn mrs_set_c() -> Vec<Mrs<i32>> {
+    return vec![
+        // reversing  the order of the gap for coverage
+        Mrs::new(15, 15),
+        Mrs::new(13, 13),
+        // order should never mater
+        Mrs::new(8, 8),
+    ];
+}
+
+fn checkset_c() -> Vec<(i32, i32)> {
+    return vec![(8, 8), (13, 13), (15, 15)];
+}
+
+fn mrs_set_d() -> Vec<Mrs<i32>> {
+    return vec![Mrs::new(0, 20), Mrs::new(13, 15), Mrs::new(13, 13)];
+}
+
+fn checkset_d() -> Vec<(i32, i32)> {
+    return vec![(0, 13), (14, 15), (16, 20)];
+}
+
+#[test]
+fn test_next_span() {
+    let t = BlanketIncDecCpCmp::new();
+    let mut checkset = checkset_a();
+
+    let mut check = mrs_set_a();
+    let mut point = 3;
+    for (a, b) in checkset {
+        assert_eq!(
+            next_range_begin_end(&point, &check, &t),
+            Some((a.clone(), b.clone()))
+        );
+        point = b + 1;
+    }
+
+    assert_eq!(next_range_begin_end(&23, &check, &t), None,);
+
+    checkset = checkset_b();
+
+    // validate smallest default gap in reversal of
+    point = 7;
+    check = mrs_set_b();
     for (a, b) in checkset {
         assert_eq!(
             next_range_begin_end(&point, &check, &t),
@@ -112,6 +157,32 @@ fn test_next_span() {
         point = b + 1;
     }
     assert_eq!(next_range_begin_end(&23, &check, &t), None,);
+
+    // validate single value set with gaps
+    point = 8;
+    check = mrs_set_c();
+    checkset = checkset_c();
+    for (a, b) in checkset {
+        assert_eq!(
+            next_range_begin_end(&point, &check, &t),
+            Some((a.clone(), b.clone()))
+        );
+        point = b + 1;
+    }
+    assert_eq!(next_range_begin_end(&23, &check, &t), None,);
+
+    // validate correct overlaps
+    point = 0;
+    check = mrs_set_d();
+    checkset = checkset_d();
+    for (a, b) in checkset {
+        assert_eq!(
+            next_range_begin_end(&point, &check, &t),
+            Some((a.clone(), b.clone()))
+        );
+        point = b + 1;
+    }
+    assert_eq!(next_range_begin_end(&point, &check, &t), None,);
 }
 
 #[test]

@@ -99,22 +99,24 @@ pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
 ) -> Option<(T, T)> {
     let mut target: Option<&T> = None;
     let mut alt: Option<&T> = None;
+    let mut valid = Vec::new();
     for check in src.iter() {
         if t.is_invalid_range(check) {
             continue;
         }
-        if t.contains(check.get_begin(), check.get_end(), begin) {
-            let test = check.get_end();
+        valid.push(check);
+        let start = check.get_begin();
+        let finish = check.get_end();
+        if contains(check, begin, t) {
             match target {
                 Some(cmp) => {
-                    if t.lt(test, cmp) {
-                        target = Some(test)
+                    if t.lt(finish, cmp) {
+                        target = Some(finish)
                     }
                 }
-                _ => target = Some(test),
+                _ => target = Some(finish),
             }
         } else {
-            let start = check.get_begin();
             if t.lt(begin, start) {
                 match alt {
                     Some(cmp) => {
@@ -124,21 +126,38 @@ pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
                     }
                     _ => alt = Some(start),
                 }
+            } else if t.lt(begin, finish) {
+                match alt {
+                    Some(cmp) => {
+                        if t.lt(finish, cmp) {
+                            alt = Some(finish)
+                        }
+                    }
+                    _ => alt = Some(finish),
+                }
             }
         }
     }
     match target {
-        Some(end) => Some((t.cp(begin), t.cp(end))),
+        Some(end) => {
+            let mut real_end = end;
+            for c in valid {
+                let target_end = c.get_end();
+                if t.overlap(begin, end, c.get_begin(), target_end) {
+                    if t.lt(target_end, real_end) {
+                        real_end = target_end
+                    }
+                }
+            }
+            return Some((t.cp(begin), t.cp(real_end)));
+        }
         _ => match alt {
             Some(begin) => {
                 target = None;
 
-                for check in src {
-                    if t.is_invalid_range(check) {
-                        continue;
-                    }
+                for check in valid {
                     let start = check.get_begin();
-                    if t.contains(check.get_begin(), check.get_end(), begin) {
+                    if contains(check, begin, t) {
                         let end = check.get_end();
 
                         match target {
@@ -151,16 +170,14 @@ pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
                             }
                             _ => target = Some(if t.lt(begin, start) { start } else { end }),
                         }
-                    } else {
-                        if t.lt(begin, start) {
-                            match target {
-                                Some(cmp) => {
-                                    if t.lt(start, cmp) {
-                                        target = Some(start)
-                                    }
+                    } else if t.lt(begin, start) {
+                        match target {
+                            Some(cmp) => {
+                                if t.lt(start, cmp) {
+                                    target = Some(start)
                                 }
-                                _ => target = Some(start),
                             }
+                            _ => target = Some(start),
                         }
                     }
                 }
@@ -172,6 +189,10 @@ pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
             _ => return None,
         },
     }
+}
+
+fn contains<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(check: &R, value: &T, t: &C) -> bool {
+    return t.contains(check.get_begin(), check.get_end(), value);
 }
 
 mod tests;

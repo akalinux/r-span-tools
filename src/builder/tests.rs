@@ -96,7 +96,7 @@ fn sort() {
         Mrs::new(8, 11),
         Mrs::new(8, 9),
     ];
-    check.sort_by(|a, b| l.sortfn(a, b));
+    check.sort_by(|a, b| l.sort_forward(a, b));
     for (i, good) in correct.iter().enumerate() {
         assert_eq!(check[i].get_begin(), good.get_begin());
         assert_eq!(check[i].get_end(), good.get_end());
