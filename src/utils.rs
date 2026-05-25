@@ -129,57 +129,49 @@ pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
             }
         }
     }
-    match target {
-        Some(end) => {
-            let mut real_end = end;
-            for c in valid {
-                let target_end = c.get_end();
-                if t.overlap(begin, end, c.get_begin(), target_end) {
-                    if t.lt(target_end, real_end) {
-                        real_end = target_end
-                    }
+    if let Some(end) = target {
+        let mut real_end = end;
+        for c in valid {
+            let target_end = c.get_end();
+            if t.overlap(begin, end, c.get_begin(), target_end) {
+                if t.lt(target_end, real_end) {
+                    real_end = target_end
                 }
             }
-            return Some((t.cp(begin), t.cp(real_end)));
         }
-        _ => match alt {
-            Some(begin) => {
-                target = None;
+        return Some((t.cp(begin), t.cp(real_end)));
+    } else if let Some(begin) = alt {
+        target = None;
 
-                for check in valid {
-                    let start = check.get_begin();
-                    let finish = check.get_end();
-                    if contains(check, begin, t) {
-                        match target {
-                            Some(cmp) => {
-                                if t.lt(begin, start) && t.lt(start, cmp) {
-                                    target = Some(start)
-                                } else if t.lt(finish, cmp) {
-                                    target = Some(finish)
-                                }
-                            }
-                            _ => target = Some(if t.lt(begin, start) { start } else { finish }),
-                        }
-                    } else if t.lt(begin, start) {
-                        match target {
-                            Some(cmp) => {
-                                if t.lt(start, cmp) {
-                                    target = Some(start)
-                                }
-                            }
-                            _ => target = Some(start),
+        for check in valid {
+            let start = check.get_begin();
+            let finish = check.get_end();
+            if contains(check, begin, t) {
+                match target {
+                    Some(cmp) => {
+                        if t.lt(finish, cmp) {
+                            target = Some(finish)
                         }
                     }
+                    _ => target = Some(finish),
                 }
-
+            } else if t.lt(begin, start) {
                 match target {
-                    Some(end) => Some((t.cp(begin), t.cp(end))),
-                    _ => None,
+                    Some(cmp) => {
+                        if t.lt(start, cmp) {
+                            target = Some(start)
+                        }
+                    }
+                    _ => target = Some(start),
                 }
             }
-            _ => return None,
-        },
+        }
+
+        if let Some(end) = target {
+            return Some((t.cp(begin), t.cp(end)));
+        }
     }
+    return None;
 }
 
 fn contains<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(check: &R, value: &T, t: &C) -> bool {
