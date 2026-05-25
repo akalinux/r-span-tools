@@ -1,3 +1,4 @@
 /target
 *.profraw
 /supply-chain
+json5format.profdata

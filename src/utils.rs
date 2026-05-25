@@ -126,15 +126,6 @@ pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
                     }
                     _ => alt = Some(start),
                 }
-            } else if t.lt(begin, finish) {
-                match alt {
-                    Some(cmp) => {
-                        if t.lt(finish, cmp) {
-                            alt = Some(finish)
-                        }
-                    }
-                    _ => alt = Some(finish),
-                }
             }
         }
     }
@@ -157,18 +148,17 @@ pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
 
                 for check in valid {
                     let start = check.get_begin();
+                    let finish = check.get_end();
                     if contains(check, begin, t) {
-                        let end = check.get_end();
-
                         match target {
                             Some(cmp) => {
                                 if t.lt(begin, start) && t.lt(start, cmp) {
                                     target = Some(start)
-                                } else if t.lt(end, cmp) {
-                                    target = Some(end)
+                                } else if t.lt(finish, cmp) {
+                                    target = Some(finish)
                                 }
                             }
-                            _ => target = Some(if t.lt(begin, start) { start } else { end }),
+                            _ => target = Some(if t.lt(begin, start) { start } else { finish }),
                         }
                     } else if t.lt(begin, start) {
                         match target {
@@ -181,9 +171,10 @@ pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
                         }
                     }
                 }
+
                 match target {
-                    Some(end) => return Some((t.cp(begin), t.cp(end))),
-                    _ => return None,
+                    Some(end) => Some((t.cp(begin), t.cp(end))),
+                    _ => None,
                 }
             }
             _ => return None,
