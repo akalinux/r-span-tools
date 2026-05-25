@@ -28,14 +28,13 @@ pub fn range_bounds_to_values<T, V>(
         && let Some(end) = cmp.rebound_end(range.end_bound(), rebound)
     {
         return Some((begin, end));
+    } else {
+        return None;
     }
-
-    return None;
 }
 
-fn range_init<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+pub fn first_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     src: &[R],
-    lt: &impl Fn(&T, &T) -> bool,
     t: &C,
 ) -> Option<(T, T)> {
     let mut begin: Option<&T> = None;
@@ -48,7 +47,7 @@ fn range_init<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
         let mut cmp = span.get_begin();
         match begin {
             Some(check) => {
-                if lt(cmp, check) {
+                if t.lt(cmp, check) {
                     begin = Some(cmp)
                 }
             }
@@ -57,7 +56,7 @@ fn range_init<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
         cmp = span.get_end();
         match end {
             Some(check) => {
-                if lt(cmp, check) {
+                if t.lt(cmp, check) {
                     end = Some(cmp)
                 }
             }
@@ -65,31 +64,12 @@ fn range_init<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
         }
     }
 
-    match begin {
-        Some(begin) => match end {
-            Some(end) => {
-                return Some((t.cp(begin), t.cp(end)));
-            }
-            None => return None,
-        },
-        None => return None,
+    if let Some(begin) = begin
+        && let Some(end) = end
+    {
+        return Some((t.cp(begin), t.cp(end)));
     }
-}
-
-/// Computes the first common (begin: T, end: T) values for a list of [crate::GetBeginEnd].
-pub fn first_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
-    src: &[R],
-    t: &C,
-) -> Option<(T, T)> {
-    return range_init(src, &|a: &T, b: &T| t.lt(a, b), t);
-}
-
-/// Computes the last common (begin: T, end: T) values for a list of [crate::GetBeginEnd].
-pub fn last_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
-    src: &[R],
-    t: &C,
-) -> Option<(T, T)> {
-    return range_init(src, &|a: &T, b: &T| t.gt(a, b), t);
+    return None;
 }
 
 pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(

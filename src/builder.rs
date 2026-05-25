@@ -180,50 +180,6 @@ pub trait IncDecCpCmp<T, V> {
         return RangeRelation::Overlap(());
     }
 
-    /// Given the check and src return the common most Some(begin: T,end:T) from src else return None.
-    ///
-    /// Notes:
-    /// - if check is invalid then None is returned.
-    /// - if check is valid but no ranges in src are valid None is returned.
-    ///
-    fn get_most_common_overlap<R: GetBeginEnd<T>>(&self, check: &R, src: &[R]) -> Option<(T, T)> {
-        if self.is_invalid_set(check.get_begin(), check.get_end()) {
-            return None;
-        }
-        let mut begin: Option<&T> = None;
-        let mut end: Option<&T> = None;
-        for range in src {
-            match self.range_relation(check, range) {
-                RangeRelation::Overlap(_) => (),
-                _ => continue,
-            }
-            if self.is_invalid_set(range.get_begin(), range.get_end()) {
-                continue;
-            }
-            if let Some(start) = begin
-                && let Some(finish) = end
-            {
-                if self.gt(range.get_begin(), start) {
-                    begin = Some(range.get_begin());
-                }
-
-                if self.lt(range.get_end(), finish) {
-                    end = Some(range.get_end());
-                }
-            } else {
-                begin = Some(range.get_begin());
-                end = Some(range.get_end());
-            }
-        }
-
-        if let Some(begin) = begin
-            && let Some(end) = end
-        {
-            return Some((self.cp(begin), self.cp(end)));
-        }
-        return None;
-    }
-
     /// Returns the raw adjusted start value.
     ///   - [std::ops::Bound::Unbounded] becomes self.min()
     ///   - [std::ops::Bound::Included] value is not changed

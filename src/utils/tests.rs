@@ -1,8 +1,8 @@
 #![cfg(test)]
 
 use crate::{
-    Mrs, builder::BlanketIncDecCpCmp, first_range_begin_end, last_range_begin_end,
-    next_range_begin_end, range_bounds_to_values,
+    Mrs, builder::BlanketIncDecCpCmp, first_range_begin_end, next_range_begin_end,
+    range_bounds_to_values,
 };
 
 #[test]
@@ -32,36 +32,6 @@ fn test_first_range() {
             &t
         ),
         Some((0, 0))
-    );
-}
-
-#[test]
-fn test_last_range() {
-    let t = BlanketIncDecCpCmp::new();
-
-    // Empty set test
-    assert_eq!(
-        last_range_begin_end::<i32, i32, BlanketIncDecCpCmp, Mrs<i32>>(&[], &t),
-        None
-    );
-
-    assert_eq!(
-        last_range_begin_end::<i32, i32, BlanketIncDecCpCmp, Mrs<i32>>(&[Mrs::new(0, -1)], &t),
-        None
-    );
-
-    assert_eq!(
-        last_range_begin_end(
-            &[
-                Mrs::new(0, 1),
-                Mrs::new(4, 7),
-                Mrs::new(5, 5),
-                Mrs::new(0, 0),
-                Mrs::new(2, -1), // this should be invalid
-            ],
-            &t
-        ),
-        Some((5, 7))
     );
 }
 
@@ -98,6 +68,7 @@ fn mrs_set_b() -> Vec<Mrs<i32>> {
         Mrs::new(13, 22),
         // order should never mater
         Mrs::new(8, 11),
+        Mrs::new(11, 1),
     ];
 }
 
@@ -190,4 +161,8 @@ fn range_conversion() {
     let t = BlanketIncDecCpCmp::new();
 
     assert_eq!(range_bounds_to_values(&(1..=2), &1, &t), Some((1, 2)));
+    assert_eq!(
+        range_bounds_to_values(&(1.0..f32::INFINITY), &1.0, &t),
+        None
+    );
 }

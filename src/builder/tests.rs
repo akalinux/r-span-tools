@@ -2,7 +2,7 @@
 use std::ops::Bound;
 
 use crate::{
-    GetBeginEnd, Mrs, RangeRelation,
+    DefaultValues, GetBeginEnd, Mrs, RangeRelation,
     builder::{BlanketIncDecCpCmp, IncDecCpCmp},
 };
 
@@ -23,8 +23,8 @@ fn inc_dec_behavior() {
     assert_eq!(l.dec(&i32::MIN, &1), None); // Catch undeflow
 
     // u32 Increment examples
-    assert_eq!(l.inc(&1, &2), Some(3)); // Number went up by 2!
-    assert_eq!(l.inc(&0, &0), None); // Number did not go up
+    assert_eq!(l.inc(&1_u32, &2_u32), Some(3)); // Number went up by 2!
+    assert_eq!(l.inc(&0_u32, &0), None); // Number did not go up
     assert_eq!(l.inc(&u32::MAX, &1), None); // Catch overflow
 
     // i32 Decrement examples
@@ -50,6 +50,26 @@ fn inc_dec_behavior() {
 }
 
 #[test]
+fn misc_tests() {
+    let t = BlanketIncDecCpCmp::new();
+    assert_eq!(u8::MAX, t.max());
+    assert_eq!(u8::MIN, t.min());
+    assert_eq!(f32::MAX, t.max());
+    assert_eq!(f32::MIN, t.min());
+    assert_eq!(i32::MAX, t.max());
+    assert_eq!(i32::MIN, t.min());
+    assert_eq!(1_u8, t.cp(&1));
+    assert_eq!(1.0_f32, t.cp(&1.0));
+    assert_eq!(1, t.cp(&1));
+    assert_eq!(1, t.default_step());
+    assert_eq!(1, t.default_rebound());
+    assert_eq!(1_u8, t.default_step());
+    assert_eq!(1_u8, t.default_rebound());
+    assert_eq!(1.0, t.default_step());
+    assert_eq!(1.0, t.default_rebound());
+    assert_eq!(Mrs::new(1, 2).to_tuple(), (1, 2));
+}
+#[test]
 fn inc_dec_compare_all() {
     let l = BlanketIncDecCpCmp::new();
 
@@ -68,6 +88,9 @@ fn inc_dec_compare_all() {
     assert!(!l.ge(&4, &5));
     assert!(!l.lt(&4, &3));
     assert!(!l.gt(&4, &5));
+
+    assert!(l.lt(&1.0, &3.0));
+    assert!(l.lt(&0_u8, &2));
 
     // Contains Examples
     assert!(l.contains(&1, &3, &1));
@@ -138,4 +161,39 @@ fn test_rebound_start_and_end() {
     assert_eq!(l.rebound_end(Bound::Included(&1), &1), Some(1));
     assert_eq!(l.rebound_end(Bound::Unbounded, &1), Some(i32::MAX));
     assert_eq!(l.rebound_end(Bound::Excluded(&i32::MIN), &1), None);
+}
+
+fn mrs_set_a() -> Vec<Mrs<i32>> {
+    return vec![
+        Mrs::new(4, 5),
+        Mrs::new(4, 6),
+        Mrs::new(0, 3),
+        Mrs::new(1, 2),
+        // gap 1 is 7-7
+        Mrs::new(8, 11),
+        Mrs::new(8, 11),
+        // gap 2 is 12-12
+        Mrs::new(13, 22),
+        Mrs::new(15, 19),
+    ];
+}
+
+#[test]
+fn sort_more() {
+    let mut set = mrs_set_a();
+    let l = BlanketIncDecCpCmp::new();
+    set.sort_by(|a, b| l.sort_forward(a, b));
+    let expected = vec![
+        Mrs::new(0, 3),
+        Mrs::new(1, 2),
+        Mrs::new(4, 6),
+        Mrs::new(4, 5),
+        Mrs::new(8, 11),
+        Mrs::new(8, 11),
+        Mrs::new(13, 22),
+        Mrs::new(15, 19),
+    ];
+    for (i, exp) in expected.iter().enumerate() {
+        assert_eq!(exp.to_tuple_ref(), set[i].to_tuple_ref())
+    }
 }

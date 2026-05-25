@@ -48,7 +48,14 @@ impl<T> Mrs<T> {
     pub const fn new(a: T, z: T) -> Self {
         Self { a, z }
     }
+    pub fn to_tuple(self) -> (T, T) {
+        return (self.a, self.z);
+    }
+    pub fn to_tuple_ref(&self) -> (&T, &T) {
+        return (&self.a, &self.z);
+    }
 }
+
 impl<T> GetBeginEnd<T> for Mrs<T> {
     fn get_begin(&self) -> &T {
         return &self.a;
