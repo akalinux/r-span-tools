@@ -33,60 +33,277 @@ pub fn range_bounds_to_values<T, V>(
     }
 }
 
-pub fn first_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
-    src: &[R],
-    t: &C,
-) -> Option<(T, T)> {
-    let mut begin: Option<&T> = None;
-    let mut end: Option<&T> = None;
+fn contains<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(check: &R, value: &T, t: &C) -> bool {
+    return t.contains(check.get_begin(), check.get_end(), value);
+}
 
-    for span in src {
-        if t.is_invalid_range(span) {
+fn is_begin_gap<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    valid: &[&R],
+    end: &T,
+    step: &V,
+    t: &C,
+) -> bool {
+    let mut total: usize = 0;
+    if let Some(begin) = t.inc(end, step) {
+        for r in valid {
+            let (a, b) = r.to_tuple_ref();
+            if t.contains(a, b, &begin) {
+                total += 1;
+                if total > 1 {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+fn is_end_gap<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    valid: &[&R],
+    begin: &T,
+    step: &V,
+    t: &C,
+) -> bool {
+    if let Some(end) = t.dec(begin, step) {
+        let mut total: usize = 0;
+
+        for r in valid {
+            let (a, b) = r.to_tuple_ref();
+            if t.contains(a, b, &end) {
+                total += 1;
+                if total > 1 {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+fn rebound_next<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    valid: Vec<&R>,
+    begin: &T,
+    end: &T,
+    step: &V,
+    t: &C,
+    force: bool,
+) -> Option<(T, T)> {
+    let (start, finish, total, state) = next_smallest_range(begin, end, &valid, t);
+
+    if total > 1
+        && (!(state & 1 == 1) || !is_begin_gap(&valid, &start, step, t))
+        && let Some(new_end) = t.dec(&finish, step)
+        && !t.is_invalid_set(&start, &new_end)
+    {
+        if state == 0 || force {
+            return Some((start, new_end));
+        } else if state == 3 {
+            let end = t.cp(&start);
+            return Some((start, end));
+        }
+        return Some((start, t.cp(end)));
+    } else {
+        return Some((start, finish));
+    }
+}
+
+fn rebound_previous<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    valid: Vec<&R>,
+    begin: &T,
+    end: &T,
+    step: &V,
+    t: &C,
+    force: bool,
+) -> Option<(T, T)> {
+    let (start, finish, total, state) = previous_smallest_range(begin, end, &valid, t);
+
+    println!("  State: {}", state);
+    if total > 1 && (!state & 2 == 2 || !is_end_gap(&valid, &finish, step, t)) {
+        if state == 3 {
+            let begin = t.cp(&finish);
+            return Some((begin, finish));
+        } else if let Some(new_start) = t.inc(&start, step)
+            && !t.is_invalid_set(&new_start, end)
+        {
+            return Some((new_start, finish));
+        } else {
+            return Some((start, finish));
+        }
+    } else {
+        return Some((start, finish));
+    }
+}
+
+pub(crate) fn next_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    begin: &T,
+    end: &T,
+    valid: &[&R],
+    t: &C,
+) -> (T, T, usize, u8) {
+    let mut target: Option<(&T, bool, bool)> = None;
+
+    let mut total: usize = 0;
+    for r in valid {
+        let (start, finish) = r.to_tuple_ref();
+        if !t.overlap(begin, end, start, finish) {
             continue;
         }
-        let mut cmp = span.get_begin();
-        match begin {
-            Some(check) => {
-                if t.lt(cmp, check) {
-                    begin = Some(cmp)
-                }
-            }
-            None => begin = Some(cmp),
+        total += 1;
+        let mut min = finish;
+        if t.lt(begin, start) {
+            min = start;
         }
-        cmp = span.get_end();
-        match end {
-            Some(check) => {
-                if t.lt(cmp, check) {
-                    end = Some(cmp)
+        match target {
+            Some((cmp, _, _)) => {
+                if t.lt(min, cmp) {
+                    target = Some((min, t.eq(begin, start), t.eq(end, finish)))
                 }
             }
-            None => end = Some(cmp),
+            None => target = Some((min, t.eq(begin, start), t.eq(end, finish))),
         }
     }
 
-    if let Some(begin) = begin
-        && let Some(end) = end
-    {
-        return Some((t.cp(begin), t.cp(end)));
+    match target {
+        Some((end, is_a, is_b)) => (
+            t.cp(begin),
+            t.cp(end),
+            total,
+            (is_a as u8) | ((is_b as u8) << 1),
+        ),
+        None => (t.cp(begin), t.cp(end), total, 4),
     }
+}
+
+pub(crate) fn previous_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    begin: &T,
+    end: &T,
+    valid: &[&R],
+    t: &C,
+) -> (T, T, usize, u8) {
+    let mut target: Option<(&T, bool, bool)> = None;
+
+    let mut total: usize = 0;
+    for r in valid {
+        let (start, finish) = r.to_tuple_ref();
+        if !t.overlap(begin, end, start, finish) {
+            continue;
+        }
+        total += 1;
+        let mut min = start;
+        if t.lt(finish, end) {
+            min = finish;
+        }
+        match target {
+            Some((cmp, _, _)) => {
+                if t.lt(cmp, min) {
+                    target = Some((min, t.eq(begin, start), t.eq(end, finish)))
+                }
+            }
+            None => target = Some((min, t.eq(begin, start), t.eq(end, finish))),
+        }
+    }
+
+    match target {
+        Some((begin, is_a, is_b)) => (
+            t.cp(begin),
+            t.cp(end),
+            total,
+            (is_a as u8) | ((is_b as u8) << 1),
+        ),
+        None => (t.cp(begin), t.cp(end), total, 4),
+    }
+}
+
+pub fn first_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    src: &[R],
+    step: &V,
+    t: &C,
+) -> Option<(T, T)> {
+    let mut check: Option<(&T, &T)> = None;
+
+    let mut valid = Vec::new();
+
+    for span in src {
+        if t.is_invalid_set(span.get_begin(), span.get_end()) {
+            continue;
+        }
+        valid.push(span);
+        let (start, finish) = span.to_tuple_ref();
+        match check {
+            Some((begin, end)) => {
+                let mut a = begin;
+                let mut z = end;
+                if t.lt(end, finish) {
+                    z = finish;
+                }
+                if t.lt(start, begin) {
+                    a = start;
+                }
+                check = Some((a, z))
+            }
+            _ => check = Some((start, finish)),
+        }
+    }
+
+    if let Some((begin, end)) = check {
+        return rebound_next(valid, begin, end, step, t, true);
+    }
+
+    return None;
+}
+
+pub fn last_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    src: &[R],
+    step: &V,
+    t: &C,
+) -> Option<(T, T)> {
+    let mut check: Option<(&T, &T)> = None;
+
+    let mut valid = Vec::new();
+    for span in src {
+        if t.is_invalid_set(span.get_begin(), span.get_end()) {
+            continue;
+        }
+        valid.push(span);
+        let (start, finish) = span.to_tuple_ref();
+        match check {
+            Some((begin, end)) => {
+                let mut a = begin;
+                let mut z = end;
+                if t.lt(end, finish) {
+                    z = finish;
+                }
+                if t.lt(start, begin) {
+                    a = start;
+                }
+                check = Some((a, z))
+            }
+            _ => check = Some((start, finish)),
+        }
+    }
+
+    if let Some((begin, end)) = check {
+        return rebound_previous(valid, begin, end, step, t, true);
+    }
+
     return None;
 }
 
 pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     begin: &T,
     src: &[R],
+    step: &V,
     t: &C,
 ) -> Option<(T, T)> {
     let mut target: Option<&T> = None;
-    let mut alt: Option<&T> = None;
+    let mut alt: Option<(&T, &T)> = None;
     let mut valid = Vec::new();
-    for check in src.iter() {
-        if t.is_invalid_range(check) {
+    for check in src {
+        if t.is_invalid_set(check.get_begin(), check.get_end()) {
             continue;
         }
         valid.push(check);
-        let start = check.get_begin();
-        let finish = check.get_end();
+        let (start, finish) = check.to_tuple_ref();
         if contains(check, begin, t) {
             match target {
                 Some(cmp) => {
@@ -99,63 +316,73 @@ pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
         } else {
             if t.lt(begin, start) {
                 match alt {
-                    Some(cmp) => {
+                    Some((cmp, _)) => {
                         if t.lt(start, cmp) {
-                            alt = Some(start)
+                            alt = Some((start, finish))
                         }
                     }
-                    _ => alt = Some(start),
+                    _ => alt = Some((start, finish)),
                 }
             }
         }
     }
     if let Some(end) = target {
-        let mut real_end = end;
-        for c in valid {
-            let target_end = c.get_end();
-            if t.overlap(begin, end, c.get_begin(), target_end) {
-                if t.lt(target_end, real_end) {
-                    real_end = target_end
-                }
-            }
-        }
-        return Some((t.cp(begin), t.cp(real_end)));
-    } else if let Some(begin) = alt {
-        target = None;
-
-        for check in valid {
-            let start = check.get_begin();
-            let finish = check.get_end();
-            if contains(check, begin, t) {
-                match target {
-                    Some(cmp) => {
-                        if t.lt(finish, cmp) {
-                            target = Some(finish)
-                        }
-                    }
-                    _ => target = Some(finish),
-                }
-            } else if t.lt(begin, start) {
-                match target {
-                    Some(cmp) => {
-                        if t.lt(start, cmp) {
-                            target = Some(start)
-                        }
-                    }
-                    _ => target = Some(start),
-                }
-            }
-        }
-
-        if let Some(end) = target {
-            return Some((t.cp(begin), t.cp(end)));
-        }
+        return rebound_next(valid, begin, end, step, t, false);
+    } else if let Some((begin, end)) = alt {
+        return rebound_next(valid, begin, end, step, t, false);
     }
     return None;
 }
 
-fn contains<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(check: &R, value: &T, t: &C) -> bool {
-    return t.contains(check.get_begin(), check.get_end(), value);
+pub fn previous_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    end: &T,
+    src: &[R],
+    step: &V,
+    t: &C,
+) -> Option<(T, T)> {
+    let mut target: Option<&T> = None;
+    let mut alt: Option<(&T, &T)> = None;
+    let mut valid = Vec::new();
+    for check in src {
+        if t.is_invalid_set(check.get_begin(), check.get_end()) {
+            continue;
+        }
+        valid.push(check);
+        let (start, finish) = check.to_tuple_ref();
+        if contains(check, end, t) {
+            match target {
+                Some(cmp) => {
+                    if t.lt(start, cmp) {
+                        target = Some(start)
+                    }
+                }
+                _ => target = Some(start),
+            }
+        } else {
+            if t.lt(finish, end) {
+                match alt {
+                    Some((x, y)) => {
+                        let mut a = x;
+                        let mut b = y;
+                        if t.lt(y, finish) {
+                            b = finish
+                        }
+                        if t.lt(start, a) {
+                            a = start
+                        }
+                        alt = Some((a, b));
+                    }
+                    _ => alt = Some((start, finish)),
+                }
+            }
+        }
+    }
+    if let Some(begin) = target {
+        return rebound_previous(valid, begin, end, step, t, false);
+    } else if let Some((begin, end)) = alt {
+        return rebound_previous(valid, begin, end, step, t, false);
+    }
+    return None;
 }
 
 mod tests;

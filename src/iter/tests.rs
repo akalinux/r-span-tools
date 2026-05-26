@@ -5,14 +5,18 @@ use crate::{
     Accumulate, BlanketIncDecCpCmp, DefaultValues, Intersector, Mrs, OverlapIter, OwnedOverlapIter,
 };
 
-fn checkset() -> [(i32, i32); 8] {
+fn checkset() -> [(i32, i32); 12] {
     return [
-        (0, 2),
+        (0, 0),
+        (1, 1),
+        (2, 2),
         (3, 3),
-        (4, 5),
+        (4, 4),
+        (5, 5),
         (6, 6),
         (8, 11),
-        (13, 15),
+        (13, 14),
+        (15, 15),
         (16, 19),
         (20, 22),
     ];

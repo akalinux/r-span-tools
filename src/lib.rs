@@ -42,17 +42,16 @@ pub struct Mrs<T> {
 pub trait GetBeginEnd<T> {
     fn get_begin(&self) -> &T;
     fn get_end(&self) -> &T;
+
+    fn to_tuple_ref(&self) -> (&T, &T) {
+        return (&self.get_begin(), &self.get_end());
+    }
+    fn to_tuple(self) -> (T, T);
 }
 
 impl<T> Mrs<T> {
     pub const fn new(a: T, z: T) -> Self {
         Self { a, z }
-    }
-    pub fn to_tuple(self) -> (T, T) {
-        return (self.a, self.z);
-    }
-    pub fn to_tuple_ref(&self) -> (&T, &T) {
-        return (&self.a, &self.z);
     }
 }
 
@@ -62,6 +61,9 @@ impl<T> GetBeginEnd<T> for Mrs<T> {
     }
     fn get_end(&self) -> &T {
         return &self.z;
+    }
+    fn to_tuple(self) -> (T, T) {
+        return (self.a, self.z);
     }
 }
 

@@ -160,11 +160,6 @@ pub trait IncDecCpCmp<T, V> {
         return self.lt(b, a);
     }
 
-    /// Returns true if the [crate::GetBeginEnd] contains an invalid set.
-    fn is_invalid_range<R: GetBeginEnd<T>>(&self, check: &R) -> bool {
-        return self.is_invalid_set(check.get_begin(), check.get_end());
-    }
-
     /// Compares the positional relationship between a and b.
     ///
     /// - [`crate::RangeRelation::Before`] a is before b.
