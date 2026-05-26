@@ -114,7 +114,8 @@ fn checkset_a() -> Vec<(i32, i32)> {
         (8, 11),
         (13, 14),
         (15, 15),
-        (16, 19),
+        (16, 18),
+        (19, 19),
         (20, 22),
     ];
 }
@@ -183,7 +184,7 @@ fn mrs_set_d() -> Vec<Mrs<i32>> {
 }
 
 fn checkset_d() -> Vec<(i32, i32)> {
-    return vec![(0, 12), (13, 13), (14, 15), (16, 20)];
+    return vec![(0, 12), (13, 13), (14, 14), (15, 15), (16, 20)];
 }
 
 fn mrs_set_e() -> Vec<Mrs<i32>> {
@@ -211,6 +212,7 @@ fn bi_tests() {
 
     let t = BlanketIncDecCpCmp::new();
     if let Some(set) = first_range_begin_end(&src, &1, &t) {
+        println!("GOt: {}->{}, Point: init", &set.0, &set.1);
         dst.push(set);
         let (_, mut point) = set;
 
@@ -218,6 +220,7 @@ fn bi_tests() {
         loop {
             match next_range_begin_end(&point, &src, &1, &t) {
                 Some((start, finish)) => {
+                    println!("GOt: {}->{}, Point: {}", &start, &finish, point);
                     point = finish + 1;
                     dst.push((start, finish));
                 }
@@ -251,6 +254,7 @@ fn next_range_begin_end_tests() {
     let mut check = mrs_set_a();
     let mut point = 3;
     for (a, b) in checkset {
+        println!(" {}->{}", a, b);
         assert_eq!(
             next_range_begin_end(&point, &check, &1, &t),
             Some((a.clone(), b.clone()))
@@ -265,11 +269,10 @@ fn next_range_begin_end_tests() {
     // validate smallest default gap in reversal of
     point = 7;
     check = mrs_set_b();
+    println!("** NEW SET");
     for (a, b) in checkset {
-        assert_eq!(
-            next_range_begin_end(&point, &check, &1, &t),
-            Some((a.clone(), b.clone()))
-        );
+        println!(" {}->{}", a, b);
+        assert_eq!(next_range_begin_end(&point, &check, &1, &t), Some((a, b)));
         point = b + 1;
     }
     assert_eq!(next_range_begin_end(&23, &check, &1, &t), None,);
@@ -321,7 +324,7 @@ fn previous_smallest_range_test() {
     for s in src.as_slice() {
         valid.push(s);
     }
-    let (begin, end, _, _) = previous_smallest_range(&0, &22, &valid, &t);
+    let (begin, end, _) = previous_smallest_range(&0, &22, &valid, &t);
 
     assert_eq!((begin, end), (19, 22))
 }
@@ -335,6 +338,7 @@ fn previous_range_begin_end_tests() {
     let mut end = 19;
 
     for (a, z) in checked {
+        println!("  Checking: {}->{}", a, z);
         let res = previous_range_begin_end(&end, &src, &1, &t);
         assert_eq!(res, Some((a, z)));
         end = a - 1;
@@ -350,10 +354,10 @@ fn next_smallest_range_test() {
     for s in src.as_slice() {
         valid.push(s);
     }
-    let (mut begin, mut end, _, _) = next_smallest_range(&0, &22, &valid, &t);
+    let (mut begin, mut end, _) = next_smallest_range(&0, &22, &valid, &t);
     assert_eq!((begin, end), (0, 1));
 
-    (begin, end, _, _) = next_smallest_range(&0, &1, &valid, &t);
+    (begin, end, _) = next_smallest_range(&0, &1, &valid, &t);
     assert_eq!((begin, end), (0, 1));
 
     src = vec![Mrs::new(5, 7), Mrs::new(4, 7)];
@@ -362,6 +366,6 @@ fn next_smallest_range_test() {
         valid.push(s);
     }
 
-    (begin, end, _, _) = next_smallest_range(&4, &7, &valid, &t);
+    (begin, end, _) = next_smallest_range(&4, &7, &valid, &t);
     assert_eq!((begin, end), (4, 5));
 }
