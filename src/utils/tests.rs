@@ -186,6 +186,63 @@ fn checkset_d() -> Vec<(i32, i32)> {
     return vec![(0, 12), (13, 13), (14, 15), (16, 20)];
 }
 
+fn mrs_set_e() -> Vec<Mrs<i32>> {
+    return vec![
+        Mrs::new(10, 30),
+        Mrs::new(0, 20),
+        Mrs::new(7, 13),
+        Mrs::new(13, 15),
+    ];
+}
+
+fn mrs_set_f() -> Vec<Mrs<i32>> {
+    return vec![
+        Mrs::new(0, 5),
+        Mrs::new(10, 15),
+        Mrs::new(20, 25),
+        Mrs::new(30, 35),
+    ];
+}
+
+#[test]
+fn bi_tests() {
+    let src = mrs_set_e();
+    let mut dst = Vec::new();
+
+    let t = BlanketIncDecCpCmp::new();
+    if let Some(set) = first_range_begin_end(&src, &1, &t) {
+        dst.push(set);
+        let (_, mut point) = set;
+
+        point += 1;
+        loop {
+            match next_range_begin_end(&point, &src, &1, &t) {
+                Some((start, finish)) => {
+                    point = finish + 1;
+                    dst.push((start, finish));
+                }
+                _ => break,
+            }
+        }
+    }
+    dst.reverse();
+    if let Some(mut set) = last_range_begin_end(&src, &1, &t) {
+        let mut point = set.0 - 1;
+        for check in dst {
+            let (a, b) = set;
+            let (c, d) = check;
+            println!("GOt: {}->{} Expected: {}->{}", a, b, c, d);
+            assert_eq!(set, check);
+            match previous_range_begin_end(&point, &src, &1, &t) {
+                Some(next) => {
+                    set = next;
+                    point = set.0 - 1;
+                }
+                _ => break,
+            }
+        }
+    }
+}
 #[test]
 fn next_range_begin_end_tests() {
     let t = BlanketIncDecCpCmp::new();
