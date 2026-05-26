@@ -37,6 +37,7 @@ fn contains<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(check: &R, value: &T,
     return t.contains(check.get_begin(), check.get_end(), value);
 }
 
+/*
 fn is_begin_gap<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     valid: &[&R],
     end: &T,
@@ -57,6 +58,7 @@ fn is_begin_gap<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     }
     return true;
 }
+*/
 
 fn is_end_gap<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     valid: &[&R],
@@ -90,16 +92,25 @@ fn rebound_next<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
 ) -> Option<(T, T)> {
     let (start, finish, total, state) = next_smallest_range(begin, end, &valid, t);
 
-    if total > 1
-        && (!(state & 1 == 1) || !is_begin_gap(&valid, &start, step, t))
-        && let Some(new_end) = t.dec(&finish, step)
-        && !t.is_invalid_set(&start, &new_end)
-    {
-        if state == 0 || force {
+    if force {
+        if let Some(new_end) = t.dec(&finish, step) {
+            if t.is_invalid_set(&start, &new_end) {
+                return Some((start, finish));
+            }
             return Some((start, new_end));
-        } else if state == 3 {
+        }
+    }
+    if total > 1 {
+        if state == 3 {
             let end = t.cp(&start);
             return Some((start, end));
+        } else if !(state & 1 == 1) {
+            if state == 0
+                && let Some(new_end) = t.dec(&finish, step)
+                && !t.is_invalid_set(&start, &new_end)
+            {
+                return Some((start, new_end));
+            }
         }
         return Some((start, t.cp(end)));
     } else {
@@ -117,21 +128,35 @@ fn rebound_previous<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
 ) -> Option<(T, T)> {
     let (start, finish, total, state) = previous_smallest_range(begin, end, &valid, t);
 
-    println!("  State: {}", state);
-    if total > 1 && (!state & 2 == 2 || !is_end_gap(&valid, &finish, step, t)) {
+    if force {
+        if is_end_gap(&valid, &start, step, t) {
+            return Some((start, finish));
+        }
+        if let Some(new_start) = t.inc(&start, step) {
+            if !t.is_invalid_set(&new_start, &finish) {
+                return Some((new_start, finish));
+            }
+        }
+    } else if total > 1 && state < 4 {
         if state == 3 {
             let begin = t.cp(&finish);
             return Some((begin, finish));
-        } else if let Some(new_start) = t.inc(&start, step)
-            && !t.is_invalid_set(&new_start, end)
-        {
-            return Some((new_start, finish));
-        } else {
+        } else if state != 1 {
+            if state == 2 && is_end_gap(&valid, &finish, step, t) {
+                return Some((start, finish));
+            }
+            if let Some(new_start) = t.inc(&start, step) {
+                if !t.is_invalid_set(&new_start, &finish) {
+                    return Some((new_start, finish));
+                }
+            }
+        } else if state == 1 {
             return Some((start, finish));
+        } else {
+            return None;
         }
-    } else {
-        return Some((start, finish));
     }
+    return Some((start, finish));
 }
 
 pub(crate) fn next_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(

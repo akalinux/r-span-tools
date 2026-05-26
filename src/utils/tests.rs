@@ -91,7 +91,7 @@ fn last_range_test() {
 
     assert_eq!(
         last_range_begin_end(&[Mrs::new(5, 7), Mrs::new(4, 7),], &1, &t),
-        Some((6, 7))
+        Some((5, 7))
     );
 
     assert_eq!(
@@ -278,7 +278,6 @@ fn previous_range_begin_end_tests() {
     let mut end = 19;
 
     for (a, z) in checked {
-        println!("Checking: {}->{}", a, z);
         let res = previous_range_begin_end(&end, &src, &1, &t);
         assert_eq!(res, Some((a, z)));
         end = a - 1;
