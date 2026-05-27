@@ -24,7 +24,7 @@ impl<'r, 'v, 'c, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>
     /// *If the any of the objects passed into the constructor are modified durring the lifetime of the
     /// iteraotr then the behavior is undefined!*
     pub fn new(src: &'r [R], step: &'v V, cmp: &'c C) -> Self {
-        let next = first_range_begin_end(&*src, step, cmp);
+        let next = first_range_begin_end(&*src, cmp);
         Self {
             src,
             step,
@@ -39,7 +39,7 @@ impl<'r, 'v, 'c, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>
     /// iteraotr then the behavior is undefined!*
     pub fn from_vec(list: &Vec<R>, step: &'v V, cmp: &'c C) -> Self {
         let src = unsafe { mem::transmute::<&'_ [R], &'r [R]>(list.as_slice()) };
-        let next = first_range_begin_end(src, step, cmp);
+        let next = first_range_begin_end(src, cmp);
         Self {
             src,
             step,
@@ -58,7 +58,7 @@ impl<'r, 'v, 'c, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> Iterator
         let mut next = None;
         if let Some((_, end)) = &self.next {
             if let Some(begin) = self.cmp.inc(end, self.step) {
-                next = next_range_begin_end(&begin, self.src, self.step, self.cmp)
+                next = next_range_begin_end(&begin, self.src, self.cmp)
             }
         }
 
@@ -76,7 +76,7 @@ pub struct OwnedOverlapIter<T, V, C: IncDecCpCmp<T, V>> {
 
 impl<T, V, C: IncDecCpCmp<T, V>> OwnedOverlapIter<T, V, C> {
     pub fn new(cols: Vec<Mrs<T>>, step: V, cmp: C) -> Self {
-        let next = first_range_begin_end(&*cols, &step, &cmp);
+        let next = first_range_begin_end(&*cols, &cmp);
         Self {
             cols: RefCell::new(cols),
             step,
@@ -110,12 +110,7 @@ impl<T, V, C: IncDecCpCmp<T, V>> Iterator for OwnedOverlapIter<T, V, C> {
         let mut target: Option<(T, T)> = None;
         if let Some((_, finish)) = &self.next {
             if let Some(begin) = self.cmp.inc(finish, &self.step) {
-                target = next_range_begin_end(
-                    &begin,
-                    &self.cols.borrow().as_ref(),
-                    &self.step,
-                    &self.cmp,
-                )
+                target = next_range_begin_end(&begin, &self.cols.borrow().as_ref(), &self.cmp)
             }
         }
         return mem::replace(&mut self.next, target);

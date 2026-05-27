@@ -10,7 +10,7 @@
     },
 
 	"mounts": [
-    	"source=${localEnv:HOME}${localEnv:USERPROFILE},target=/host-home-folder,type=bind,consistency=cached"
+		"source=${localEnv:HOME}${localEnv:USERPROFILE},target=/host-home-folder,type=bind,consistency=cached",
 	],
 	// Use 'mounts' to make the cargo cache persistent in a Docker Volume.
 	// "mounts": [
