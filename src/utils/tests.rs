@@ -1,9 +1,9 @@
 #![cfg(test)]
 
 use crate::{
-    Mrs, builder::BlanketIncDecCpCmp, first_range_begin_end, last_range_begin_end,
-    next_range_begin_end, next_smallest_range, previous_range_begin_end, previous_smallest_range,
-    range_bounds_to_values,
+    GetBeginEnd, Mrs, RangeRelation, builder::BlanketIncDecCpCmp, first_range_begin_end,
+    last_range_begin_end, next_range_begin_end, next_smallest_range, previous_range_begin_end,
+    previous_smallest_range, range_bounds_to_values, range_relation, sort_forward, sort_reverse,
 };
 
 #[test]
@@ -176,11 +176,7 @@ fn previous_smallest_range_test() {
     let t = BlanketIncDecCpCmp::new();
     let src = mrs_set_b();
 
-    let mut valid = Vec::new();
-    for s in src.as_slice() {
-        valid.push(s);
-    }
-    let (begin, end) = previous_smallest_range(&0, &22, &valid, &t);
+    let (begin, end) = previous_smallest_range(&0, &22, &src, &t);
 
     assert_eq!((begin, end), (19, 22))
 }
@@ -205,14 +201,10 @@ fn next_smallest_range_test() {
     let t = BlanketIncDecCpCmp::new();
     let mut src = mrs_set_a();
 
-    let mut valid = Vec::new();
-    for s in src.as_slice() {
-        valid.push(s);
-    }
-    let (mut begin, mut end) = next_smallest_range(&0, &22, &valid, &t);
+    let (mut begin, mut end) = next_smallest_range(&0, &22, &src, &t);
     assert_eq!((begin, end), (0, 1));
 
-    (begin, end) = next_smallest_range(&0, &1, &valid, &t);
+    (begin, end) = next_smallest_range(&0, &1, &src, &t);
     assert_eq!((begin, end), (0, 1));
 
     src = vec![Mrs::new(5, 7), Mrs::new(4, 7)];
@@ -221,6 +213,109 @@ fn next_smallest_range_test() {
         valid.push(s);
     }
 
-    (begin, end) = next_smallest_range(&4, &7, &valid, &t);
+    (begin, end) = next_smallest_range(&4, &7, &src, &t);
     assert_eq!((begin, end), (4, 5));
+}
+
+#[test]
+fn sort_more() {
+    let mut set = crate::iter::tests::mrs_set();
+    set.push(Mrs::new(8, 11)); // force equal ctest
+    let l = BlanketIncDecCpCmp::new();
+    set.sort_by(|a, b| sort_forward(a, b, &l));
+    let expected = vec![
+        Mrs::new(0, 3),
+        Mrs::new(1, 2),
+        Mrs::new(4, 6),
+        Mrs::new(4, 5),
+        Mrs::new(8, 11),
+        Mrs::new(8, 11),
+        Mrs::new(13, 22),
+        Mrs::new(15, 19),
+    ];
+    for (i, exp) in expected.iter().enumerate() {
+        assert_eq!(exp.to_tuple_ref(), set[i].to_tuple_ref())
+    }
+}
+
+#[test]
+fn sort() {
+    let l = BlanketIncDecCpCmp::new();
+    // Sorting in consolidation order.
+    let correct = vec![
+        Mrs::new(8, 11),
+        Mrs::new(8, 9),
+        Mrs::new(13, 22),
+        Mrs::new(15, 20),
+        Mrs::new(15, 20),
+        Mrs::new(15, 19),
+    ];
+    let mut check = vec![
+        Mrs::new(15, 20),
+        Mrs::new(15, 19),
+        Mrs::new(13, 22),
+        Mrs::new(8, 11),
+        Mrs::new(15, 20),
+        Mrs::new(8, 9),
+    ];
+    check.sort_by(|a, b| sort_forward(a, b, &l));
+    for (i, good) in correct.iter().enumerate() {
+        assert_eq!(check[i].to_tuple_ref(), good.to_tuple_ref());
+    }
+}
+
+#[test]
+fn sort_reverse_test() {
+    let l = BlanketIncDecCpCmp::new();
+    // Sorting in consolidation order.
+    let correct = vec![
+        Mrs::new(13, 22),
+        Mrs::new(15, 20),
+        Mrs::new(16, 20),
+        Mrs::new(16, 20),
+        Mrs::new(15, 19),
+        Mrs::new(8, 11),
+        Mrs::new(8, 9),
+        Mrs::new(8, 9),
+    ];
+    let mut check = vec![
+        Mrs::new(13, 22),
+        Mrs::new(16, 20),
+        Mrs::new(8, 11),
+        Mrs::new(8, 9),
+        Mrs::new(15, 19),
+        Mrs::new(15, 20),
+        Mrs::new(16, 20),
+        Mrs::new(8, 9),
+    ];
+    check.sort_by(|a, b| sort_reverse(a, b, &l));
+    for (i, good) in correct.iter().enumerate() {
+        assert_eq!(check[i].to_tuple_ref(), good.to_tuple_ref());
+    }
+}
+
+#[test]
+fn relations_test() {
+    let t = BlanketIncDecCpCmp::new();
+    // Compare Range Positional relationships
+    assert!(matches!(
+        range_relation(&Mrs::new(1, 2), &Mrs::new(1, 2), &t),
+        RangeRelation::Overlap
+    )); // a and b overlap
+    assert!(matches!(
+        range_relation(&Mrs::new(1, 1), &Mrs::new(1, 2), &t),
+        RangeRelation::Overlap
+    )); // a and b overlap
+    assert!(matches!(
+        range_relation(&Mrs::new(2, 2), &Mrs::new(1, 2), &t),
+        RangeRelation::Overlap
+    )); // a and b overlap
+    assert!(matches!(
+        range_relation(&Mrs::new(0, 0), &Mrs::new(1, 2), &t),
+        RangeRelation::Before
+    )); // a is before b
+    assert!(matches!(
+        range_relation(&Mrs::new(3, 4), &Mrs::new(1, 2), &t),
+        RangeRelation::After
+    )); // a is after b
 }

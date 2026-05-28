@@ -1,19 +1,5 @@
-use crate::GetBeginEnd;
-use std::{cmp::Ordering, ops::Bound};
+use std::ops::Bound;
 mod tests;
-
-/// This enum is used to represent positional relationships in 3 states
-///  - before a range
-///  - overlap with a range
-///  - after a range
-pub enum RangeRelation<T> {
-    /// Range a is before range b
-    Before,
-    /// Range a and b overlap
-    Overlap(T),
-    /// Range a is after range b
-    After,
-}
 
 /// The **Blanket Implementation** of [crate::IncDecCpCmp].  
 ///
@@ -130,49 +116,9 @@ pub trait IncDecCpCmp<T, V> {
             || self.contains(c, d, b);
     }
 
-    /// Compares range a and b and returns the correct [std::cmp::Ordering] value.
-    ///
-    /// The sort order is meant to represent consolidation order not tradtional range sort order.
-    /// Consolidation order is represented as earliest largest ranges first.
-    ///
-    /// Put another way:
-    /// - GetBeginEnd.get_begin() asc
-    /// - GetBeginEnd.get_end() desc
-    ///
-    fn sort_forward<R: GetBeginEnd<T>>(&self, a: &R, b: &R) -> Ordering {
-        if self.lt(b.get_begin(), a.get_begin()) {
-            return Ordering::Greater;
-        } else if self.lt(a.get_begin(), b.get_begin()) {
-            return Ordering::Less;
-
-        // anything below this point both begin values are the same
-        } else if self.lt(a.get_end(), b.get_end()) {
-            return Ordering::Greater;
-        } else if self.lt(b.get_end(), a.get_end()) {
-            return Ordering::Less;
-        }
-        // if we get here, begin and end are equal
-        return Ordering::Equal;
-    }
-
     /// Returns true if b lt a.
     fn is_invalid_set(&self, a: &T, b: &T) -> bool {
         return self.lt(b, a);
-    }
-
-    /// Compares the positional relationship between a and b.
-    ///
-    /// - [`crate::RangeRelation::Before`] a is before b.
-    /// - [`crate::RangeRelation::After`] a is after b.
-    /// - [`crate::RangeRelation::Overlap`] a and b overlap to some degree.
-    fn range_relation<R: GetBeginEnd<T>>(&self, a: &R, b: &R) -> RangeRelation<()> {
-        if self.lt(a.get_end(), b.get_begin()) {
-            return RangeRelation::Before;
-        } else if self.lt(b.get_end(), a.get_begin()) {
-            return RangeRelation::After;
-        }
-
-        return RangeRelation::Overlap(());
     }
 
     /// Returns the raw adjusted start value.

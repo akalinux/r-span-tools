@@ -2,28 +2,44 @@
 use std::ops::RangeInclusive;
 
 use crate::{
-    Accumulate, BlanketIncDecCpCmp, DefaultValues, Intersector, Mrs, OverlapIter, OwnedOverlapIter,
+    Accumulate, BlanketIncDecCpCmp, DefaultValues, GetBeginEnd, Intersector, Mrs, OverlapIter,
+    OwnedOverlapIter,
 };
 
 fn checkset() -> [(i32, i32); 9] {
     return [
-        (0, 1),
-        (2, 2),
-        (3, 3),
-        (4, 5),
-        (6, 6),
-        (8, 11),
-        (13, 15),
-        (16, 19),
-        (20, 22),
+        (0, 1),   // 0
+        (2, 2),   // 1
+        (3, 3),   // 2
+        (4, 5),   // 3
+        (6, 6),   // 4
+        (8, 11),  // 5
+        (13, 15), // 6
+        (16, 19), // 7
+        (20, 22), // 8
     ];
 }
-fn mrs_set() -> Vec<Mrs<i32>> {
+
+fn checkset_rev() -> [(i32, i32); 9] {
+    return [
+        (19, 22),
+        (15, 18),
+        (13, 14),
+        (8, 11),
+        (5, 6),
+        (4, 4),
+        (2, 3),
+        (1, 1),
+        (0, 0),
+    ];
+}
+
+pub(crate) fn mrs_set() -> Vec<Mrs<i32>> {
     return vec![
-        Mrs::new(4, 5),
-        Mrs::new(4, 6),
         Mrs::new(0, 3),
         Mrs::new(1, 2),
+        Mrs::new(4, 5),
+        Mrs::new(4, 6),
         // gap 1 is 7-7
         Mrs::new(8, 11),
         // gap 2 is 12-12
@@ -35,6 +51,7 @@ fn range_set() -> [RangeInclusive<i32>; 7] {
     let res: [RangeInclusive<i32>; 7] = [4..=5, 4..=6, 0..=3, 1..=2, 8..=11, 13..=22, 15..=19];
     return res;
 }
+
 #[test]
 fn iter_test() {
     let checkset = checkset();
@@ -43,9 +60,49 @@ fn iter_test() {
     let t = BlanketIncDecCpCmp::new();
 
     let iter = OverlapIter::new(src.as_slice(), &1, &t);
+    let mut count = 0;
+
     for (i, res) in iter.enumerate() {
-        assert_eq!(res, checkset[i])
+        count = i;
+        assert_eq!(res.to_tuple(), checkset[i])
     }
+    assert_eq!(count, 8);
+}
+
+#[test]
+fn iter_test_rev() {
+    let checkset = checkset_rev();
+
+    let src = mrs_set();
+    let t = BlanketIncDecCpCmp::new();
+
+    let iter = OverlapIter::new(src.as_slice(), &1, &t);
+
+    for (i, res) in iter.rev().enumerate() {
+        assert_eq!(res.to_tuple(), checkset[i])
+    }
+}
+
+#[test]
+fn iter_bi() {
+    let fwd = checkset();
+    let rev = checkset_rev();
+
+    let src = mrs_set();
+    let t = BlanketIncDecCpCmp::new();
+    let s = OverlapIter::new(src.as_slice(), &1, &t);
+    let mut iter = s.into_iter();
+
+    assert_eq!(iter.next().unwrap().to_tuple(), fwd[0]);
+    assert_eq!(iter.next_back().unwrap().to_tuple(), rev[0]);
+
+    assert_eq!(iter.next().unwrap().to_tuple(), fwd[1]);
+    assert_eq!(iter.next_back().unwrap().to_tuple(), rev[1]);
+
+    assert_eq!(iter.next().unwrap().to_tuple(), fwd[2]);
+    assert_eq!(iter.next_back().unwrap().to_tuple(), rev[2]);
+    assert_eq!(iter.next().unwrap().to_tuple(), fwd[3]);
+    matches!(iter.next_back(), None);
 }
 
 #[test]
@@ -57,7 +114,7 @@ fn iter_from_vec_test() {
 
     let iter = OverlapIter::from_vec(&src, &1, &t);
     for (i, res) in iter.enumerate() {
-        assert_eq!(res, checkset[i])
+        assert_eq!(res.to_tuple(), checkset[i])
     }
 }
 

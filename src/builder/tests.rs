@@ -2,7 +2,7 @@
 use std::ops::Bound;
 
 use crate::{
-    DefaultValues, GetBeginEnd, Mrs, RangeRelation,
+    DefaultValues, GetBeginEnd, Mrs,
     builder::{BlanketIncDecCpCmp, IncDecCpCmp},
 };
 
@@ -104,51 +104,6 @@ fn inc_dec_compare_all() {
 }
 
 #[test]
-fn sort() {
-    let l = BlanketIncDecCpCmp::new();
-    // Sorting in consolidation order.
-    let correct = vec![
-        Mrs::new(8, 11),
-        Mrs::new(8, 9),
-        Mrs::new(13, 22),
-        Mrs::new(15, 19),
-    ];
-    let mut check = vec![
-        Mrs::new(15, 19),
-        Mrs::new(13, 22),
-        Mrs::new(8, 11),
-        Mrs::new(8, 9),
-    ];
-    check.sort_by(|a, b| l.sort_forward(a, b));
-    for (i, good) in correct.iter().enumerate() {
-        assert_eq!(check[i].get_begin(), good.get_begin());
-        assert_eq!(check[i].get_end(), good.get_end());
-    }
-
-    // Compare Range Positional relationships
-    assert!(matches!(
-        l.range_relation(&Mrs::new(1, 2), &Mrs::new(1, 2)),
-        RangeRelation::Overlap(())
-    )); // a and b overlap
-    assert!(matches!(
-        l.range_relation(&Mrs::new(1, 1), &Mrs::new(1, 2)),
-        RangeRelation::Overlap(())
-    )); // a and b overlap
-    assert!(matches!(
-        l.range_relation(&Mrs::new(2, 2), &Mrs::new(1, 2)),
-        RangeRelation::Overlap(())
-    )); // a and b overlap
-    assert!(matches!(
-        l.range_relation(&Mrs::new(0, 0), &Mrs::new(1, 2)),
-        RangeRelation::Before
-    )); // a is before b
-    assert!(matches!(
-        l.range_relation(&Mrs::new(3, 4), &Mrs::new(1, 2)),
-        RangeRelation::After
-    )); // a is after b
-}
-
-#[test]
 fn test_rebound_start_and_end() {
     let l = BlanketIncDecCpCmp::new();
 
@@ -161,39 +116,4 @@ fn test_rebound_start_and_end() {
     assert_eq!(l.rebound_end(Bound::Included(&1), &1), Some(1));
     assert_eq!(l.rebound_end(Bound::Unbounded, &1), Some(i32::MAX));
     assert_eq!(l.rebound_end(Bound::Excluded(&i32::MIN), &1), None);
-}
-
-fn mrs_set_a() -> Vec<Mrs<i32>> {
-    return vec![
-        Mrs::new(4, 5),
-        Mrs::new(4, 6),
-        Mrs::new(0, 3),
-        Mrs::new(1, 2),
-        // gap 1 is 7-7
-        Mrs::new(8, 11),
-        Mrs::new(8, 11),
-        // gap 2 is 12-12
-        Mrs::new(13, 22),
-        Mrs::new(15, 19),
-    ];
-}
-
-#[test]
-fn sort_more() {
-    let mut set = mrs_set_a();
-    let l = BlanketIncDecCpCmp::new();
-    set.sort_by(|a, b| l.sort_forward(a, b));
-    let expected = vec![
-        Mrs::new(0, 3),
-        Mrs::new(1, 2),
-        Mrs::new(4, 6),
-        Mrs::new(4, 5),
-        Mrs::new(8, 11),
-        Mrs::new(8, 11),
-        Mrs::new(13, 22),
-        Mrs::new(15, 19),
-    ];
-    for (i, exp) in expected.iter().enumerate() {
-        assert_eq!(exp.to_tuple_ref(), set[i].to_tuple_ref())
-    }
 }
