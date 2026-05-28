@@ -146,7 +146,7 @@ fn contains<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(check: &R, value: &T,
     return t.contains(check.get_begin(), check.get_end(), value);
 }
 
-pub(crate) fn next_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+pub fn next_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     begin: &T,
     end: &T,
     src: &[R],
@@ -179,7 +179,7 @@ pub(crate) fn next_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>
     }
 }
 
-pub(crate) fn previous_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+pub fn previous_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     begin: &T,
     end: &T,
     src: &[R],
@@ -369,5 +369,3 @@ pub fn previous_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     }
     return None;
 }
-
-mod tests;

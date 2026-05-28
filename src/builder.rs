@@ -1,5 +1,4 @@
 use std::ops::Bound;
-mod tests;
 
 /// The **Blanket Implementation** of [crate::IncDecCpCmp].  
 ///

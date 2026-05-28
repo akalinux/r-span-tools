@@ -1,8 +1,8 @@
 #![cfg(test)]
-mod mrs_tests {
+mod lip_tests {
     use std::ops::{Bound, RangeBounds, RangeInclusive};
 
-    use crate::{GetBeginEnd, Mrs, MrsP};
+    use common_range_tools::{GetBeginEnd, Mrs, MrsP};
     use std::panic::catch_unwind;
 
     #[test]

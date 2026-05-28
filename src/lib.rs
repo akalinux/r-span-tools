@@ -7,7 +7,6 @@ pub use crate::iter::*;
 pub use crate::utils::*;
 pub mod builder;
 pub mod iter;
-pub mod libtests;
 pub mod utils;
 
 /// [`crate::Mrs`] **Minimal Range Span**
@@ -37,7 +36,7 @@ pub struct Mrs<T> {
 }
 
 pub struct MrsP<'r, T> {
-    r: &'r Mrs<T>,
+    pub r: &'r Mrs<T>,
 }
 
 pub trait GetBeginEnd<T> {

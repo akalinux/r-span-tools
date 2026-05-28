@@ -1,4 +1,3 @@
-pub(crate) mod tests;
 use crate::builder::IncDecCpCmp;
 use crate::{
     BlanketIncDecCpCmp, DefaultValues, GetBeginEnd, Mrs, MrsP, RangeRelation,
@@ -229,6 +228,18 @@ impl<T, V, C: IncDecCpCmp<T, V>> Accumulate<T, V, C> {
             return true;
         }
         return false;
+    }
+
+    pub fn add_ranges<R: RangeBounds<T>>(
+        &mut self,
+        ranges: &[R],
+        on_add: impl Fn(usize, bool) -> bool,
+    ) {
+        for (i, r) in ranges.iter().enumerate() {
+            if !on_add(i, self.add_range(r)) {
+                break;
+            }
+        }
     }
 }
 
