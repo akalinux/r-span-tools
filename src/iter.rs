@@ -7,25 +7,24 @@ use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::RangeBounds;
+use std::rc::Rc;
 
-pub struct OverlapIter<'r, 'v, 'c, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> {
+pub struct OverlapIter<'r, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> {
     src: &'r [R],
-    step: &'v V,
-    cmp: &'c C,
+    step: Rc<V>,
+    cmp: Rc<C>,
     next: Option<Mrs<T>>,
     back: Option<Mrs<T>>,
     _marker: PhantomData<(T, V)>,
 }
 
-impl<'r, 'v, 'c, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>
-    OverlapIter<'r, 'v, 'c, T, V, C, R>
-{
+impl<'r, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> OverlapIter<'r, T, V, C, R> {
     /// Creates a new [crate::OverlapIter] from the slice of R.
     /// If the any of the objects passed into the constructor are modified durring the lifetime of the
     /// iteraotr then the behavior is undefined!
-    pub fn new(src: &'r [R], step: &'v V, cmp: &'c C) -> Self {
-        let next = otmo(first_range_begin_end(src, cmp));
-        let back = otmo(last_range_begin_end(src, cmp));
+    pub fn new(src: &'r [R], step: Rc<V>, cmp: Rc<C>) -> Self {
+        let next = otmo(first_range_begin_end(src, cmp.as_ref()));
+        let back = otmo(last_range_begin_end(src, cmp.as_ref()));
         Self {
             src,
             step,
@@ -39,10 +38,10 @@ impl<'r, 'v, 'c, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>
     /// Creates a new [crate::OverlapIter] from the [Vec] by creating a slice of the Vec<R>.  
     /// If the any of the objects passed into the constructor are modified durring the lifetime of the
     /// iteraotr then the behavior is undefined!
-    pub fn from_vec(list: &Vec<R>, step: &'v V, cmp: &'c C) -> Self {
+    pub fn from_vec(list: &Vec<R>, step: Rc<V>, cmp: Rc<C>) -> Self {
         let src = unsafe { mem::transmute::<&'_ [R], &'r [R]>(list.as_slice()) };
-        let next = otmo(first_range_begin_end(src, cmp));
-        let back = otmo(last_range_begin_end(src, cmp));
+        let next = otmo(first_range_begin_end(src, cmp.as_ref()));
+        let back = otmo(last_range_begin_end(src, cmp.as_ref()));
         Self {
             src,
             step,
@@ -54,20 +53,30 @@ impl<'r, 'v, 'c, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>
     }
 }
 
-impl<'r, 'v, 'c, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> Iterator
-    for OverlapIter<'r, 'v, 'c, T, V, C, R>
-{
+impl<'r, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> Iterator for OverlapIter<'r, T, V, C, R> {
     type Item = Mrs<T>;
     fn next(&mut self) -> Option<Self::Item> {
-        let next = next(self.src, self.cmp, self.step, &self.next, &self.back);
+        let next = next(
+            self.src,
+            self.cmp.as_ref(),
+            self.step.as_ref(),
+            &self.next,
+            &self.back,
+        );
         return mem::replace(&mut self.next, next);
     }
 }
-impl<'r, 'v, 'c, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> DoubleEndedIterator
-    for OverlapIter<'r, 'v, 'c, T, V, C, R>
+impl<'r, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> DoubleEndedIterator
+    for OverlapIter<'r, T, V, C, R>
 {
     fn next_back(&mut self) -> Option<Self::Item> {
-        let back = next_back(self.src, self.cmp, self.step, &self.next, &self.back);
+        let back = next_back(
+            self.src,
+            self.cmp.as_ref(),
+            self.step.as_ref(),
+            &self.next,
+            &self.back,
+        );
 
         return mem::replace(&mut self.back, back);
     }

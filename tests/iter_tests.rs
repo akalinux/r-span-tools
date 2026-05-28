@@ -2,7 +2,7 @@
 
 mod iter_tests {
 
-    use std::ops::RangeInclusive;
+    use std::{ops::RangeInclusive, rc::Rc};
 
     use common_range_tools::{
         Accumulate, BlanketIncDecCpCmp, DefaultValues, GetBeginEnd, IncDecCpCmp, Intersector, Mrs,
@@ -110,7 +110,7 @@ mod iter_tests {
         let src = mrs_set();
         let t = BlanketIncDecCpCmp::new();
 
-        let iter = OverlapIter::new(src.as_slice(), &1, &t);
+        let iter = OverlapIter::new(src.as_slice(), Rc::new(1), Rc::new(t));
         let mut count = 0;
 
         for (i, res) in iter.enumerate() {
@@ -127,7 +127,7 @@ mod iter_tests {
         let src = mrs_set();
         let t = BlanketIncDecCpCmp::new();
 
-        let iter = OverlapIter::new(src.as_slice(), &1, &t);
+        let iter = OverlapIter::new(src.as_slice(), Rc::new(1), Rc::new(t));
 
         for (i, res) in iter.rev().enumerate() {
             assert_eq!(res.to_tuple(), checkset[i])
@@ -141,7 +141,7 @@ mod iter_tests {
 
         let src = mrs_set();
         let t = BlanketIncDecCpCmp::new();
-        let s = OverlapIter::new(src.as_slice(), &1, &t);
+        let s = OverlapIter::new(src.as_slice(), Rc::new(1), Rc::new(t));
         let mut iter = s.into_iter();
 
         assert_eq!(iter.next().unwrap().to_tuple(), fwd[0]);
@@ -163,7 +163,7 @@ mod iter_tests {
         let src = mrs_set();
         let t = BlanketIncDecCpCmp::new();
 
-        let iter = OverlapIter::from_vec(&src, &1, &t);
+        let iter = OverlapIter::from_vec(&src, Rc::new(1), Rc::new(t));
         for (i, res) in iter.enumerate() {
             assert_eq!(res.to_tuple(), checkset[i])
         }
