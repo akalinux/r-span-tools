@@ -2,6 +2,7 @@
 
 use std::ops::{Bound, RangeBounds};
 
+// re-export to be nice!
 pub use crate::builder::*;
 pub use crate::iter::*;
 pub use crate::utils::*;
@@ -11,7 +12,7 @@ pub mod utils;
 
 /// [`crate::Mrs`] **Minimal Range Span**
 ///
-/// In a nut shell this is the absolut minimal struct to represent a range.
+/// In a nut shell this is the minimal struct to represent a range for [crate].
 /// Requires that [crate::GetBeginEnd] and [std::ops::RangeBounds] be imported to use all implemented traits.
 ///
 /// ```
@@ -35,6 +36,7 @@ pub struct Mrs<T> {
     z: T,
 }
 
+/// Proxy data structure for [crate::Mrs].
 pub struct MrsP<'r, T> {
     pub r: &'r Mrs<T>,
 }
@@ -69,14 +71,19 @@ impl<T> From<Mrs<T>> for std::ops::RangeInclusive<T> {
 }
 
 impl<'r, T> GetBeginEnd<T> for MrsP<'r, T> {
+    /// Wrapper for internal [crate::Mrs] instance.
     fn get_begin(&self) -> &T {
         return self.r.get_begin();
     }
+
+    /// Wrapper for internal [crate::Mrs] instance.
     fn get_end(&self) -> &T {
         return self.r.get_end();
     }
+
+    /// Due to the internals being pointer to the real [crate::Mrs] instance, this method is ***intentionally unimplemented***.
     fn to_tuple(self) -> (T, T) {
-        panic!("Not implemented!");
+        unimplemented!();
     }
 }
 

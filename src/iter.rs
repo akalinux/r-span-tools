@@ -1,8 +1,7 @@
 use crate::builder::IncDecCpCmp;
 use crate::{
-    BlanketIncDecCpCmp, DefaultValues, GetBeginEnd, Mrs, MrsP, RangeRelation,
-    first_range_begin_end, last_range_begin_end, next_range_begin_end, otmo,
-    previous_range_begin_end, range_bounds_to_values, range_relation,
+    BlanketIncDecCpCmp, DefaultValues, GetBeginEnd, Mrs, first_range_begin_end,
+    last_range_begin_end, next, next_back, ofmo, otmo, range_bounds_to_values,
 };
 use std::cell::RefCell;
 use std::marker::PhantomData;
@@ -60,77 +59,40 @@ impl<'r, 'v, 'c, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> Iterator
 {
     type Item = Mrs<T>;
     fn next(&mut self) -> Option<Self::Item> {
-        let mut next = None;
-        if let Some(src) = &self.next {
-            match &self.back {
-                Some(back) => match range_relation(src, back, self.cmp) {
-                    RangeRelation::Overlap => {
-                        if let Some(begin) = self.cmp.inc(src.get_end(), self.step) {
-                            next = otmo(next_range_begin_end(&begin, &[MrsP { r: back }], self.cmp))
-                        }
-                    }
-                    RangeRelation::Before => {
-                        if let Some(begin) = self.cmp.inc(src.get_end(), self.step) {
-                            next = otmo(next_range_begin_end(&begin, self.src, self.cmp))
-                        }
-                    }
-                    RangeRelation::After => return None,
-                },
-                None => (),
-            }
-        }
-
+        let next = next(self.src, self.cmp, self.step, &self.next, &self.back);
         return mem::replace(&mut self.next, next);
     }
 }
-
 impl<'r, 'v, 'c, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> DoubleEndedIterator
     for OverlapIter<'r, 'v, 'c, T, V, C, R>
 {
     fn next_back(&mut self) -> Option<Self::Item> {
-        let mut back = None;
-        if let Some(src) = &self.back {
-            match &self.next {
-                Some(next) => match range_relation(src, next, self.cmp) {
-                    RangeRelation::Overlap => {
-                        if let Some(end) = self.cmp.dec(src.get_begin(), self.step) {
-                            back = otmo(previous_range_begin_end(
-                                &end,
-                                &[MrsP { r: next }],
-                                self.cmp,
-                            ))
-                        }
-                    }
-                    RangeRelation::After => {
-                        if let Some(end) = self.cmp.dec(src.get_begin(), self.step) {
-                            back = otmo(previous_range_begin_end(&end, self.src, self.cmp))
-                        }
-                    }
-                    RangeRelation::Before => return None,
-                },
-                None => (),
-            }
-        }
+        let back = next_back(self.src, self.cmp, self.step, &self.next, &self.back);
 
         return mem::replace(&mut self.back, back);
     }
 }
+
 pub struct OwnedOverlapIter<T, V, C: IncDecCpCmp<T, V>> {
     cols: RefCell<Vec<Mrs<T>>>,
     step: V,
     cmp: C,
-    next: Option<(T, T)>,
+    next: Option<Mrs<T>>,
+    back: Option<Mrs<T>>,
+
     _marker: std::marker::PhantomData<(T, V)>,
 }
 
 impl<T, V, C: IncDecCpCmp<T, V>> OwnedOverlapIter<T, V, C> {
     pub fn new(cols: Vec<Mrs<T>>, step: V, cmp: C) -> Self {
-        let next = first_range_begin_end(&*cols, &cmp);
+        let next = otmo(first_range_begin_end(&cols, &cmp));
+        let back = otmo(last_range_begin_end(&cols, &cmp));
         Self {
             cols: RefCell::new(cols),
             step,
             cmp,
             next,
+            back,
             _marker: std::marker::PhantomData,
         }
     }
@@ -154,15 +116,28 @@ impl<T, V, C: IncDecCpCmp<T, V>> OwnedOverlapIter<T, V, C> {
 
 impl<T, V, C: IncDecCpCmp<T, V>> Iterator for OwnedOverlapIter<T, V, C> {
     type Item = (T, T);
-
     fn next(&mut self) -> Option<Self::Item> {
-        let mut target: Option<(T, T)> = None;
-        if let Some((_, finish)) = &self.next {
-            if let Some(begin) = self.cmp.inc(finish, &self.step) {
-                target = next_range_begin_end(&begin, &self.cols.borrow().as_ref(), &self.cmp)
-            }
-        }
-        return mem::replace(&mut self.next, target);
+        let target = next(
+            self.cols.borrow().as_ref(),
+            &self.cmp,
+            &self.step,
+            &self.next,
+            &self.back,
+        );
+        return ofmo(mem::replace(&mut self.next, target));
+    }
+}
+
+impl<T, V, C: IncDecCpCmp<T, V>> DoubleEndedIterator for OwnedOverlapIter<T, V, C> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let target = next_back(
+            self.cols.borrow().as_ref(),
+            &self.cmp,
+            &self.step,
+            &self.next,
+            &self.back,
+        );
+        return ofmo(mem::replace(&mut self.next, target));
     }
 }
 
@@ -204,11 +179,22 @@ impl<'v, 'c, T, V, C: IncDecCpCmp<T, V>> Iterator for Intersector<T, V, C> {
     }
 }
 
+/// This object acts as a conversion tool for accumulating instances of [std::ops::RangeBounds] and converting them to an internal representation.
+/// The Internal representation is used by the [std::iter::IntoIterator] instance that is created to find the most common intersections.
 pub struct Accumulate<T, V, C: IncDecCpCmp<T, V>> {
     list: Vec<Mrs<T>>,
     step: V,
     rebound: V,
     cmp: C,
+}
+
+impl<T, V, C: IncDecCpCmp<T, V>> IntoIterator for Accumulate<T, V, C> {
+    type Item = (T, T);
+
+    type IntoIter = OwnedOverlapIter<T, V, C>;
+    fn into_iter(self) -> Self::IntoIter {
+        return OwnedOverlapIter::new(self.list, self.step, self.cmp);
+    }
 }
 
 impl<T, V, C: IncDecCpCmp<T, V>> Accumulate<T, V, C> {
@@ -230,25 +216,34 @@ impl<T, V, C: IncDecCpCmp<T, V>> Accumulate<T, V, C> {
         return false;
     }
 
+    /// Tries to add all ranges passed in the set of ranges.  
+    /// The on_add method is called with index position and the Option<(&mut T,&mut T)> created by the conversion process.
+    /// A return value of false from the on_add function, tells the internals to not add the range.
+    /// If the Option was None, then the range would not have been added.
+    ///
+    /// Notes:
+    ///
+    /// The values passed in the Option<(&mut T,&mut T)> are mutable refs.
+    /// This allows for more control over the conversion process, as well of adding ragnes in bulk.
     pub fn add_ranges<R: RangeBounds<T>>(
         &mut self,
         ranges: &[R],
-        on_add: impl Fn(usize, bool) -> bool,
+        on_add: impl Fn(usize, Option<(&mut T, &mut T)>) -> bool,
     ) {
         for (i, r) in ranges.iter().enumerate() {
-            if !on_add(i, self.add_range(r)) {
-                break;
+            match range_bounds_to_values(r, &self.rebound, &self.cmp) {
+                Some((mut a, mut z)) => {
+                    if on_add(i, Some((&mut a, &mut z))) {
+                        let r = Mrs::new(a, z);
+                        self.list.push(r);
+                    }
+                }
+                None => {
+                    on_add(i, None);
+                    ()
+                }
             }
         }
-    }
-}
-
-impl<T, V, C: IncDecCpCmp<T, V>> IntoIterator for Accumulate<T, V, C> {
-    type Item = (T, T);
-
-    type IntoIter = OwnedOverlapIter<T, V, C>;
-    fn into_iter(self) -> Self::IntoIter {
-        OwnedOverlapIter::new(self.list, self.step, self.cmp)
     }
 }
 

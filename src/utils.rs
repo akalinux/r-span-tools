@@ -1,4 +1,4 @@
-use crate::{GetBeginEnd, Mrs, builder::IncDecCpCmp};
+use crate::{GetBeginEnd, Mrs, MrsP, builder::IncDecCpCmp};
 use std::{cmp::Ordering, ops::RangeBounds};
 
 /// **Range to value Conversion**
@@ -27,6 +27,9 @@ pub fn range_bounds_to_values<T, V>(
     if let Some(begin) = cmp.rebound_start(range.start_bound(), rebound)
         && let Some(end) = cmp.rebound_end(range.end_bound(), rebound)
     {
+        if cmp.is_invalid_set(&begin, &end) {
+            return None;
+        }
         return Some((begin, end));
     } else {
         return None;
@@ -366,6 +369,61 @@ pub fn previous_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
         return Some(previous_smallest_range(begin, end, src, t));
     } else if let Some((begin, end)) = alt {
         return Some(previous_smallest_range(begin, end, src, t));
+    }
+    return None;
+}
+
+pub(crate) fn next_back<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    src: &[R],
+    cmp: &C,
+    step: &V,
+    next: &Option<Mrs<T>>,
+    back: &Option<Mrs<T>>,
+) -> Option<Mrs<T>> {
+    if let Some(b) = back
+        && let Some(n) = next
+    {
+        match range_relation(b, n, cmp) {
+            RangeRelation::Overlap => {
+                if let Some(end) = cmp.dec(b.get_begin(), step) {
+                    return otmo(previous_range_begin_end(&end, &[MrsP { r: n }], cmp));
+                }
+            }
+            RangeRelation::After => {
+                if let Some(end) = cmp.dec(b.get_begin(), step) {
+                    return otmo(previous_range_begin_end(&end, src, cmp));
+                }
+            }
+            RangeRelation::Before => return None,
+        }
+    }
+    return None;
+}
+
+pub(crate) fn next<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    src: &[R],
+    cmp: &C,
+    step: &V,
+    next: &Option<Mrs<T>>,
+    back: &Option<Mrs<T>>,
+) -> Option<Mrs<T>> {
+    if let Some(n) = next {
+        match back {
+            Some(b) => match range_relation(n, b, cmp) {
+                RangeRelation::Overlap => {
+                    if let Some(begin) = cmp.inc(n.get_end(), step) {
+                        return otmo(next_range_begin_end(&begin, &[MrsP { r: b }], cmp));
+                    }
+                }
+                RangeRelation::Before => {
+                    if let Some(begin) = cmp.inc(n.get_end(), step) {
+                        return otmo(next_range_begin_end(&begin, src, cmp));
+                    }
+                }
+                RangeRelation::After => return None,
+            },
+            None => (),
+        }
     }
     return None;
 }
