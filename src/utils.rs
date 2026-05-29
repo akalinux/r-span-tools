@@ -5,13 +5,13 @@ use std::{cmp::Ordering, ops::RangeBounds};
 ///  - before a range
 ///  - overlap with a range
 ///  - after a range
-pub enum RangeRelation {
+pub enum RangeRelation<B, O, A> {
     /// Range a is before range b
-    Before,
+    Before(B),
     /// Range a and b overlap
-    Overlap,
+    Overlap(O),
     /// Range a is after range b
-    After,
+    After(A),
 }
 
 /// Compares the positional relationship between a and b.
@@ -23,14 +23,14 @@ pub fn range_relation<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(
     a: &R,
     b: &R,
     t: &C,
-) -> RangeRelation {
+) -> RangeRelation<(), (), ()> {
     if t.lt(a.get_end(), b.get_begin()) {
-        return RangeRelation::Before;
+        return RangeRelation::Before(());
     } else if t.lt(b.get_end(), a.get_begin()) {
-        return RangeRelation::After;
+        return RangeRelation::After(());
     }
 
-    return RangeRelation::Overlap;
+    return RangeRelation::Overlap(());
 }
 
 /// **Range to value Conversion**

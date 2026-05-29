@@ -27,6 +27,7 @@ mod lip_tests {
     fn test_from() {
         assert_eq!(1..=3, RangeInclusive::from(Mrs::new(1, 3)));
         assert_eq!(1..=3, Mrs::new(1, 3).into());
+        assert_eq!((1, 3), Mrs::new(1, 3).into());
     }
 
     #[test]

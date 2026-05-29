@@ -14,12 +14,15 @@ mod util_tests {
 
         // Empty set test
         assert_eq!(
-            first_range_begin_end::<i32, i32, BlanketIncDecCpCmp, Mrs<i32>>(&[], &t),
+            first_range_begin_end::<i32, i32, BlanketIncDecCpCmp<i32>, Mrs<i32>>(&[], &t),
             None
         );
 
         assert_eq!(
-            first_range_begin_end::<i32, i32, BlanketIncDecCpCmp, Mrs<i32>>(&[Mrs::new(0, -1)], &t),
+            first_range_begin_end::<i32, i32, BlanketIncDecCpCmp<i32>, Mrs<i32>>(
+                &[Mrs::new(0, -1)],
+                &t
+            ),
             None
         );
 
@@ -72,12 +75,15 @@ mod util_tests {
 
         // Empty set test
         assert_eq!(
-            last_range_begin_end::<i32, i32, BlanketIncDecCpCmp, Mrs<i32>>(&[], &t),
+            last_range_begin_end::<i32, i32, BlanketIncDecCpCmp<i32>, Mrs<i32>>(&[], &t),
             None
         );
 
         assert_eq!(
-            last_range_begin_end::<i32, i32, BlanketIncDecCpCmp, Mrs<i32>>(&[Mrs::new(0, -1)], &t),
+            last_range_begin_end::<i32, i32, BlanketIncDecCpCmp<i32>, Mrs<i32>>(
+                &[Mrs::new(0, -1)],
+                &t
+            ),
             None
         );
 
@@ -166,9 +172,9 @@ mod util_tests {
     fn range_conversion() {
         let t = BlanketIncDecCpCmp::new();
 
-        assert_eq!(range_bounds_to_values(&(1..=2), &1, &t), Some((1, 2)));
+        assert_eq!(range_bounds_to_values(&(1_i32..=2), &1, &t), Some((1, 2)));
         assert_eq!(
-            range_bounds_to_values(&(1.0..f32::INFINITY), &1.0, &t),
+            range_bounds_to_values(&(1.0..f32::INFINITY), &1.0, &BlanketIncDecCpCmp::new()),
             None
         );
     }
@@ -316,23 +322,23 @@ mod util_tests {
         // Compare Range Positional relationships
         assert!(matches!(
             range_relation(&Mrs::new(1, 2), &Mrs::new(1, 2), &t),
-            RangeRelation::Overlap
+            RangeRelation::Overlap(())
         )); // a and b overlap
         assert!(matches!(
             range_relation(&Mrs::new(1, 1), &Mrs::new(1, 2), &t),
-            RangeRelation::Overlap
+            RangeRelation::Overlap(())
         )); // a and b overlap
         assert!(matches!(
             range_relation(&Mrs::new(2, 2), &Mrs::new(1, 2), &t),
-            RangeRelation::Overlap
+            RangeRelation::Overlap(())
         )); // a and b overlap
         assert!(matches!(
             range_relation(&Mrs::new(0, 0), &Mrs::new(1, 2), &t),
-            RangeRelation::Before
+            RangeRelation::Before(())
         )); // a is before b
         assert!(matches!(
             range_relation(&Mrs::new(3, 4), &Mrs::new(1, 2), &t),
-            RangeRelation::After
+            RangeRelation::After(())
         )); // a is after b
     }
 

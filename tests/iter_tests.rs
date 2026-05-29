@@ -5,8 +5,8 @@ mod iter_tests {
     use std::{cell::RefCell, rc::Rc};
 
     use common_range_tools::{
-        Accumulate, AccumulateDefaults, Accumulator, BlanketIncDecCpCmp, DefaultValues,
-        GetBeginEnd, IncDecCpCmp, Mrs, OverlapIter,
+        Accumulate, AccumulateDefaults, Accumulator, BlanketIncDecCpCmp, GetBeginEnd, IncDecCpCmp,
+        Mrs, OverlapIter,
     };
 
     fn checkset() -> [(i32, i32); 9] {
@@ -37,17 +37,10 @@ mod iter_tests {
         ];
     }
 
+    const MIN: Point = Point { x: i32::MIN };
+    const MAX: Point = Point { x: i32::MAX };
     struct TestCmp {}
 
-    impl DefaultValues<Point, Point> for TestCmp {
-        fn default_step(&self) -> Point {
-            Point { x: 1 }
-        }
-
-        fn default_rebound(&self) -> Point {
-            Point { x: 1 }
-        }
-    }
     impl IncDecCpCmp<Point, Point> for TestCmp {
         fn cp(&self, v: &Point) -> Point {
             return v.clone();
@@ -72,11 +65,18 @@ mod iter_tests {
         }
 
         fn min(&self) -> Point {
-            return Point { x: i32::MIN };
+            return MIN;
         }
 
         fn max(&self) -> Point {
-            return Point { x: i32::MAX };
+            return MAX;
+        }
+
+        fn min_ref(&self) -> &Point {
+            &MIN
+        }
+        fn max_ref(&self) -> &Point {
+            &MAX
         }
     }
 
@@ -109,10 +109,10 @@ mod iter_tests {
         let iter: OverlapIter<
             i32,
             i32,
-            BlanketIncDecCpCmp,
+            BlanketIncDecCpCmp<i32>,
             Mrs<i32>,
             Rc<RefCell<Vec<Mrs<i32>>>>,
-            Rc<BlanketIncDecCpCmp>,
+            Rc<BlanketIncDecCpCmp<i32>>,
         > = OverlapIter::new(Rc::new(RefCell::new(src)), 1, Rc::new(t));
         let mut count = 0;
 
@@ -133,10 +133,10 @@ mod iter_tests {
         let iter: OverlapIter<
             i32,
             i32,
-            BlanketIncDecCpCmp,
+            BlanketIncDecCpCmp<i32>,
             Mrs<i32>,
             Rc<RefCell<Vec<Mrs<i32>>>>,
-            Rc<BlanketIncDecCpCmp>,
+            Rc<BlanketIncDecCpCmp<i32>>,
         > = OverlapIter::new(Rc::new(RefCell::new(src)), 1, Rc::new(t));
 
         for (i, res) in iter.rev().enumerate() {
@@ -150,14 +150,14 @@ mod iter_tests {
         let rev = checkset_rev();
 
         let src = mrs_set();
-        let t = BlanketIncDecCpCmp::new();
+        let t: BlanketIncDecCpCmp<i32> = BlanketIncDecCpCmp::new();
         let s: OverlapIter<
             i32,
             i32,
-            BlanketIncDecCpCmp,
+            BlanketIncDecCpCmp<i32>,
             Mrs<i32>,
             Rc<RefCell<Vec<Mrs<i32>>>>,
-            Rc<BlanketIncDecCpCmp>,
+            Rc<BlanketIncDecCpCmp<i32>>,
         > = OverlapIter::new(Rc::new(RefCell::new(src)), 1, Rc::new(t));
         let mut iter = s.into_iter();
 

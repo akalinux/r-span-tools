@@ -10,12 +10,32 @@ use std::ops::Bound;
 ///  - Unsigned Int: u8, u16, u32, u64, u128, usize
 ///  - Signed Int: i8, i16, i32, i64, i128, isize);
 ///  - Float: f32, f64
-pub struct BlanketIncDecCpCmp {}
+pub struct BlanketIncDecCpCmp<T> {
+    min: T,
+    max: T,
+}
 
-impl BlanketIncDecCpCmp {
-    /// General constructor.
+impl<T> BlanketIncDecCpCmp<T>
+where
+    BlanketIncDecCpCmp<T>: DefaultValues<T, T>,
+{
     pub fn new() -> Self {
-        Self {}
+        Self {
+            min: BlanketIncDecCpCmp::default_min(),
+            max: BlanketIncDecCpCmp::default_max(),
+        }
+    }
+
+    /// Sets the values returned by self.min() and self.min_ref().
+    /// Changing this value from the default will further constrain what ranges are considered invalid.
+    pub fn set_min(&mut self, v: T) {
+        self.min = v;
+    }
+
+    /// Sets the values returned by self.max() and self.max_ref().
+    /// Changing this value from the default will further constrain what ranges are considered invalid.
+    pub fn set_max(&mut self, v: T) {
+        self.max = v;
     }
 }
 
@@ -42,6 +62,8 @@ impl BlanketIncDecCpCmp {
 ///
 ///     fn min(&self) ->i32 { <i32>::MIN }
 ///     fn max(&self) ->i32 { <i32>::MAX }
+///     fn min_ref(&self) ->&i32 { &<i32>::MIN }
+///     fn max_ref(&self) ->&i32 { &<i32>::MAX }
 ///
 ///     fn inc(&self, a: &i32, b: &i32) -> Option<i32> {
 ///         if *b<=0 { return None}
@@ -57,6 +79,9 @@ impl BlanketIncDecCpCmp {
 pub trait IncDecCpCmp<T, V> {
     //. Should return a clone or copy of &T.
     fn cp(&self, v: &T) -> T;
+
+    fn min_ref(&self) -> &T;
+    fn max_ref(&self) -> &T;
 
     /// Should safely increment a by b.  The value should always go up.. if not then it should return None.
     fn inc(&self, a: &T, b: &V) -> Option<T>;
@@ -115,9 +140,9 @@ pub trait IncDecCpCmp<T, V> {
             || self.contains(c, d, b);
     }
 
-    /// Returns true if b lt a.
+    /// Returns true if b lt a or a lt self.min_ref() or self.max_ref() lt b.
     fn is_invalid_set(&self, a: &T, b: &T) -> bool {
-        return self.lt(b, a);
+        return self.lt(b, a) || self.lt(a, self.min_ref()) || self.lt(self.max_ref(), b);
     }
 
     /// Returns the raw adjusted start value.
@@ -154,19 +179,29 @@ pub trait DefaultValues<T, V>: IncDecCpCmp<T, V> {
 
     /// Returns the value used to adjust a start or end value in the context of [std::ops::range::Bound::Excluded].
     fn default_rebound(&self) -> V;
+
+    /// Returns the default minimum value.
+    fn default_min() -> T;
+
+    /// Returns the default maximum value.
+    fn default_max() -> T;
 }
 
 macro_rules! impl_inc_dec_cp_cmp_trait_i {
     ($($t:ty),*) => {
         $(
-            impl IncDecCpCmp<$t,$t> for BlanketIncDecCpCmp {
+
+
+            impl IncDecCpCmp<$t,$t> for BlanketIncDecCpCmp<$t> {
                 fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
                     if *b<=0 { return None}
                     return a.clone().checked_sub(b.clone());
                 }
 
-                fn min(&self) ->$t { <$t>::MIN }
-                fn max(&self) ->$t { <$t>::MAX }
+                fn min(&self) ->$t { self.min }
+                fn max(&self) ->$t { self.max }
+                fn min_ref(&self) ->&$t { &self.min }
+                fn max_ref(&self) ->&$t { &self.max }
 
                 fn inc(&self, a: &$t, b: &$t) -> Option<$t> {
                     if *b<=0 { return None}
@@ -182,9 +217,11 @@ macro_rules! impl_inc_dec_cp_cmp_trait_i {
                 }
             }
 
-            impl DefaultValues<$t,$t> for BlanketIncDecCpCmp {
+            impl DefaultValues<$t,$t> for BlanketIncDecCpCmp<$t> {
                 fn default_step(&self) ->$t { return 1}
                 fn default_rebound(&self) ->$t { return 1}
+                fn default_min() ->$t { <$t>::MIN }
+                fn default_max() ->$t { <$t>::MAX }
             }
         )*
     };
@@ -193,13 +230,17 @@ macro_rules! impl_inc_dec_cp_cmp_trait_i {
 macro_rules! impl_inc_dec_cp_cmp_trait_u {
     ($($t:ty),*) => {
         $(
-            impl IncDecCpCmp<$t,$t> for BlanketIncDecCpCmp {
+
+
+            impl IncDecCpCmp<$t,$t> for BlanketIncDecCpCmp<$t> {
                 fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
                     if *b==0 { return None}
                     return a.clone().checked_sub(b.clone());
                 }
-                fn min(&self) ->$t { <$t>::MIN }
-                fn max(&self) ->$t { <$t>::MAX }
+                fn min(&self) ->$t { self.min }
+                fn max(&self) ->$t { self.max }
+                fn min_ref(&self) ->&$t { &self.min }
+                fn max_ref(&self) ->&$t { &self.max }
 
                 fn inc(&self, a: &$t, b: &$t) -> Option<$t> {
                     if *b==0 { return None}
@@ -215,9 +256,11 @@ macro_rules! impl_inc_dec_cp_cmp_trait_u {
                 }
             }
 
-            impl DefaultValues<$t,$t> for BlanketIncDecCpCmp {
+            impl DefaultValues<$t,$t> for BlanketIncDecCpCmp<$t> {
                 fn default_step(&self) ->$t { return 1}
                 fn default_rebound(&self) ->$t { return 1}
+                fn default_min() ->$t { <$t>::MIN }
+                fn default_max() ->$t { <$t>::MAX }
             }
         )*
     };
@@ -226,14 +269,18 @@ macro_rules! impl_inc_dec_cp_cmp_trait_u {
 macro_rules! impl_inc_dec_cp_cmp_trait_f {
     ($($t:ty),*) => {
         $(
-            impl IncDecCpCmp<$t,$t> for BlanketIncDecCpCmp {
+
+
+            impl IncDecCpCmp<$t,$t> for BlanketIncDecCpCmp<$t> {
                 fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
                     let res=a - b;
                     if res.is_nan() || res >=*a { None } else { Some(res) }
                 }
 
-                fn min(&self) ->$t { <$t>::MIN }
-                fn max(&self) ->$t { <$t>::MAX }
+                fn min(&self) ->$t { self.min }
+                fn max(&self) ->$t { self.max }
+                fn min_ref(&self) ->&$t { &self.min }
+                fn max_ref(&self) ->&$t { &self.max }
 
                 fn inc(&self, a: &$t, b: &$t) -> Option<$t> {
                     let res=a + b;
@@ -249,9 +296,11 @@ macro_rules! impl_inc_dec_cp_cmp_trait_f {
                 }
             }
 
-            impl DefaultValues<$t,$t> for BlanketIncDecCpCmp {
+            impl DefaultValues<$t,$t> for BlanketIncDecCpCmp<$t> {
                 fn default_step(&self) ->$t { return 1.0}
                 fn default_rebound(&self) ->$t { return 1.0 }
+                fn default_min() ->$t { <$t>::MIN }
+                fn default_max() ->$t { <$t>::MAX }
             }
         )*
     };

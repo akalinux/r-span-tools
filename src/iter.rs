@@ -56,16 +56,16 @@ where
         if let Some(n) = &self.next {
             match &self.back {
                 Some(b) => match range_relation(n, b, self.cmp.borrow()) {
-                    RangeRelation::Overlap => {
+                    RangeRelation::Overlap(_) => {
                         if let Some(begin) = self.cmp.borrow().inc(n.get_end(), &self.step) {
                             next = otmo(next_range_begin_end(
                                 &begin,
-                                &[MrsP { r: b }],
+                                &[MrsP { r: b }, MrsP { r: n }],
                                 self.cmp.borrow(),
                             ));
                         }
                     }
-                    RangeRelation::Before => {
+                    RangeRelation::Before(_) => {
                         if let Some(begin) = self.cmp.borrow().inc(n.get_end(), &self.step) {
                             next = otmo(next_range_begin_end(
                                 &begin,
@@ -74,7 +74,7 @@ where
                             ));
                         }
                     }
-                    RangeRelation::After => return None,
+                    RangeRelation::After(_) => return None,
                 },
                 None => (),
             }
@@ -95,16 +95,16 @@ where
             && let Some(n) = &self.next
         {
             match range_relation(b, n, self.cmp.borrow()) {
-                RangeRelation::Overlap => {
+                RangeRelation::Overlap(_) => {
                     if let Some(end) = self.cmp.borrow().dec(b.get_begin(), &self.step) {
                         back = otmo(previous_range_begin_end(
                             &end,
-                            &[MrsP { r: n }],
+                            &[MrsP { r: n }, MrsP { r: b }],
                             self.cmp.borrow(),
                         ));
                     }
                 }
-                RangeRelation::After => {
+                RangeRelation::After(_) => {
                     if let Some(end) = self.cmp.borrow().dec(b.get_begin(), &self.step) {
                         back = otmo(previous_range_begin_end(
                             &end,
@@ -113,7 +113,7 @@ where
                         ));
                     }
                 }
-                RangeRelation::Before => return None,
+                RangeRelation::Before(_) => return None,
             }
         }
         return mem::replace(&mut self.back, back);
@@ -137,14 +137,14 @@ pub struct AccumulateDefaults<T> {
     list: Vec<Mrs<T>>,
     step: T,
     rebound: T,
-    cmp: BlanketIncDecCpCmp,
+    cmp: BlanketIncDecCpCmp<T>,
 }
 impl<T> AccumulateDefaults<T>
 where
-    BlanketIncDecCpCmp: DefaultValues<T, T>,
+    BlanketIncDecCpCmp<T>: DefaultValues<T, T>,
 {
     pub fn new() -> Self {
-        let cmp = BlanketIncDecCpCmp {};
+        let cmp: BlanketIncDecCpCmp<T> = BlanketIncDecCpCmp::new();
         Self {
             list: Vec::new(),
             step: cmp.default_step(),
@@ -222,11 +222,11 @@ impl<T, V, C: IncDecCpCmp<T, V>> Accumulator<T, V, C> for Accumulate<T, V, C> {
     }
 }
 
-impl<T> Accumulator<T, T, BlanketIncDecCpCmp> for AccumulateDefaults<T>
+impl<T> Accumulator<T, T, BlanketIncDecCpCmp<T>> for AccumulateDefaults<T>
 where
-    BlanketIncDecCpCmp: DefaultValues<T, T>,
+    BlanketIncDecCpCmp<T>: DefaultValues<T, T>,
 {
-    type Cmp = BlanketIncDecCpCmp;
+    type Cmp = BlanketIncDecCpCmp<T>;
 
     fn add_mrs(&mut self, mrs: Mrs<T>) -> Option<(usize, &Mrs<T>)> {
         let (a, z) = mrs.to_tuple_ref();
@@ -253,7 +253,7 @@ where
     fn set_step(&mut self, step: T) {
         self.step = step;
     }
-    fn get_cmp(&self) -> &BlanketIncDecCpCmp {
+    fn get_cmp(&self) -> &BlanketIncDecCpCmp<T> {
         return &self.cmp;
     }
 }
@@ -274,17 +274,17 @@ impl<T, V, C: IncDecCpCmp<T, V>> IntoIterator for Accumulate<T, V, C> {
 
 impl<T> IntoIterator for AccumulateDefaults<T>
 where
-    BlanketIncDecCpCmp: DefaultValues<T, T>,
+    BlanketIncDecCpCmp<T>: DefaultValues<T, T>,
 {
     type Item = Mrs<T>;
 
     type IntoIter = OverlapIter<
         T,
         T,
-        BlanketIncDecCpCmp,
+        BlanketIncDecCpCmp<T>,
         Mrs<T>,
         Rc<RefCell<Vec<Mrs<T>>>>,
-        Rc<BlanketIncDecCpCmp>,
+        Rc<BlanketIncDecCpCmp<T>>,
     >;
 
     fn into_iter(self) -> Self::IntoIter {

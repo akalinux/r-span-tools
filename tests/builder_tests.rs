@@ -9,7 +9,45 @@ mod builder_tests {
     };
 
     #[test]
-    fn inc_dec_behavior() {
+    fn vaild_constaint_tests_i32() {
+        let mut t = BlanketIncDecCpCmp::new();
+        assert!(!t.is_invalid_set(&1, &2));
+        assert!(t.is_invalid_set(&2, &1));
+        t.set_max(1);
+        assert!(t.is_invalid_set(&1, &2));
+        assert!(!t.is_invalid_set(&1, &1));
+        t.set_min(0);
+        assert!(t.is_invalid_set(&-1, &1));
+        assert!(!t.is_invalid_set(&0, &1));
+    }
+
+    #[test]
+    fn vaild_constaint_tests_u8() {
+        let mut t = BlanketIncDecCpCmp::new();
+        assert!(!t.is_invalid_set(&1_u8, &2));
+        assert!(t.is_invalid_set(&2, &1));
+        t.set_max(1);
+        assert!(t.is_invalid_set(&1, &2));
+        assert!(!t.is_invalid_set(&1, &1));
+        t.set_min(1);
+        assert!(t.is_invalid_set(&0, &1));
+        assert!(!t.is_invalid_set(&1, &1));
+    }
+    #[test]
+    fn vaild_constaint_tests_f32() {
+        let mut t = BlanketIncDecCpCmp::new();
+        assert!(!t.is_invalid_set(&1.0, &2.0));
+        assert!(t.is_invalid_set(&2.0, &1.0));
+        t.set_max(1.0);
+        assert!(t.is_invalid_set(&1.0, &2.0));
+        assert!(!t.is_invalid_set(&1.0, &1.0));
+        t.set_min(1.0);
+        assert!(t.is_invalid_set(&0.0, &1.0));
+        assert!(!t.is_invalid_set(&1.0, &1.0));
+    }
+
+    #[test]
+    fn inc_dec_behavior_i32() {
         let l = BlanketIncDecCpCmp::new();
 
         // i32 Increment examples
@@ -23,7 +61,11 @@ mod builder_tests {
         assert_eq!(l.dec(&0, &0), None); // Number did not go down
         assert_eq!(l.dec(&0, &-2), None); // Number did not go down
         assert_eq!(l.dec(&i32::MIN, &1), None); // Catch undeflow
+    }
 
+    #[test]
+    fn inc_dec_behavior_u32() {
+        let l = BlanketIncDecCpCmp::new();
         // u32 Increment examples
         assert_eq!(l.inc(&1_u32, &2_u32), Some(3)); // Number went up by 2!
         assert_eq!(l.inc(&0_u32, &0), None); // Number did not go up
@@ -33,7 +75,10 @@ mod builder_tests {
         assert_eq!(l.dec(&3_u32, &2), Some(1)); // Number went down by 2!
         assert_eq!(l.dec(&3_u32, &0), None); // Number did not go down
         assert_eq!(l.dec(&u32::MIN, &1), None); // Catch undeflow
-
+    }
+    #[test]
+    fn inc_dec_behavior_f32() {
+        let l = BlanketIncDecCpCmp::new();
         // f32 Increment examples
         assert_eq!(l.inc(&0.2, &0.5), Some(0.7));
         assert_eq!(l.inc(&1.7, &-0.5), None);
@@ -52,24 +97,35 @@ mod builder_tests {
     }
 
     #[test]
-    fn misc_tests() {
+    fn misc_tests_u8() {
         let t = BlanketIncDecCpCmp::new();
         assert_eq!(u8::MAX, t.max());
         assert_eq!(u8::MIN, t.min());
-        assert_eq!(f32::MAX, t.max());
-        assert_eq!(f32::MIN, t.min());
+        assert_eq!(1_u8, t.cp(&1));
+        assert_eq!(1_u8, t.default_step());
+        assert_eq!(1_u8, t.default_rebound());
+        assert!(t.lt(&0_u8, &2));
+    }
+    #[test]
+    fn misc_tests_i32() {
+        let t = BlanketIncDecCpCmp::new();
         assert_eq!(i32::MAX, t.max());
         assert_eq!(i32::MIN, t.min());
-        assert_eq!(1_u8, t.cp(&1));
-        assert_eq!(1.0_f32, t.cp(&1.0));
         assert_eq!(1, t.cp(&1));
         assert_eq!(1, t.default_step());
         assert_eq!(1, t.default_rebound());
-        assert_eq!(1_u8, t.default_step());
-        assert_eq!(1_u8, t.default_rebound());
+        assert!(t.lt(&0, &2));
+    }
+    #[test]
+    fn misc_tests_f32() {
+        let t = BlanketIncDecCpCmp::new();
+        assert_eq!(f32::MAX, t.max());
+        assert_eq!(f32::MIN, t.min());
+        assert_eq!(1.0, t.cp(&1.0));
         assert_eq!(1.0, t.default_step());
         assert_eq!(1.0, t.default_rebound());
         assert_eq!(Mrs::new(1, 2).to_tuple(), (1, 2));
+        assert!(t.lt(&0.0, &2.0));
     }
     #[test]
     fn inc_dec_compare_all() {
@@ -90,9 +146,6 @@ mod builder_tests {
         assert!(!l.ge(&4, &5));
         assert!(!l.lt(&4, &3));
         assert!(!l.gt(&4, &5));
-
-        assert!(l.lt(&1.0, &3.0));
-        assert!(l.lt(&0_u8, &2));
 
         // Contains Examples
         assert!(l.contains(&1, &3, &1));

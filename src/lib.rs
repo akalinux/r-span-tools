@@ -70,6 +70,12 @@ impl<T> From<Mrs<T>> for std::ops::RangeInclusive<T> {
     }
 }
 
+impl<T> From<Mrs<T>> for (T, T) {
+    fn from(value: Mrs<T>) -> Self {
+        return value.to_tuple();
+    }
+}
+
 impl<'r, T> GetBeginEnd<T> for MrsP<'r, T> {
     /// Wrapper for internal [crate::Mrs] instance.
     fn get_begin(&self) -> &T {
