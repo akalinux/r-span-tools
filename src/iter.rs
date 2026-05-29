@@ -1,47 +1,38 @@
 use crate::builder::IncDecCpCmp;
 use crate::{
-    BlanketIncDecCpCmp, DefaultValues, GetBeginEnd, Mrs, first_range_begin_end,
-    last_range_begin_end, next, next_back, ofmo, otmo, range_bounds_to_values,
+    BlanketIncDecCpCmp, DefaultValues, GetBeginEnd, Mrs, MrsP, RangeRelation,
+    first_range_begin_end, last_range_begin_end, next_range_begin_end, otmo,
+    previous_range_begin_end, range_bounds_to_values, range_relation,
 };
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::RangeBounds;
 use std::rc::Rc;
 
-pub struct OverlapIter<'r, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> {
-    src: &'r [R],
-    step: Rc<V>,
-    cmp: Rc<C>,
+pub struct OverlapIter<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X>
+where
+    L: Borrow<RefCell<Vec<R>>>,
+    X: Borrow<C>,
+{
+    src: L,
+    step: V,
+    cmp: X,
     next: Option<Mrs<T>>,
     back: Option<Mrs<T>>,
-    _marker: PhantomData<(T, V)>,
+    _marker: PhantomData<(T, R, C)>,
 }
 
-impl<'r, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> OverlapIter<'r, T, V, C, R> {
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X> OverlapIter<T, V, C, R, L, X>
+where
+    L: Borrow<RefCell<Vec<R>>>,
+    X: Borrow<C>,
+{
     /// Creates a new [crate::OverlapIter] from the slice of R.
-    /// If the any of the objects passed into the constructor are modified durring the lifetime of the
-    /// iteraotr then the behavior is undefined!
-    pub fn new(src: &'r [R], step: Rc<V>, cmp: Rc<C>) -> Self {
-        let next = otmo(first_range_begin_end(src, cmp.as_ref()));
-        let back = otmo(last_range_begin_end(src, cmp.as_ref()));
-        Self {
-            src,
-            step,
-            cmp,
-            next,
-            back,
-            _marker: PhantomData,
-        }
-    }
-
-    /// Creates a new [crate::OverlapIter] from the [Vec] by creating a slice of the Vec<R>.  
-    /// If the any of the objects passed into the constructor are modified durring the lifetime of the
-    /// iteraotr then the behavior is undefined!
-    pub fn from_vec(list: &Vec<R>, step: Rc<V>, cmp: Rc<C>) -> Self {
-        let src = unsafe { mem::transmute::<&'_ [R], &'r [R]>(list.as_slice()) };
-        let next = otmo(first_range_begin_end(src, cmp.as_ref()));
-        let back = otmo(last_range_begin_end(src, cmp.as_ref()));
+    pub fn new(src: L, step: V, cmp: X) -> Self {
+        let next = otmo(first_range_begin_end(&*src.borrow().borrow(), cmp.borrow()));
+        let back = otmo(last_range_begin_end(&*src.borrow().borrow(), cmp.borrow()));
         Self {
             src,
             step,
@@ -53,138 +44,78 @@ impl<'r, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> OverlapIter<'r, T, V, C,
     }
 }
 
-impl<'r, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> Iterator for OverlapIter<'r, T, V, C, R> {
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X> Iterator for OverlapIter<T, V, C, R, L, X>
+where
+    L: Borrow<RefCell<Vec<R>>>,
+    X: Borrow<C>,
+{
     type Item = Mrs<T>;
     fn next(&mut self) -> Option<Self::Item> {
-        let next = next(
-            self.src,
-            self.cmp.as_ref(),
-            self.step.as_ref(),
-            &self.next,
-            &self.back,
-        );
+        let mut next = None;
+        if let Some(n) = &self.next {
+            match &self.back {
+                Some(b) => match range_relation(n, b, self.cmp.borrow()) {
+                    RangeRelation::Overlap => {
+                        if let Some(begin) = self.cmp.borrow().inc(n.get_end(), &self.step) {
+                            next = otmo(next_range_begin_end(
+                                &begin,
+                                &[MrsP { r: b }],
+                                self.cmp.borrow(),
+                            ));
+                        }
+                    }
+                    RangeRelation::Before => {
+                        if let Some(begin) = self.cmp.borrow().inc(n.get_end(), &self.step) {
+                            next = otmo(next_range_begin_end(
+                                &begin,
+                                &*self.src.borrow().borrow(),
+                                self.cmp.borrow(),
+                            ));
+                        }
+                    }
+                    RangeRelation::After => return None,
+                },
+                None => (),
+            }
+        }
         return mem::replace(&mut self.next, next);
     }
 }
-impl<'r, T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>> DoubleEndedIterator
-    for OverlapIter<'r, T, V, C, R>
+
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X> DoubleEndedIterator
+    for OverlapIter<T, V, C, R, L, X>
+where
+    L: Borrow<RefCell<Vec<R>>>,
+    X: Borrow<C>,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
-        let back = next_back(
-            self.src,
-            self.cmp.as_ref(),
-            self.step.as_ref(),
-            &self.next,
-            &self.back,
-        );
-
-        return mem::replace(&mut self.back, back);
-    }
-}
-
-pub struct OwnedOverlapIter<T, V, C: IncDecCpCmp<T, V>> {
-    cols: RefCell<Vec<Mrs<T>>>,
-    step: V,
-    cmp: C,
-    next: Option<Mrs<T>>,
-    back: Option<Mrs<T>>,
-
-    _marker: std::marker::PhantomData<(T, V)>,
-}
-
-impl<T, V, C: IncDecCpCmp<T, V>> OwnedOverlapIter<T, V, C> {
-    pub fn new(cols: Vec<Mrs<T>>, step: V, cmp: C) -> Self {
-        let next = otmo(first_range_begin_end(&cols, &cmp));
-        let back = otmo(last_range_begin_end(&cols, &cmp));
-        Self {
-            cols: RefCell::new(cols),
-            step,
-            cmp,
-            next,
-            back,
-            _marker: std::marker::PhantomData,
-        }
-    }
-
-    pub fn get_builder(&self) -> &C {
-        return &self.cmp;
-    }
-
-    pub fn update_col(&mut self, idx: usize, range: Mrs<T>) -> Result<(), &'static str> {
-        if let Some(col) = self.cols.get_mut().get_mut(idx) {
-            *col = range;
-            return Ok(());
-        }
-        return Err("idx out of bounds");
-    }
-
-    pub fn replcae_cols(&self, cols: Vec<Mrs<T>>) -> Vec<Mrs<T>> {
-        return self.cols.replace(cols);
-    }
-}
-
-impl<T, V, C: IncDecCpCmp<T, V>> Iterator for OwnedOverlapIter<T, V, C> {
-    type Item = (T, T);
-    fn next(&mut self) -> Option<Self::Item> {
-        let target = next(
-            self.cols.borrow().as_ref(),
-            &self.cmp,
-            &self.step,
-            &self.next,
-            &self.back,
-        );
-        return ofmo(mem::replace(&mut self.next, target));
-    }
-}
-
-impl<T, V, C: IncDecCpCmp<T, V>> DoubleEndedIterator for OwnedOverlapIter<T, V, C> {
-    fn next_back(&mut self) -> Option<Self::Item> {
-        let target = next_back(
-            self.cols.borrow().as_ref(),
-            &self.cmp,
-            &self.step,
-            &self.next,
-            &self.back,
-        );
-        return ofmo(mem::replace(&mut self.next, target));
-    }
-}
-
-pub struct Intersector<T, V, C: IncDecCpCmp<T, V>> {
-    iter: OwnedOverlapIter<T, V, C>,
-}
-
-impl<T, V, C: IncDecCpCmp<T, V>> Intersector<T, V, C> {
-    pub fn new<S: RangeBounds<T>>(src: &[S], step: V, rebound: V, cmp: C) -> Self {
-        let mut list: Vec<Mrs<T>> = Vec::new();
-
-        for range in src {
-            if let Some((a, z)) = range_bounds_to_values(range, &rebound, &cmp) {
-                list.push(Mrs::new(a, z));
+        let mut back = None;
+        if let Some(b) = &self.back
+            && let Some(n) = &self.next
+        {
+            match range_relation(b, n, self.cmp.borrow()) {
+                RangeRelation::Overlap => {
+                    if let Some(end) = self.cmp.borrow().dec(b.get_begin(), &self.step) {
+                        back = otmo(previous_range_begin_end(
+                            &end,
+                            &[MrsP { r: n }],
+                            self.cmp.borrow(),
+                        ));
+                    }
+                }
+                RangeRelation::After => {
+                    if let Some(end) = self.cmp.borrow().dec(b.get_begin(), &self.step) {
+                        back = otmo(previous_range_begin_end(
+                            &end,
+                            &*self.src.borrow().borrow(),
+                            self.cmp.borrow(),
+                        ));
+                    }
+                }
+                RangeRelation::Before => return None,
             }
         }
-
-        Self {
-            iter: OwnedOverlapIter::new(list, step, cmp),
-        }
-    }
-}
-
-impl<T, V> Intersector<T, V, BlanketIncDecCpCmp>
-where
-    BlanketIncDecCpCmp: DefaultValues<T, V>,
-{
-    pub fn defaults<S: RangeBounds<T>>(src: &[S]) -> Intersector<T, V, BlanketIncDecCpCmp> {
-        let t = BlanketIncDecCpCmp::new();
-        return Intersector::new(src, t.default_step(), t.default_rebound(), t);
-    }
-}
-
-impl<'v, 'c, T, V, C: IncDecCpCmp<T, V>> Iterator for Intersector<T, V, C> {
-    type Item = (T, T);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        return self.iter.next();
+        return mem::replace(&mut self.back, back);
     }
 }
 
@@ -197,71 +128,72 @@ pub struct Accumulate<T, V, C: IncDecCpCmp<T, V>> {
     cmp: C,
 }
 
-impl<T, V, C: IncDecCpCmp<T, V>> IntoIterator for Accumulate<T, V, C> {
-    type Item = (T, T);
-
-    type IntoIter = OwnedOverlapIter<T, V, C>;
-    fn into_iter(self) -> Self::IntoIter {
-        return OwnedOverlapIter::new(self.list, self.step, self.cmp);
-    }
-}
-
 impl<T, V, C: IncDecCpCmp<T, V>> Accumulate<T, V, C> {
-    pub fn new(step: V, rebound: V, cmp: C) -> Self {
+    pub fn new(list: Vec<Mrs<T>>, step: V, rebound: V, cmp: C) -> Self {
         Self {
-            list: Vec::new(),
+            list,
             step,
             rebound,
             cmp,
         }
     }
-
-    pub fn add_range(&mut self, range: &impl RangeBounds<T>) -> bool {
-        if let Some((a, z)) = range_bounds_to_values(range, &self.rebound, &self.cmp) {
-            let r = Mrs::new(a, z);
-            self.list.push(r);
-            return true;
-        }
-        return false;
-    }
-
-    /// Tries to add all ranges passed in the set of ranges.  
-    /// The on_add method is called with index position and the Option<(&mut T,&mut T)> created by the conversion process.
-    /// A return value of false from the on_add function, tells the internals to not add the range.
-    /// If the Option was None, then the range would not have been added.
-    ///
-    /// Notes:
-    ///
-    /// The values passed in the Option<(&mut T,&mut T)> are mutable refs.
-    /// This allows for more control over the conversion process, as well of adding ragnes in bulk.
-    pub fn add_ranges<R: RangeBounds<T>>(
-        &mut self,
-        ranges: &[R],
-        on_add: impl Fn(usize, Option<(&mut T, &mut T)>) -> bool,
-    ) {
-        for (i, r) in ranges.iter().enumerate() {
-            match range_bounds_to_values(r, &self.rebound, &self.cmp) {
-                Some((mut a, mut z)) => {
-                    if on_add(i, Some((&mut a, &mut z))) {
-                        let r = Mrs::new(a, z);
-                        self.list.push(r);
-                    }
-                }
-                None => {
-                    on_add(i, None);
-                    ()
-                }
-            }
-        }
-    }
 }
 
-impl<T, V> Accumulate<T, V, BlanketIncDecCpCmp>
+impl<T, V, C: IncDecCpCmp<T, V>> Accumulate<T, V, C>
 where
     BlanketIncDecCpCmp: DefaultValues<T, V>,
 {
-    pub fn defaults() -> Self {
-        let t = BlanketIncDecCpCmp::new();
-        Accumulate::new(t.default_step(), t.default_rebound(), t)
+    pub fn defaults() -> Accumulate<T, V, BlanketIncDecCpCmp> {
+        let cmp = BlanketIncDecCpCmp::new();
+        return Accumulate::new(Vec::new(), cmp.default_step(), cmp.default_rebound(), cmp);
+    }
+}
+
+impl<T, V, C: IncDecCpCmp<T, V>> Accumulate<T, V, C> {
+    pub fn rebound(&self, r: &impl RangeBounds<T>) -> Option<(T, T)> {
+        return range_bounds_to_values(r, &self.rebound, &self.cmp);
+    }
+
+    pub fn add_range(&mut self, r: &impl RangeBounds<T>) -> Option<(&Mrs<T>, usize)> {
+        match self.rebound(r) {
+            Some(src) => self.add_tuple(src),
+            None => None,
+        }
+    }
+    pub fn add_tuple(&mut self, src: (T, T)) -> Option<(&Mrs<T>, usize)> {
+        let (a, z) = src;
+        return self.add_mrs(Mrs::new(a, z));
+    }
+
+    pub fn add_mrs(&mut self, mrs: Mrs<T>) -> Option<(&Mrs<T>, usize)> {
+        let (a, z) = mrs.to_tuple_ref();
+        if self.cmp.is_invalid_set(a, z) {
+            return None;
+        }
+        self.list.push(mrs);
+        let id = self.list.len() - 1;
+        return Some((&self.list[id], id));
+    }
+
+    pub fn get_rebound(&self) -> &V {
+        return &self.rebound;
+    }
+
+    pub fn get_cmp(&self) -> &impl IncDecCpCmp<T, V> {
+        return &self.cmp;
+    }
+}
+
+impl<T, V, C: IncDecCpCmp<T, V>> IntoIterator for Accumulate<T, V, C> {
+    type Item = Mrs<T>;
+
+    type IntoIter = OverlapIter<T, V, C, Mrs<T>, Rc<RefCell<Vec<Mrs<T>>>>, Rc<C>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        return OverlapIter::new(
+            Rc::new(RefCell::new(self.list)),
+            self.step,
+            Rc::new(self.cmp),
+        );
     }
 }

@@ -1,5 +1,37 @@
-use crate::{GetBeginEnd, Mrs, MrsP, builder::IncDecCpCmp};
+use crate::{GetBeginEnd, Mrs, builder::IncDecCpCmp};
 use std::{cmp::Ordering, ops::RangeBounds};
+
+/// This enum is used to represent positional relationships in 3 states
+///  - before a range
+///  - overlap with a range
+///  - after a range
+pub enum RangeRelation {
+    /// Range a is before range b
+    Before,
+    /// Range a and b overlap
+    Overlap,
+    /// Range a is after range b
+    After,
+}
+
+/// Compares the positional relationship between a and b.
+///
+/// - [`crate::RangeRelation::Before`] a is before b.
+/// - [`crate::RangeRelation::After`] a is after b.
+/// - [`crate::RangeRelation::Overlap`] a and b overlap to some degree.
+pub fn range_relation<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(
+    a: &R,
+    b: &R,
+    t: &C,
+) -> RangeRelation {
+    if t.lt(a.get_end(), b.get_begin()) {
+        return RangeRelation::Before;
+    } else if t.lt(b.get_end(), a.get_begin()) {
+        return RangeRelation::After;
+    }
+
+    return RangeRelation::Overlap;
+}
 
 /// **Range to value Conversion**
 ///
@@ -34,38 +66,6 @@ pub fn range_bounds_to_values<T, V>(
     } else {
         return None;
     }
-}
-
-/// This enum is used to represent positional relationships in 3 states
-///  - before a range
-///  - overlap with a range
-///  - after a range
-pub enum RangeRelation {
-    /// Range a is before range b
-    Before,
-    /// Range a and b overlap
-    Overlap,
-    /// Range a is after range b
-    After,
-}
-
-/// Compares the positional relationship between a and b.
-///
-/// - [`crate::RangeRelation::Before`] a is before b.
-/// - [`crate::RangeRelation::After`] a is after b.
-/// - [`crate::RangeRelation::Overlap`] a and b overlap to some degree.
-pub fn range_relation<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(
-    a: &R,
-    b: &R,
-    t: &C,
-) -> RangeRelation {
-    if t.lt(a.get_end(), b.get_begin()) {
-        return RangeRelation::Before;
-    } else if t.lt(b.get_end(), a.get_begin()) {
-        return RangeRelation::After;
-    }
-
-    return RangeRelation::Overlap;
 }
 
 /// Compares range a and b and returns the **Forward Consolidation Order** [std::cmp::Ordering] value.
@@ -369,61 +369,6 @@ pub fn previous_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
         return Some(previous_smallest_range(begin, end, src, t));
     } else if let Some((begin, end)) = alt {
         return Some(previous_smallest_range(begin, end, src, t));
-    }
-    return None;
-}
-
-pub(crate) fn next_back<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
-    src: &[R],
-    cmp: &C,
-    step: &V,
-    next: &Option<Mrs<T>>,
-    back: &Option<Mrs<T>>,
-) -> Option<Mrs<T>> {
-    if let Some(b) = back
-        && let Some(n) = next
-    {
-        match range_relation(b, n, cmp) {
-            RangeRelation::Overlap => {
-                if let Some(end) = cmp.dec(b.get_begin(), step) {
-                    return otmo(previous_range_begin_end(&end, &[MrsP { r: n }], cmp));
-                }
-            }
-            RangeRelation::After => {
-                if let Some(end) = cmp.dec(b.get_begin(), step) {
-                    return otmo(previous_range_begin_end(&end, src, cmp));
-                }
-            }
-            RangeRelation::Before => return None,
-        }
-    }
-    return None;
-}
-
-pub(crate) fn next<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
-    src: &[R],
-    cmp: &C,
-    step: &V,
-    next: &Option<Mrs<T>>,
-    back: &Option<Mrs<T>>,
-) -> Option<Mrs<T>> {
-    if let Some(n) = next {
-        match back {
-            Some(b) => match range_relation(n, b, cmp) {
-                RangeRelation::Overlap => {
-                    if let Some(begin) = cmp.inc(n.get_end(), step) {
-                        return otmo(next_range_begin_end(&begin, &[MrsP { r: b }], cmp));
-                    }
-                }
-                RangeRelation::Before => {
-                    if let Some(begin) = cmp.inc(n.get_end(), step) {
-                        return otmo(next_range_begin_end(&begin, src, cmp));
-                    }
-                }
-                RangeRelation::After => return None,
-            },
-            None => (),
-        }
     }
     return None;
 }

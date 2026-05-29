@@ -2,11 +2,10 @@
 
 mod iter_tests {
 
-    use std::{ops::RangeInclusive, rc::Rc};
+    use std::{cell::RefCell, rc::Rc};
 
     use common_range_tools::{
-        Accumulate, BlanketIncDecCpCmp, DefaultValues, GetBeginEnd, IncDecCpCmp, Intersector, Mrs,
-        OverlapIter, OwnedOverlapIter,
+        Accumulate, BlanketIncDecCpCmp, DefaultValues, GetBeginEnd, IncDecCpCmp, Mrs, OverlapIter,
     };
 
     fn checkset() -> [(i32, i32); 9] {
@@ -98,10 +97,6 @@ mod iter_tests {
             Mrs::new(15, 19),
         ];
     }
-    fn range_set() -> [RangeInclusive<i32>; 7] {
-        let res: [RangeInclusive<i32>; 7] = [4..=5, 4..=6, 0..=3, 1..=2, 8..=11, 13..=22, 15..=19];
-        return res;
-    }
 
     #[test]
     fn iter_test() {
@@ -110,7 +105,14 @@ mod iter_tests {
         let src = mrs_set();
         let t = BlanketIncDecCpCmp::new();
 
-        let iter = OverlapIter::new(src.as_slice(), Rc::new(1), Rc::new(t));
+        let iter: OverlapIter<
+            i32,
+            i32,
+            BlanketIncDecCpCmp,
+            Mrs<i32>,
+            Rc<RefCell<Vec<Mrs<i32>>>>,
+            Rc<BlanketIncDecCpCmp>,
+        > = OverlapIter::new(Rc::new(RefCell::new(src)), 1, Rc::new(t));
         let mut count = 0;
 
         for (i, res) in iter.enumerate() {
@@ -127,7 +129,14 @@ mod iter_tests {
         let src = mrs_set();
         let t = BlanketIncDecCpCmp::new();
 
-        let iter = OverlapIter::new(src.as_slice(), Rc::new(1), Rc::new(t));
+        let iter: OverlapIter<
+            i32,
+            i32,
+            BlanketIncDecCpCmp,
+            Mrs<i32>,
+            Rc<RefCell<Vec<Mrs<i32>>>>,
+            Rc<BlanketIncDecCpCmp>,
+        > = OverlapIter::new(Rc::new(RefCell::new(src)), 1, Rc::new(t));
 
         for (i, res) in iter.rev().enumerate() {
             assert_eq!(res.to_tuple(), checkset[i])
@@ -141,7 +150,14 @@ mod iter_tests {
 
         let src = mrs_set();
         let t = BlanketIncDecCpCmp::new();
-        let s = OverlapIter::new(src.as_slice(), Rc::new(1), Rc::new(t));
+        let s: OverlapIter<
+            i32,
+            i32,
+            BlanketIncDecCpCmp,
+            Mrs<i32>,
+            Rc<RefCell<Vec<Mrs<i32>>>>,
+            Rc<BlanketIncDecCpCmp>,
+        > = OverlapIter::new(Rc::new(RefCell::new(src)), 1, Rc::new(t));
         let mut iter = s.into_iter();
 
         assert_eq!(iter.next().unwrap().to_tuple(), fwd[0]);
@@ -157,83 +173,58 @@ mod iter_tests {
     }
 
     #[test]
-    fn iter_from_vec_test() {
-        let checkset = checkset();
-
-        let src = mrs_set();
-        let t = BlanketIncDecCpCmp::new();
-
-        let iter = OverlapIter::from_vec(&src, Rc::new(1), Rc::new(t));
-        for (i, res) in iter.enumerate() {
-            assert_eq!(res.to_tuple(), checkset[i])
+    fn bi_tests_with_defaults() {
+        let mut a: Accumulate<i32, i32, BlanketIncDecCpCmp> =
+            Accumulate::<i32, i32, BlanketIncDecCpCmp>::defaults();
+        for r in mrs_set() {
+            let (check, _) = a.add_range(&r).unwrap();
+            assert_eq!(check.to_tuple_ref(), r.to_tuple_ref());
         }
-    }
+        let mut iter = a.into_iter();
 
-    #[test]
-    fn owned_iter_test() {
-        let checkset = checkset();
+        let fwd = checkset();
+        let rev = checkset_rev();
 
-        let check = mrs_set();
-        let t = BlanketIncDecCpCmp::new();
-        let iter = OwnedOverlapIter::new(check, 1, t);
-        for (i, res) in iter.enumerate() {
-            assert_eq!(res, checkset[i])
-        }
-    }
+        assert_eq!(iter.next().unwrap().to_tuple(), fwd[0]);
+        assert_eq!(iter.next_back().unwrap().to_tuple(), rev[0]);
 
-    #[test]
-    fn intersector_test() {
-        let checkset = checkset();
+        assert_eq!(iter.next().unwrap().to_tuple(), fwd[1]);
+        assert_eq!(iter.next_back().unwrap().to_tuple(), rev[1]);
 
-        let check = range_set();
-        let t = BlanketIncDecCpCmp::new();
-        let iter = Intersector::new(&check, t.default_step(), t.default_rebound(), t);
-        for (i, res) in iter.enumerate() {
-            assert_eq!(res, checkset[i])
-        }
-    }
-
-    #[test]
-    fn intersector_defaults_test() {
-        let checkset = checkset();
-
-        let check = range_set();
-        let iter = Intersector::defaults(&check);
-        for (i, res) in iter.enumerate() {
-            assert_eq!(res, checkset[i])
-        }
-    }
-
-    #[test]
-    fn accumulate() {
-        let mut a = Accumulate::defaults();
-        let src = range_set();
-        for mrs in src {
-            a.add_range(&mrs);
-        }
-        let checkset = checkset();
-        for (i, res) in a.into_iter().enumerate() {
-            assert_eq!(res, checkset[i])
-        }
+        assert_eq!(iter.next().unwrap().to_tuple(), fwd[2]);
+        assert_eq!(iter.next_back().unwrap().to_tuple(), rev[2]);
+        assert_eq!(iter.next().unwrap().to_tuple(), fwd[3]);
+        matches!(iter.next_back(), None);
     }
 
     #[test]
     fn accumulate_struct() {
         let t = TestCmp {};
-        let mut a = Accumulate::new(Point { x: 1 }, Point { x: 1 }, t);
+        let list: Vec<Mrs<Point>> = Vec::new();
+        let mut a = Accumulate::new(list, Point { x: 1 }, Point { x: 1 }, t);
         a.add_range(&(..Point { x: 2 }));
         a.add_range(&(Point { x: 1 }..Point { x: 3 }));
         a.add_range(&(Point { x: 3 }..=Point { x: 4 }));
         a.add_range(&(Point { x: 3 }..));
         #[allow(unused_variables)]
-        a.add_ranges(&[..], |i, r| return true);
-
         let mut i = a.into_iter();
 
-        assert_eq!(i.next().unwrap(), (Point { x: i32::MIN }, Point { x: 1 }));
-        assert_eq!(i.next().unwrap(), (Point { x: 2 }, Point { x: 2 }));
-        assert_eq!(i.next().unwrap(), (Point { x: 3 }, Point { x: 4 }));
-        assert_eq!(i.next().unwrap(), (Point { x: 5 }, Point { x: i32::MAX }));
+        assert_eq!(
+            i.next().unwrap().to_tuple(),
+            (Point { x: i32::MIN }, Point { x: 1 })
+        );
+        assert_eq!(
+            i.next().unwrap().to_tuple(),
+            (Point { x: 2 }, Point { x: 2 })
+        );
+        assert_eq!(
+            i.next().unwrap().to_tuple(),
+            (Point { x: 3 }, Point { x: 4 })
+        );
+        assert_eq!(
+            i.next().unwrap().to_tuple(),
+            (Point { x: 5 }, Point { x: i32::MAX })
+        );
         matches!(i.next(), None);
     }
 }
