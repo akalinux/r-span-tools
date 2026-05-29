@@ -4,6 +4,7 @@ use crate::{
     first_range_begin_end, last_range_begin_end, next_range_begin_end, otmo,
     previous_range_begin_end, range_bounds_to_values, range_relation,
 };
+
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::marker::PhantomData;
@@ -121,11 +122,36 @@ where
 
 /// This object acts as a conversion tool for accumulating instances of [std::ops::RangeBounds] and converting them to an internal representation.
 /// The Internal representation is used by the [std::iter::IntoIterator] instance that is created to find the most common intersections.
+/// This implementation is meant to be generic and can be easily tailored to any data type or structure that requires computing intersections.
 pub struct Accumulate<T, V, C: IncDecCpCmp<T, V>> {
     list: Vec<Mrs<T>>,
     step: V,
     rebound: V,
     cmp: C,
+}
+
+/// This object acts as a conversion tool for accumulating instances of [std::ops::RangeBounds] and converting them to an internal representation.
+/// The Internal representation is used by the [std::iter::IntoIterator] instance that is created to find the most common intersections.
+/// Unlike [crate::Accumulate], [crate::AccumulateDefaults] works on a set of defaults that work for most primitive number types in rust.
+pub struct AccumulateDefaults<T> {
+    list: Vec<Mrs<T>>,
+    step: T,
+    rebound: T,
+    cmp: BlanketIncDecCpCmp,
+}
+impl<T> AccumulateDefaults<T>
+where
+    BlanketIncDecCpCmp: DefaultValues<T, T>,
+{
+    pub fn new() -> Self {
+        let cmp = BlanketIncDecCpCmp {};
+        Self {
+            list: Vec::new(),
+            step: cmp.default_step(),
+            rebound: cmp.default_rebound(),
+            cmp,
+        }
+    }
 }
 
 impl<T, V, C: IncDecCpCmp<T, V>> Accumulate<T, V, C> {
@@ -139,47 +165,104 @@ impl<T, V, C: IncDecCpCmp<T, V>> Accumulate<T, V, C> {
     }
 }
 
-impl<T, V, C: IncDecCpCmp<T, V>> Accumulate<T, V, C>
-where
-    BlanketIncDecCpCmp: DefaultValues<T, V>,
-{
-    pub fn defaults() -> Accumulate<T, V, BlanketIncDecCpCmp> {
-        let cmp = BlanketIncDecCpCmp::new();
-        return Accumulate::new(Vec::new(), cmp.default_step(), cmp.default_rebound(), cmp);
-    }
+pub trait Accumulator<T, V> {
+    type Cmp;
+    fn get_rebound(&self) -> &V;
+    fn get_step(&self) -> &V;
+    fn add_mrs(&mut self, src: Mrs<T>) -> Option<(usize, &Mrs<T>)>;
+    fn set_rebound(&mut self, rebound: V);
+    fn set_step(&mut self, step: V);
 }
-
-impl<T, V, C: IncDecCpCmp<T, V>> Accumulate<T, V, C> {
-    pub fn rebound(&self, r: &impl RangeBounds<T>) -> Option<(T, T)> {
-        return range_bounds_to_values(r, &self.rebound, &self.cmp);
+pub trait AccumulatorRebound<T, V, C: IncDecCpCmp<T, V>>: Accumulator<T, V> {
+    fn get_cmp(&self) -> &C;
+    fn rebound(&self, r: &impl RangeBounds<T>) -> Option<(T, T)> {
+        return range_bounds_to_values(r, self.get_rebound(), self.get_cmp());
     }
 
-    pub fn add_range(&mut self, r: &impl RangeBounds<T>) -> Option<(&Mrs<T>, usize)> {
+    fn add_range(&mut self, r: &impl RangeBounds<T>) -> Option<(usize, &Mrs<T>)> {
         match self.rebound(r) {
             Some(src) => self.add_tuple(src),
             None => None,
         }
     }
-    pub fn add_tuple(&mut self, src: (T, T)) -> Option<(&Mrs<T>, usize)> {
+    fn add_tuple(&mut self, src: (T, T)) -> Option<(usize, &Mrs<T>)> {
         let (a, z) = src;
         return self.add_mrs(Mrs::new(a, z));
     }
+}
 
-    pub fn add_mrs(&mut self, mrs: Mrs<T>) -> Option<(&Mrs<T>, usize)> {
+impl<T, V, C: IncDecCpCmp<T, V>> Accumulator<T, V> for Accumulate<T, V, C> {
+    type Cmp = C;
+    fn add_mrs(&mut self, mrs: Mrs<T>) -> Option<(usize, &Mrs<T>)> {
         let (a, z) = mrs.to_tuple_ref();
         if self.cmp.is_invalid_set(a, z) {
             return None;
         }
         self.list.push(mrs);
         let id = self.list.len() - 1;
-        return Some((&self.list[id], id));
+        return Some((id, &self.list[id]));
     }
 
-    pub fn get_rebound(&self) -> &V {
+    fn get_rebound(&self) -> &V {
         return &self.rebound;
     }
 
-    pub fn get_cmp(&self) -> &impl IncDecCpCmp<T, V> {
+    fn get_step(&self) -> &V {
+        return &self.step;
+    }
+
+    fn set_rebound(&mut self, rebound: V) {
+        self.rebound = rebound;
+    }
+
+    fn set_step(&mut self, step: V) {
+        self.step = step;
+    }
+}
+
+impl<T> Accumulator<T, T> for AccumulateDefaults<T>
+where
+    BlanketIncDecCpCmp: DefaultValues<T, T>,
+{
+    type Cmp = BlanketIncDecCpCmp;
+
+    fn add_mrs(&mut self, mrs: Mrs<T>) -> Option<(usize, &Mrs<T>)> {
+        let (a, z) = mrs.to_tuple_ref();
+        if IncDecCpCmp::is_invalid_set(&self.cmp, a, z) {
+            return None;
+        }
+        self.list.push(mrs);
+        let id = self.list.len() - 1;
+        return Some((id, &self.list[id]));
+    }
+
+    fn get_rebound(&self) -> &T {
+        return &self.rebound;
+    }
+
+    fn get_step(&self) -> &T {
+        return &self.step;
+    }
+
+    fn set_rebound(&mut self, rebound: T) {
+        self.rebound = rebound;
+    }
+
+    fn set_step(&mut self, step: T) {
+        self.step = step;
+    }
+}
+
+impl<T, V, C: IncDecCpCmp<T, V>> AccumulatorRebound<T, V, C> for Accumulate<T, V, C> {
+    fn get_cmp(&self) -> &C {
+        return &self.cmp;
+    }
+}
+impl<T> AccumulatorRebound<T, T, BlanketIncDecCpCmp> for AccumulateDefaults<T>
+where
+    BlanketIncDecCpCmp: DefaultValues<T, T>,
+{
+    fn get_cmp(&self) -> &BlanketIncDecCpCmp {
         return &self.cmp;
     }
 }
@@ -188,6 +271,30 @@ impl<T, V, C: IncDecCpCmp<T, V>> IntoIterator for Accumulate<T, V, C> {
     type Item = Mrs<T>;
 
     type IntoIter = OverlapIter<T, V, C, Mrs<T>, Rc<RefCell<Vec<Mrs<T>>>>, Rc<C>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        return OverlapIter::new(
+            Rc::new(RefCell::new(self.list)),
+            self.step,
+            Rc::new(self.cmp),
+        );
+    }
+}
+
+impl<T> IntoIterator for AccumulateDefaults<T>
+where
+    BlanketIncDecCpCmp: DefaultValues<T, T>,
+{
+    type Item = Mrs<T>;
+
+    type IntoIter = OverlapIter<
+        T,
+        T,
+        BlanketIncDecCpCmp,
+        Mrs<T>,
+        Rc<RefCell<Vec<Mrs<T>>>>,
+        Rc<BlanketIncDecCpCmp>,
+    >;
 
     fn into_iter(self) -> Self::IntoIter {
         return OverlapIter::new(

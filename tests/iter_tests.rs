@@ -5,7 +5,8 @@ mod iter_tests {
     use std::{cell::RefCell, rc::Rc};
 
     use common_range_tools::{
-        Accumulate, BlanketIncDecCpCmp, DefaultValues, GetBeginEnd, IncDecCpCmp, Mrs, OverlapIter,
+        Accumulate, AccumulateDefaults, Accumulator, AccumulatorRebound, BlanketIncDecCpCmp,
+        DefaultValues, GetBeginEnd, IncDecCpCmp, Mrs, OverlapIter,
     };
 
     fn checkset() -> [(i32, i32); 9] {
@@ -174,10 +175,9 @@ mod iter_tests {
 
     #[test]
     fn bi_tests_with_defaults() {
-        let mut a: Accumulate<i32, i32, BlanketIncDecCpCmp> =
-            Accumulate::<i32, i32, BlanketIncDecCpCmp>::defaults();
+        let mut a = AccumulateDefaults::new();
         for r in mrs_set() {
-            let (check, _) = a.add_range(&r).unwrap();
+            let (_, check) = a.add_range(&r).unwrap();
             assert_eq!(check.to_tuple_ref(), r.to_tuple_ref());
         }
         let mut iter = a.into_iter();
@@ -195,6 +195,13 @@ mod iter_tests {
         assert_eq!(iter.next_back().unwrap().to_tuple(), rev[2]);
         assert_eq!(iter.next().unwrap().to_tuple(), fwd[3]);
         matches!(iter.next_back(), None);
+        let mut a = AccumulateDefaults::new();
+        assert_eq!(a.get_rebound(), &1);
+        assert_eq!(a.get_step(), &1);
+        a.set_rebound(2);
+        a.set_step(2);
+        assert_eq!(a.get_rebound(), &2);
+        assert_eq!(a.get_step(), &2);
     }
 
     #[test]
@@ -202,6 +209,7 @@ mod iter_tests {
         let t = TestCmp {};
         let list: Vec<Mrs<Point>> = Vec::new();
         let mut a = Accumulate::new(list, Point { x: 1 }, Point { x: 1 }, t);
+
         a.add_range(&(..Point { x: 2 }));
         a.add_range(&(Point { x: 1 }..Point { x: 3 }));
         a.add_range(&(Point { x: 3 }..=Point { x: 4 }));
@@ -226,5 +234,11 @@ mod iter_tests {
             (Point { x: 5 }, Point { x: i32::MAX })
         );
         matches!(i.next(), None);
+        a = Accumulate::new(Vec::new(), Point { x: 1 }, Point { x: 1 }, TestCmp {});
+
+        a.set_rebound(Point { x: 2 });
+        assert_eq!(a.get_rebound(), &Point { x: 2 });
+        a.set_step(Point { x: 2 });
+        assert_eq!(a.get_step(), &Point { x: 2 });
     }
 }
