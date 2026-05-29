@@ -165,15 +165,14 @@ impl<T, V, C: IncDecCpCmp<T, V>> Accumulate<T, V, C> {
     }
 }
 
-pub trait Accumulator<T, V> {
+pub trait Accumulator<T, V, C: IncDecCpCmp<T, V>> {
     type Cmp;
     fn get_rebound(&self) -> &V;
     fn get_step(&self) -> &V;
     fn add_mrs(&mut self, src: Mrs<T>) -> Option<(usize, &Mrs<T>)>;
     fn set_rebound(&mut self, rebound: V);
     fn set_step(&mut self, step: V);
-}
-pub trait AccumulatorRebound<T, V, C: IncDecCpCmp<T, V>>: Accumulator<T, V> {
+
     fn get_cmp(&self) -> &C;
     fn rebound(&self, r: &impl RangeBounds<T>) -> Option<(T, T)> {
         return range_bounds_to_values(r, self.get_rebound(), self.get_cmp());
@@ -191,7 +190,7 @@ pub trait AccumulatorRebound<T, V, C: IncDecCpCmp<T, V>>: Accumulator<T, V> {
     }
 }
 
-impl<T, V, C: IncDecCpCmp<T, V>> Accumulator<T, V> for Accumulate<T, V, C> {
+impl<T, V, C: IncDecCpCmp<T, V>> Accumulator<T, V, C> for Accumulate<T, V, C> {
     type Cmp = C;
     fn add_mrs(&mut self, mrs: Mrs<T>) -> Option<(usize, &Mrs<T>)> {
         let (a, z) = mrs.to_tuple_ref();
@@ -218,9 +217,12 @@ impl<T, V, C: IncDecCpCmp<T, V>> Accumulator<T, V> for Accumulate<T, V, C> {
     fn set_step(&mut self, step: V) {
         self.step = step;
     }
+    fn get_cmp(&self) -> &C {
+        return &self.cmp;
+    }
 }
 
-impl<T> Accumulator<T, T> for AccumulateDefaults<T>
+impl<T> Accumulator<T, T, BlanketIncDecCpCmp> for AccumulateDefaults<T>
 where
     BlanketIncDecCpCmp: DefaultValues<T, T>,
 {
@@ -251,17 +253,6 @@ where
     fn set_step(&mut self, step: T) {
         self.step = step;
     }
-}
-
-impl<T, V, C: IncDecCpCmp<T, V>> AccumulatorRebound<T, V, C> for Accumulate<T, V, C> {
-    fn get_cmp(&self) -> &C {
-        return &self.cmp;
-    }
-}
-impl<T> AccumulatorRebound<T, T, BlanketIncDecCpCmp> for AccumulateDefaults<T>
-where
-    BlanketIncDecCpCmp: DefaultValues<T, T>,
-{
     fn get_cmp(&self) -> &BlanketIncDecCpCmp {
         return &self.cmp;
     }

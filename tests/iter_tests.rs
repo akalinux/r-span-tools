@@ -5,8 +5,8 @@ mod iter_tests {
     use std::{cell::RefCell, rc::Rc};
 
     use common_range_tools::{
-        Accumulate, AccumulateDefaults, Accumulator, AccumulatorRebound, BlanketIncDecCpCmp,
-        DefaultValues, GetBeginEnd, IncDecCpCmp, Mrs, OverlapIter,
+        Accumulate, AccumulateDefaults, Accumulator, BlanketIncDecCpCmp, DefaultValues,
+        GetBeginEnd, IncDecCpCmp, Mrs, OverlapIter,
     };
 
     fn checkset() -> [(i32, i32); 9] {
