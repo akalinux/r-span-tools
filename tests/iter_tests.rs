@@ -6,7 +6,7 @@ mod iter_tests {
 
     use common_range_tools::{
         Accumulate, AccumulateDefaults, Accumulator, BlanketIncDecCpCmp, GetBeginEnd, IncDecCpCmp,
-        Mrs, OverlapIter,
+        Mrs, MrsFactory, OverlapIter,
     };
 
     fn checkset() -> [(i32, i32); 9] {
@@ -113,7 +113,14 @@ mod iter_tests {
             Mrs<i32>,
             Rc<RefCell<Vec<Mrs<i32>>>>,
             Rc<BlanketIncDecCpCmp<i32>>,
-        > = OverlapIter::new(Rc::new(RefCell::new(src)), 1, Rc::new(t));
+            MrsFactory<i32>,
+            Rc<MrsFactory<i32>>,
+        > = OverlapIter::new(
+            Rc::new(RefCell::new(src)),
+            1,
+            Rc::new(t),
+            Rc::new(MrsFactory::new()),
+        );
         let mut count = 0;
 
         for (i, res) in iter.enumerate() {
@@ -137,7 +144,14 @@ mod iter_tests {
             Mrs<i32>,
             Rc<RefCell<Vec<Mrs<i32>>>>,
             Rc<BlanketIncDecCpCmp<i32>>,
-        > = OverlapIter::new(Rc::new(RefCell::new(src)), 1, Rc::new(t));
+            MrsFactory<i32>,
+            Rc<MrsFactory<i32>>,
+        > = OverlapIter::new(
+            Rc::new(RefCell::new(src)),
+            1,
+            Rc::new(t),
+            Rc::new(MrsFactory::new()),
+        );
 
         for (i, res) in iter.rev().enumerate() {
             assert_eq!(res.to_tuple(), checkset[i])
@@ -151,15 +165,22 @@ mod iter_tests {
 
         let src = mrs_set();
         let t: BlanketIncDecCpCmp<i32> = BlanketIncDecCpCmp::new();
-        let s: OverlapIter<
+
+        let mut iter: OverlapIter<
             i32,
             i32,
             BlanketIncDecCpCmp<i32>,
             Mrs<i32>,
             Rc<RefCell<Vec<Mrs<i32>>>>,
             Rc<BlanketIncDecCpCmp<i32>>,
-        > = OverlapIter::new(Rc::new(RefCell::new(src)), 1, Rc::new(t));
-        let mut iter = s.into_iter();
+            MrsFactory<i32>,
+            Rc<MrsFactory<i32>>,
+        > = OverlapIter::new(
+            Rc::new(RefCell::new(src)),
+            1,
+            Rc::new(t),
+            Rc::new(MrsFactory::new()),
+        );
 
         assert_eq!(iter.next().unwrap().to_tuple(), fwd[0]);
         assert_eq!(iter.next_back().unwrap().to_tuple(), rev[0]);
@@ -208,7 +229,7 @@ mod iter_tests {
     fn accumulate_struct() {
         let t = TestCmp {};
         let list: Vec<Mrs<Point>> = Vec::new();
-        let mut a = Accumulate::new(list, Point { x: 1 }, Point { x: 1 }, t);
+        let mut a = Accumulate::new(list, Point { x: 1 }, Point { x: 1 }, t, MrsFactory::new());
 
         a.add_range(&(..Point { x: 2 }));
         a.add_range(&(Point { x: 1 }..Point { x: 3 }));
@@ -234,7 +255,13 @@ mod iter_tests {
             (Point { x: 5 }, Point { x: i32::MAX })
         );
         matches!(i.next(), None);
-        a = Accumulate::new(Vec::new(), Point { x: 1 }, Point { x: 1 }, TestCmp {});
+        a = Accumulate::new(
+            Vec::new(),
+            Point { x: 1 },
+            Point { x: 1 },
+            TestCmp {},
+            MrsFactory::new(),
+        );
 
         a.set_rebound(Point { x: 2 });
         assert_eq!(a.get_rebound(), &Point { x: 2 });

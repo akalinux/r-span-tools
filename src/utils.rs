@@ -1,4 +1,4 @@
-use crate::{GetBeginEnd, Mrs, builder::IncDecCpCmp};
+use crate::{GetBeginEnd, builder::IncDecCpCmp};
 use std::{cmp::Ordering, ops::RangeBounds};
 
 /// This enum is used to represent positional relationships in 3 states
@@ -125,24 +125,6 @@ pub fn sort_reverse<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(
 
     // if we get here, begin and end are equal
     return Ordering::Equal;
-}
-
-/// Produces a new Option wrapped instance of Mrs<T> from the Option wrapped instance of (T,T).
-/// This is the inverse of the [crate::ofmo] function.
-pub fn otmo<T>(src: Option<(T, T)>) -> Option<Mrs<T>> {
-    match src {
-        Some((a, z)) => Some(Mrs { a, z }),
-        _ => None,
-    }
-}
-
-/// Produces a Option wrapped instance of (T,T) from an instance of Mrs<T>.
-/// This is the inverse of the [crate::otmo] function.
-pub fn ofmo<T>(src: Option<Mrs<T>>) -> Option<(T, T)> {
-    match src {
-        Some(mrs) => Some((mrs.a, mrs.z)),
-        _ => None,
-    }
 }
 
 fn contains<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(check: &R, value: &T, t: &C) -> bool {

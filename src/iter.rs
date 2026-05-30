@@ -1,8 +1,8 @@
 use crate::builder::IncDecCpCmp;
 use crate::{
     BlanketIncDecCpCmp, DefaultValues, GetBeginEnd, Mrs, MrsP, RangeRelation,
-    first_range_begin_end, last_range_begin_end, next_range_begin_end, otmo,
-    previous_range_begin_end, range_bounds_to_values, range_relation,
+    first_range_begin_end, last_range_begin_end, next_range_begin_end, previous_range_begin_end,
+    range_bounds_to_values, range_relation,
 };
 
 use std::borrow::Borrow;
@@ -12,45 +12,89 @@ use std::mem;
 use std::ops::RangeBounds;
 use std::rc::Rc;
 
-pub struct OverlapIter<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X>
-where
+pub struct OverlapIter<
+    T,
+    V,
+    C: IncDecCpCmp<T, V>,
+    R: GetBeginEnd<T>,
+    L,
+    X,
+    B: GetBeginEndOption<T, R>,
+    Y,
+> where
     L: Borrow<RefCell<Vec<R>>>,
     X: Borrow<C>,
 {
     src: L,
     step: V,
     cmp: X,
-    next: Option<Mrs<T>>,
-    back: Option<Mrs<T>>,
-    _marker: PhantomData<(T, R, C)>,
+    next: Option<R>,
+    back: Option<R>,
+    factory: Y,
+    _marker: PhantomData<(T, R, C, B)>,
 }
 
-impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X> OverlapIter<T, V, C, R, L, X>
+pub trait GetBeginEndOption<T, R: GetBeginEnd<T>> {
+    fn get_begin_end_opt_factory(&self, opt: Option<(T, T)>) -> Option<R>;
+}
+
+pub struct MrsFactory<T> {
+    _t: PhantomData<T>,
+}
+
+impl<T> MrsFactory<T> {
+    pub fn new() -> Self {
+        return Self { _t: PhantomData };
+    }
+}
+
+impl<T> GetBeginEndOption<T, Mrs<T>> for MrsFactory<T> {
+    fn get_begin_end_opt_factory(&self, opt: Option<(T, T)>) -> Option<Mrs<T>> {
+        match opt {
+            Some((a, z)) => Some(Mrs::new(a, z)),
+            None => None,
+        }
+    }
+}
+
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X, B: GetBeginEndOption<T, R>, Y>
+    OverlapIter<T, V, C, R, L, X, B, Y>
 where
     L: Borrow<RefCell<Vec<R>>>,
     X: Borrow<C>,
+    Y: Borrow<B>,
 {
     /// Creates a new [crate::OverlapIter] from the slice of R.
-    pub fn new(src: L, step: V, cmp: X) -> Self {
-        let next = otmo(first_range_begin_end(&*src.borrow().borrow(), cmp.borrow()));
-        let back = otmo(last_range_begin_end(&*src.borrow().borrow(), cmp.borrow()));
+    pub fn new(src: L, step: V, cmp: X, factory: Y) -> Self {
+        let next = factory
+            .borrow()
+            .get_begin_end_opt_factory(first_range_begin_end(
+                &*src.borrow().borrow(),
+                cmp.borrow(),
+            ));
+        let back = factory
+            .borrow()
+            .get_begin_end_opt_factory(last_range_begin_end(&*src.borrow().borrow(), cmp.borrow()));
         Self {
             src,
             step,
             cmp,
             next,
             back,
+            factory,
             _marker: PhantomData,
         }
     }
 }
 
-impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X> Iterator for OverlapIter<T, V, C, R, L, X>
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X, B: GetBeginEndOption<T, R>, Y> Iterator
+    for OverlapIter<T, V, C, R, L, X, B, Y>
 where
     L: Borrow<RefCell<Vec<R>>>,
     X: Borrow<C>,
+    Y: Borrow<B>,
 {
-    type Item = Mrs<T>;
+    type Item = R;
     fn next(&mut self) -> Option<Self::Item> {
         let mut next = None;
         if let Some(n) = &self.next {
@@ -58,20 +102,33 @@ where
                 Some(b) => match range_relation(n, b, self.cmp.borrow()) {
                     RangeRelation::Overlap(_) => {
                         if let Some(begin) = self.cmp.borrow().inc(n.get_end(), &self.step) {
-                            next = otmo(next_range_begin_end(
-                                &begin,
-                                &[MrsP { r: b }, MrsP { r: n }],
-                                self.cmp.borrow(),
-                            ));
+                            next = self.factory.borrow().get_begin_end_opt_factory(
+                                next_range_begin_end(
+                                    &begin,
+                                    &[
+                                        MrsP {
+                                            r: b,
+                                            _t: PhantomData,
+                                        },
+                                        MrsP {
+                                            r: n,
+                                            _t: PhantomData,
+                                        },
+                                    ],
+                                    self.cmp.borrow(),
+                                ),
+                            );
                         }
                     }
                     RangeRelation::Before(_) => {
                         if let Some(begin) = self.cmp.borrow().inc(n.get_end(), &self.step) {
-                            next = otmo(next_range_begin_end(
-                                &begin,
-                                &*self.src.borrow().borrow(),
-                                self.cmp.borrow(),
-                            ));
+                            next = self.factory.borrow().get_begin_end_opt_factory(
+                                next_range_begin_end(
+                                    &begin,
+                                    &*self.src.borrow().borrow(),
+                                    self.cmp.borrow(),
+                                ),
+                            );
                         }
                     }
                     RangeRelation::After(_) => return None,
@@ -83,11 +140,12 @@ where
     }
 }
 
-impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X> DoubleEndedIterator
-    for OverlapIter<T, V, C, R, L, X>
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X, B: GetBeginEndOption<T, R>, Y>
+    DoubleEndedIterator for OverlapIter<T, V, C, R, L, X, B, Y>
 where
     L: Borrow<RefCell<Vec<R>>>,
     X: Borrow<C>,
+    Y: Borrow<B>,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         let mut back = None;
@@ -97,20 +155,33 @@ where
             match range_relation(b, n, self.cmp.borrow()) {
                 RangeRelation::Overlap(_) => {
                     if let Some(end) = self.cmp.borrow().dec(b.get_begin(), &self.step) {
-                        back = otmo(previous_range_begin_end(
-                            &end,
-                            &[MrsP { r: n }, MrsP { r: b }],
-                            self.cmp.borrow(),
-                        ));
+                        back = self.factory.borrow().get_begin_end_opt_factory(
+                            previous_range_begin_end(
+                                &end,
+                                &[
+                                    MrsP {
+                                        r: n,
+                                        _t: PhantomData,
+                                    },
+                                    MrsP {
+                                        r: b,
+                                        _t: PhantomData,
+                                    },
+                                ],
+                                self.cmp.borrow(),
+                            ),
+                        );
                     }
                 }
                 RangeRelation::After(_) => {
                     if let Some(end) = self.cmp.borrow().dec(b.get_begin(), &self.step) {
-                        back = otmo(previous_range_begin_end(
-                            &end,
-                            &*self.src.borrow().borrow(),
-                            self.cmp.borrow(),
-                        ));
+                        back = self.factory.borrow().get_begin_end_opt_factory(
+                            previous_range_begin_end(
+                                &end,
+                                &*self.src.borrow().borrow(),
+                                self.cmp.borrow(),
+                            ),
+                        );
                     }
                 }
                 RangeRelation::Before(_) => return None,
@@ -123,11 +194,13 @@ where
 /// This object acts as a conversion tool for accumulating instances of [std::ops::RangeBounds] and converting them to an internal representation.
 /// The Internal representation is used by the [std::iter::IntoIterator] instance that is created to find the most common intersections.
 /// This implementation is meant to be generic and can be easily tailored to any data type or structure that requires computing intersections.
-pub struct Accumulate<T, V, C: IncDecCpCmp<T, V>> {
-    list: Vec<Mrs<T>>,
+pub struct Accumulate<T, V, C: IncDecCpCmp<T, V>, R, B> {
+    list: Vec<R>,
     step: V,
     rebound: V,
     cmp: C,
+    factory: B,
+    _r: PhantomData<(T, R)>,
 }
 
 /// This object acts as a conversion tool for accumulating instances of [std::ops::RangeBounds] and converting them to an internal representation.
@@ -154,22 +227,26 @@ where
     }
 }
 
-impl<T, V, C: IncDecCpCmp<T, V>> Accumulate<T, V, C> {
-    pub fn new(list: Vec<Mrs<T>>, step: V, rebound: V, cmp: C) -> Self {
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, B: GetBeginEndOption<T, R>>
+    Accumulate<T, V, C, R, B>
+{
+    pub fn new(list: Vec<R>, step: V, rebound: V, cmp: C, factory: B) -> Self {
         Self {
             list,
             step,
             rebound,
             cmp,
+            factory,
+            _r: PhantomData,
         }
     }
 }
 
-pub trait Accumulator<T, V, C: IncDecCpCmp<T, V>> {
+pub trait Accumulator<T, V, C: IncDecCpCmp<T, V>, R> {
     type Cmp;
     fn get_rebound(&self) -> &V;
     fn get_step(&self) -> &V;
-    fn add_mrs(&mut self, src: Mrs<T>) -> Option<(usize, &Mrs<T>)>;
+    fn add_from_tuple(&mut self, src: (T, T)) -> Option<(usize, &R)>;
     fn set_rebound(&mut self, rebound: V);
     fn set_step(&mut self, step: V);
 
@@ -178,28 +255,33 @@ pub trait Accumulator<T, V, C: IncDecCpCmp<T, V>> {
         return range_bounds_to_values(r, self.get_rebound(), self.get_cmp());
     }
 
-    fn add_range(&mut self, r: &impl RangeBounds<T>) -> Option<(usize, &Mrs<T>)> {
+    fn add_range(&mut self, r: &impl RangeBounds<T>) -> Option<(usize, &R)> {
         match self.rebound(r) {
             Some(src) => self.add_tuple(src),
             None => None,
         }
     }
-    fn add_tuple(&mut self, src: (T, T)) -> Option<(usize, &Mrs<T>)> {
-        let (a, z) = src;
-        return self.add_mrs(Mrs::new(a, z));
+    fn add_tuple(&mut self, src: (T, T)) -> Option<(usize, &R)> {
+        return self.add_from_tuple(src);
     }
 }
 
-impl<T, V, C: IncDecCpCmp<T, V>> Accumulator<T, V, C> for Accumulate<T, V, C> {
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, B: GetBeginEndOption<T, R>>
+    Accumulator<T, V, C, R> for Accumulate<T, V, C, R, B>
+{
     type Cmp = C;
-    fn add_mrs(&mut self, mrs: Mrs<T>) -> Option<(usize, &Mrs<T>)> {
-        let (a, z) = mrs.to_tuple_ref();
-        if self.cmp.is_invalid_set(a, z) {
+    fn add_from_tuple(&mut self, src: (T, T)) -> Option<(usize, &R)> {
+        if self.cmp.is_invalid_set(&src.0, &src.1) {
             return None;
         }
-        self.list.push(mrs);
-        let id = self.list.len() - 1;
-        return Some((id, &self.list[id]));
+        match self.factory.get_begin_end_opt_factory(Some(src)) {
+            Some(mrs) => {
+                self.list.push(mrs);
+                let id = self.list.len() - 1;
+                return Some((id, &self.list[id]));
+            }
+            None => None,
+        }
     }
 
     fn get_rebound(&self) -> &V {
@@ -222,17 +304,18 @@ impl<T, V, C: IncDecCpCmp<T, V>> Accumulator<T, V, C> for Accumulate<T, V, C> {
     }
 }
 
-impl<T> Accumulator<T, T, BlanketIncDecCpCmp<T>> for AccumulateDefaults<T>
+impl<T> Accumulator<T, T, BlanketIncDecCpCmp<T>, Mrs<T>> for AccumulateDefaults<T>
 where
     BlanketIncDecCpCmp<T>: DefaultValues<T, T>,
 {
     type Cmp = BlanketIncDecCpCmp<T>;
 
-    fn add_mrs(&mut self, mrs: Mrs<T>) -> Option<(usize, &Mrs<T>)> {
-        let (a, z) = mrs.to_tuple_ref();
-        if IncDecCpCmp::is_invalid_set(&self.cmp, a, z) {
+    fn add_from_tuple(&mut self, src: (T, T)) -> Option<(usize, &Mrs<T>)> {
+        if IncDecCpCmp::is_invalid_set(&self.cmp, &src.0, &src.1) {
             return None;
         }
+        let (a, z) = src;
+        let mrs = Mrs::new(a, z);
         self.list.push(mrs);
         let id = self.list.len() - 1;
         return Some((id, &self.list[id]));
@@ -258,16 +341,19 @@ where
     }
 }
 
-impl<T, V, C: IncDecCpCmp<T, V>> IntoIterator for Accumulate<T, V, C> {
-    type Item = Mrs<T>;
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, B: GetBeginEndOption<T, R>> IntoIterator
+    for Accumulate<T, V, C, R, B>
+{
+    type Item = R;
 
-    type IntoIter = OverlapIter<T, V, C, Mrs<T>, Rc<RefCell<Vec<Mrs<T>>>>, Rc<C>>;
+    type IntoIter = OverlapIter<T, V, C, R, Rc<RefCell<Vec<R>>>, Rc<C>, B, Rc<B>>;
 
     fn into_iter(self) -> Self::IntoIter {
         return OverlapIter::new(
             Rc::new(RefCell::new(self.list)),
             self.step,
             Rc::new(self.cmp),
+            Rc::new(self.factory),
         );
     }
 }
@@ -285,6 +371,8 @@ where
         Mrs<T>,
         Rc<RefCell<Vec<Mrs<T>>>>,
         Rc<BlanketIncDecCpCmp<T>>,
+        MrsFactory<T>,
+        Rc<MrsFactory<T>>,
     >;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -292,6 +380,7 @@ where
             Rc::new(RefCell::new(self.list)),
             self.step,
             Rc::new(self.cmp),
+            Rc::new(MrsFactory::new()),
         );
     }
 }

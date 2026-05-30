@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+use std::marker::PhantomData;
 use std::ops::{Bound, RangeBounds};
 
 // re-export to be nice!
@@ -37,8 +38,15 @@ pub struct Mrs<T> {
 }
 
 /// Proxy data structure for [crate::Mrs].
-pub struct MrsP<'r, T> {
-    pub r: &'r Mrs<T>,
+pub struct MrsP<'r, T, R: GetBeginEnd<T>> {
+    r: &'r R,
+    _t: PhantomData<T>,
+}
+
+impl<'r, T, R: GetBeginEnd<T>> MrsP<'r, T, R> {
+    pub fn new(r: &'r R) -> Self {
+        return Self { r, _t: PhantomData };
+    }
 }
 
 pub trait GetBeginEnd<T> {
@@ -76,7 +84,7 @@ impl<T> From<Mrs<T>> for (T, T) {
     }
 }
 
-impl<'r, T> GetBeginEnd<T> for MrsP<'r, T> {
+impl<'r, T, R: GetBeginEnd<T>> GetBeginEnd<T> for MrsP<'r, T, R> {
     /// Wrapper for internal [crate::Mrs] instance.
     fn get_begin(&self) -> &T {
         return self.r.get_begin();

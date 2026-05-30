@@ -15,7 +15,7 @@ mod lip_tests {
     fn test_mrsp_panic() {
         match catch_unwind(|| {
             let m = Mrs::new(1, 2);
-            let p = MrsP { r: &m };
+            let p = MrsP::new(&m);
             p.to_tuple();
         }) {
             Ok(_) => panic!("test failed"),
