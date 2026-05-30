@@ -5,8 +5,8 @@ mod iter_tests {
     use std::{cell::RefCell, rc::Rc};
 
     use common_range_tools::{
-        Accumulate, AccumulateDefaults, Accumulator, BlanketIncDecCpCmp, GetBeginEnd, IncDecCpCmp,
-        Mrs, MrsFactory, OverlapIter,
+        Accumulate, DefaultValues, GetBeginEnd, IncDecCpCmp, Mrs, MrsFactory, NumberIncDecCpCmp,
+        OverlapIter,
     };
 
     fn checkset() -> [(i32, i32); 9] {
@@ -104,15 +104,15 @@ mod iter_tests {
         let checkset = checkset();
 
         let src = mrs_set();
-        let t = BlanketIncDecCpCmp::new();
+        let t = NumberIncDecCpCmp::defaults();
 
         let iter: OverlapIter<
             i32,
             i32,
-            BlanketIncDecCpCmp<i32>,
+            NumberIncDecCpCmp<i32>,
             Mrs<i32>,
             Rc<RefCell<Vec<Mrs<i32>>>>,
-            Rc<BlanketIncDecCpCmp<i32>>,
+            Rc<NumberIncDecCpCmp<i32>>,
             MrsFactory<i32>,
             Rc<MrsFactory<i32>>,
         > = OverlapIter::new(
@@ -135,15 +135,15 @@ mod iter_tests {
         let checkset = checkset_rev();
 
         let src = mrs_set();
-        let t = BlanketIncDecCpCmp::new();
+        let t = NumberIncDecCpCmp::defaults();
 
         let iter: OverlapIter<
             i32,
             i32,
-            BlanketIncDecCpCmp<i32>,
+            NumberIncDecCpCmp<i32>,
             Mrs<i32>,
             Rc<RefCell<Vec<Mrs<i32>>>>,
-            Rc<BlanketIncDecCpCmp<i32>>,
+            Rc<NumberIncDecCpCmp<i32>>,
             MrsFactory<i32>,
             Rc<MrsFactory<i32>>,
         > = OverlapIter::new(
@@ -164,15 +164,15 @@ mod iter_tests {
         let rev = checkset_rev();
 
         let src = mrs_set();
-        let t: BlanketIncDecCpCmp<i32> = BlanketIncDecCpCmp::new();
+        let t: NumberIncDecCpCmp<i32> = NumberIncDecCpCmp::defaults();
 
         let mut iter: OverlapIter<
             i32,
             i32,
-            BlanketIncDecCpCmp<i32>,
+            NumberIncDecCpCmp<i32>,
             Mrs<i32>,
             Rc<RefCell<Vec<Mrs<i32>>>>,
-            Rc<BlanketIncDecCpCmp<i32>>,
+            Rc<NumberIncDecCpCmp<i32>>,
             MrsFactory<i32>,
             Rc<MrsFactory<i32>>,
         > = OverlapIter::new(
@@ -195,8 +195,8 @@ mod iter_tests {
     }
 
     #[test]
-    fn bi_tests_with_defaults() {
-        let mut a = AccumulateDefaults::new();
+    fn bi_tests_with_any() {
+        let mut a = Accumulate::any(1, 1, 0, 22);
         for r in mrs_set() {
             let (_, check) = a.add_range(&r).unwrap();
             assert_eq!(check.to_tuple_ref(), r.to_tuple_ref());
@@ -216,13 +216,60 @@ mod iter_tests {
         assert_eq!(iter.next_back().unwrap().to_tuple(), rev[2]);
         assert_eq!(iter.next().unwrap().to_tuple(), fwd[3]);
         matches!(iter.next_back(), None);
-        let mut a = AccumulateDefaults::new();
-        assert_eq!(a.get_rebound(), &1);
-        assert_eq!(a.get_step(), &1);
-        a.set_rebound(2);
-        a.set_step(2);
-        assert_eq!(a.get_rebound(), &2);
-        assert_eq!(a.get_step(), &2);
+    }
+    #[test]
+    fn bi_tests_with_num_defalts() {
+        let mut a = Accumulate::num_defaults();
+        for r in mrs_set() {
+            let (_, check) = a.add_range(&r).unwrap();
+            assert_eq!(check.to_tuple_ref(), r.to_tuple_ref());
+        }
+        let mut iter = a.into_iter();
+
+        let fwd = checkset();
+        let rev = checkset_rev();
+
+        assert_eq!(iter.next().unwrap().to_tuple(), fwd[0]);
+        assert_eq!(iter.next_back().unwrap().to_tuple(), rev[0]);
+
+        assert_eq!(iter.next().unwrap().to_tuple(), fwd[1]);
+        assert_eq!(iter.next_back().unwrap().to_tuple(), rev[1]);
+
+        assert_eq!(iter.next().unwrap().to_tuple(), fwd[2]);
+        assert_eq!(iter.next_back().unwrap().to_tuple(), rev[2]);
+        assert_eq!(iter.next().unwrap().to_tuple(), fwd[3]);
+        matches!(iter.next_back(), None);
+    }
+
+    #[test]
+    fn bi_tests_with_num() {
+        let cmp = NumberIncDecCpCmp::defaults();
+        let mut a = Accumulate::num(
+            cmp.default_step(),
+            cmp.default_rebound(),
+            cmp.min(),
+            cmp.max(),
+        );
+        assert_eq!(cmp.max(), a.get_cmp_mut().max());
+        for r in mrs_set() {
+            let (_, check) = a.add_range(&r).unwrap();
+            assert_eq!(check.to_tuple_ref(), r.to_tuple_ref());
+        }
+        let mut iter = a.into_iter();
+
+        let fwd = checkset();
+        let rev = checkset_rev();
+
+        assert_eq!(iter.next().unwrap().to_tuple(), fwd[0]);
+        assert_eq!(iter.next_back().unwrap().to_tuple(), rev[0]);
+
+        assert_eq!(iter.next().unwrap().to_tuple(), fwd[1]);
+        assert_eq!(iter.next_back().unwrap().to_tuple(), rev[1]);
+
+        assert_eq!(iter.next().unwrap().to_tuple(), fwd[2]);
+        assert_eq!(iter.next_back().unwrap().to_tuple(), rev[2]);
+        assert_eq!(iter.next().unwrap().to_tuple(), fwd[3]);
+        matches!(iter.next_back(), None);
     }
 
     #[test]

@@ -1,29 +1,139 @@
-use std::ops::Bound;
+use std::{
+    marker::PhantomData,
+    ops::{Add, Bound, Sub},
+};
 
-/// The **Blanket Implementation** of [crate::IncDecCpCmp].  
+/// The **Number Implementation** of [crate::IncDecCpCmp].  
 ///
-/// Acts as the general proxy layer for creating and comparing values  of ranges.
-/// Note that incrementing and decrementing are of 2 differnt types, but do not have to be.
+/// Acts as the general proxy layer for safly working with primitive number types inside [crate].
 ///
-/// The following types implemented for [crate::BlanketIncDecCpCmp]
+/// Note: unlike [crate::AnyIncDecCpCmp], the self.inc(a,b) and self.dec(a,b) are checked.
+///
+/// The following types implemented for [crate::NumberIncDecCpCmp]
 ///
 ///  - Unsigned Int: u8, u16, u32, u64, u128, usize
 ///  - Signed Int: i8, i16, i32, i64, i128, isize);
 ///  - Float: f32, f64
-pub struct BlanketIncDecCpCmp<T> {
+
+#[derive(Clone, Copy, Debug)]
+pub struct NumberIncDecCpCmp<T>
+where
+    T: Copy + Clone,
+{
     min: T,
     max: T,
 }
 
-impl<T> BlanketIncDecCpCmp<T>
+/// The **Generic Implementation** of [crate::IncDecCpCmp].
+///
+/// Acts as the general proxy layer for working with any type inside [crate].
+///
+/// Note: unlike [crate::NumberIncDecCpCmp], the self.inc(a,b) and self.dec(a,b) are unchecked!
+/// If you are working with primitive numbers use: [crate::NumberIncDecCpCmp] in stead.
+pub struct AnyIncDecCpCmp<T, V>
 where
-    BlanketIncDecCpCmp<T>: DefaultValues<T, T>,
+    T: PartialOrd + Clone + Copy + Add<V, Output = T> + Sub<V, Output = T>,
+    V: Copy,
 {
-    pub fn new() -> Self {
+    min: T,
+    max: T,
+    _v: PhantomData<V>,
+}
+impl<T, V> AnyIncDecCpCmp<T, V>
+where
+    T: PartialOrd + Clone + Copy + Add<V, Output = T> + Sub<V, Output = T>,
+    V: Copy,
+{
+    pub fn new(min: T, max: T) -> Self {
         Self {
-            min: BlanketIncDecCpCmp::default_min(),
-            max: BlanketIncDecCpCmp::default_max(),
+            min,
+            max,
+            _v: PhantomData,
         }
+    }
+
+    /// Sets the values returned by self.min() and self.min_ref().
+    /// Changing this value from the default will further constrain what ranges are considered invalid.
+    pub fn set_min(&mut self, v: T) {
+        self.min = v;
+    }
+
+    /// Sets the values returned by self.max() and self.max_ref().
+    /// Changing this value from the default will further constrain what ranges are considered invalid.
+    pub fn set_max(&mut self, v: T) {
+        self.max = v;
+    }
+}
+
+impl<T, V> IncDecCpCmp<T, V> for AnyIncDecCpCmp<T, V>
+where
+    V: Copy,
+    T: PartialOrd + Copy + Add<V, Output = T> + Sub<V, Output = T>,
+{
+    /// Returns a copy of v.
+    fn cp(&self, v: &T) -> T {
+        return *v;
+    }
+
+    /// Returns a ref to self.min.
+    fn min_ref(&self) -> &T {
+        return &self.min;
+    }
+
+    /// Returns a ref to self.max.
+    fn max_ref(&self) -> &T {
+        return &self.max;
+    }
+
+    /// Increments a by b, if the resulting value is le a None is returned.
+    fn inc(&self, a: &T, b: &V) -> Option<T> {
+        let x = *a;
+        let c = a.add(*b);
+        if x <= c {
+            return Some(c);
+        }
+        return None;
+    }
+
+    /// Increments a by b, if the resulting value is ge a None is returned.
+    fn dec(&self, a: &T, b: &V) -> Option<T> {
+        let x = *a;
+        let c = a.sub(*b);
+        if x >= c {
+            return Some(c);
+        }
+        return None;
+    }
+
+    /// Returns true if a lt b.
+    fn lt(&self, a: &T, b: &T) -> bool {
+        return a < b;
+    }
+
+    /// Returns a copy of min.
+    fn min(&self) -> T {
+        return self.min;
+    }
+
+    /// Returns a copy of max.
+    fn max(&self) -> T {
+        return self.max;
+    }
+}
+
+impl<T> NumberIncDecCpCmp<T>
+where
+    T: Clone + Copy,
+    NumberIncDecCpCmp<T>: DefaultValues<T, T>,
+{
+    pub fn defaults() -> Self {
+        return Self::new(
+            NumberIncDecCpCmp::default_min(),
+            NumberIncDecCpCmp::default_max(),
+        );
+    }
+    pub fn new(min: T, max: T) -> Self {
+        Self { min, max }
     }
 
     /// Sets the values returned by self.min() and self.min_ref().
@@ -192,7 +302,7 @@ macro_rules! impl_inc_dec_cp_cmp_trait_i {
         $(
 
 
-            impl IncDecCpCmp<$t,$t> for BlanketIncDecCpCmp<$t> {
+            impl IncDecCpCmp<$t,$t> for NumberIncDecCpCmp<$t> {
                 fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
                     if *b<=0 { return None}
                     return a.clone().checked_sub(b.clone());
@@ -217,7 +327,7 @@ macro_rules! impl_inc_dec_cp_cmp_trait_i {
                 }
             }
 
-            impl DefaultValues<$t,$t> for BlanketIncDecCpCmp<$t> {
+            impl DefaultValues<$t,$t> for NumberIncDecCpCmp<$t> {
                 fn default_step(&self) ->$t { return 1}
                 fn default_rebound(&self) ->$t { return 1}
                 fn default_min() ->$t { <$t>::MIN }
@@ -232,7 +342,7 @@ macro_rules! impl_inc_dec_cp_cmp_trait_u {
         $(
 
 
-            impl IncDecCpCmp<$t,$t> for BlanketIncDecCpCmp<$t> {
+            impl IncDecCpCmp<$t,$t> for NumberIncDecCpCmp<$t> {
                 fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
                     if *b==0 { return None}
                     return a.clone().checked_sub(b.clone());
@@ -256,7 +366,7 @@ macro_rules! impl_inc_dec_cp_cmp_trait_u {
                 }
             }
 
-            impl DefaultValues<$t,$t> for BlanketIncDecCpCmp<$t> {
+            impl DefaultValues<$t,$t> for NumberIncDecCpCmp<$t> {
                 fn default_step(&self) ->$t { return 1}
                 fn default_rebound(&self) ->$t { return 1}
                 fn default_min() ->$t { <$t>::MIN }
@@ -271,7 +381,7 @@ macro_rules! impl_inc_dec_cp_cmp_trait_f {
         $(
 
 
-            impl IncDecCpCmp<$t,$t> for BlanketIncDecCpCmp<$t> {
+            impl IncDecCpCmp<$t,$t> for NumberIncDecCpCmp<$t> {
                 fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
                     let res=a - b;
                     if res.is_nan() || res >=*a { None } else { Some(res) }
@@ -296,7 +406,7 @@ macro_rules! impl_inc_dec_cp_cmp_trait_f {
                 }
             }
 
-            impl DefaultValues<$t,$t> for BlanketIncDecCpCmp<$t> {
+            impl DefaultValues<$t,$t> for NumberIncDecCpCmp<$t> {
                 fn default_step(&self) ->$t { return 1.0}
                 fn default_rebound(&self) ->$t { return 1.0 }
                 fn default_min() ->$t { <$t>::MIN }

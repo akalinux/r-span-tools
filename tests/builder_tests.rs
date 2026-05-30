@@ -5,12 +5,12 @@ mod builder_tests {
 
     use common_range_tools::{
         DefaultValues, GetBeginEnd, Mrs,
-        builder::{BlanketIncDecCpCmp, IncDecCpCmp},
+        builder::{AnyIncDecCpCmp, IncDecCpCmp, NumberIncDecCpCmp},
     };
 
     #[test]
     fn vaild_constaint_tests_i32() {
-        let mut t = BlanketIncDecCpCmp::new();
+        let mut t = NumberIncDecCpCmp::defaults();
         assert!(!t.is_invalid_set(&1, &2));
         assert!(t.is_invalid_set(&2, &1));
         t.set_max(1);
@@ -22,8 +22,30 @@ mod builder_tests {
     }
 
     #[test]
+    fn value_inc_dec_cmp_tests() {
+        let mut t: AnyIncDecCpCmp<i32, i32> = AnyIncDecCpCmp::new(i32::MIN, i32::MAX);
+        assert!(t.lt(&1, &2));
+        matches!(t.inc(&1, &1), Some(2));
+        matches!(t.inc(&1, &0), None);
+        matches!(t.dec(&1, &1), Some(0));
+        matches!(t.inc(&1, &0), None);
+
+        assert_eq!(t.max(), i32::MAX);
+        assert_eq!(t.min(), i32::MIN);
+        assert_eq!(t.max_ref(), &i32::MAX);
+        assert_eq!(t.min_ref(), &i32::MIN);
+
+        t.set_max(3);
+        assert_eq!(t.max_ref(), &3);
+        t.set_min(0);
+        assert_eq!(t.min_ref(), &0);
+
+        assert_eq!(t.cp(&1), 1);
+    }
+
+    #[test]
     fn vaild_constaint_tests_u8() {
-        let mut t = BlanketIncDecCpCmp::new();
+        let mut t = NumberIncDecCpCmp::defaults();
         assert!(!t.is_invalid_set(&1_u8, &2));
         assert!(t.is_invalid_set(&2, &1));
         t.set_max(1);
@@ -35,7 +57,7 @@ mod builder_tests {
     }
     #[test]
     fn vaild_constaint_tests_f32() {
-        let mut t = BlanketIncDecCpCmp::new();
+        let mut t = NumberIncDecCpCmp::defaults();
         assert!(!t.is_invalid_set(&1.0, &2.0));
         assert!(t.is_invalid_set(&2.0, &1.0));
         t.set_max(1.0);
@@ -48,7 +70,7 @@ mod builder_tests {
 
     #[test]
     fn inc_dec_behavior_i32() {
-        let l = BlanketIncDecCpCmp::new();
+        let l = NumberIncDecCpCmp::defaults();
 
         // i32 Increment examples
         assert_eq!(l.inc(&1, &2), Some(3)); // Number went up by 2!
@@ -65,7 +87,7 @@ mod builder_tests {
 
     #[test]
     fn inc_dec_behavior_u32() {
-        let l = BlanketIncDecCpCmp::new();
+        let l = NumberIncDecCpCmp::defaults();
         // u32 Increment examples
         assert_eq!(l.inc(&1_u32, &2_u32), Some(3)); // Number went up by 2!
         assert_eq!(l.inc(&0_u32, &0), None); // Number did not go up
@@ -78,7 +100,7 @@ mod builder_tests {
     }
     #[test]
     fn inc_dec_behavior_f32() {
-        let l = BlanketIncDecCpCmp::new();
+        let l = NumberIncDecCpCmp::defaults();
         // f32 Increment examples
         assert_eq!(l.inc(&0.2, &0.5), Some(0.7));
         assert_eq!(l.inc(&1.7, &-0.5), None);
@@ -98,7 +120,7 @@ mod builder_tests {
 
     #[test]
     fn misc_tests_u8() {
-        let t = BlanketIncDecCpCmp::new();
+        let t = NumberIncDecCpCmp::defaults();
         assert_eq!(u8::MAX, t.max());
         assert_eq!(u8::MIN, t.min());
         assert_eq!(1_u8, t.cp(&1));
@@ -108,7 +130,7 @@ mod builder_tests {
     }
     #[test]
     fn misc_tests_i32() {
-        let t = BlanketIncDecCpCmp::new();
+        let t = NumberIncDecCpCmp::defaults();
         assert_eq!(i32::MAX, t.max());
         assert_eq!(i32::MIN, t.min());
         assert_eq!(1, t.cp(&1));
@@ -118,7 +140,7 @@ mod builder_tests {
     }
     #[test]
     fn misc_tests_f32() {
-        let t = BlanketIncDecCpCmp::new();
+        let t = NumberIncDecCpCmp::defaults();
         assert_eq!(f32::MAX, t.max());
         assert_eq!(f32::MIN, t.min());
         assert_eq!(1.0, t.cp(&1.0));
@@ -129,7 +151,7 @@ mod builder_tests {
     }
     #[test]
     fn inc_dec_compare_all() {
-        let l = BlanketIncDecCpCmp::new();
+        let l = NumberIncDecCpCmp::defaults();
 
         // positive examples
         assert!(l.lt(&1, &2));
@@ -160,7 +182,7 @@ mod builder_tests {
 
     #[test]
     fn test_rebound_start_and_end() {
-        let l = BlanketIncDecCpCmp::new();
+        let l = NumberIncDecCpCmp::defaults();
 
         assert_eq!(l.rebound_start(Bound::Excluded(&1), &1), Some(2));
         assert_eq!(l.rebound_start(Bound::Included(&1), &1), Some(1));

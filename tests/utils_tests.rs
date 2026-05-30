@@ -2,7 +2,7 @@
 mod util_tests {
 
     use common_range_tools::{
-        GetBeginEnd, Mrs, RangeRelation, builder::BlanketIncDecCpCmp, first_range_begin_end,
+        GetBeginEnd, Mrs, RangeRelation, builder::NumberIncDecCpCmp, first_range_begin_end,
         last_range_begin_end, next_range_begin_end, next_smallest_range, previous_range_begin_end,
         previous_smallest_range, range_bounds_to_values, range_relation, sort_forward,
         sort_reverse,
@@ -10,16 +10,16 @@ mod util_tests {
 
     #[test]
     fn test_first_range() {
-        let t = BlanketIncDecCpCmp::new();
+        let t = NumberIncDecCpCmp::defaults();
 
         // Empty set test
         assert_eq!(
-            first_range_begin_end::<i32, i32, BlanketIncDecCpCmp<i32>, Mrs<i32>>(&[], &t),
+            first_range_begin_end::<i32, i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(&[], &t),
             None
         );
 
         assert_eq!(
-            first_range_begin_end::<i32, i32, BlanketIncDecCpCmp<i32>, Mrs<i32>>(
+            first_range_begin_end::<i32, i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(
                 &[Mrs::new(0, -1)],
                 &t
             ),
@@ -71,16 +71,16 @@ mod util_tests {
     }
     #[test]
     fn last_range_test() {
-        let t = BlanketIncDecCpCmp::new();
+        let t = NumberIncDecCpCmp::defaults();
 
         // Empty set test
         assert_eq!(
-            last_range_begin_end::<i32, i32, BlanketIncDecCpCmp<i32>, Mrs<i32>>(&[], &t),
+            last_range_begin_end::<i32, i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(&[], &t),
             None
         );
 
         assert_eq!(
-            last_range_begin_end::<i32, i32, BlanketIncDecCpCmp<i32>, Mrs<i32>>(
+            last_range_begin_end::<i32, i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(
                 &[Mrs::new(0, -1)],
                 &t
             ),
@@ -154,7 +154,7 @@ mod util_tests {
     }
     #[test]
     fn next_range_begin_end_tests() {
-        let t = BlanketIncDecCpCmp::new();
+        let t = NumberIncDecCpCmp::defaults();
         let checkset = checkset_a();
 
         let check = mrs_set_a();
@@ -170,18 +170,18 @@ mod util_tests {
 
     #[test]
     fn range_conversion() {
-        let t = BlanketIncDecCpCmp::new();
+        let t = NumberIncDecCpCmp::defaults();
 
         assert_eq!(range_bounds_to_values(&(1_i32..=2), &1, &t), Some((1, 2)));
         assert_eq!(
-            range_bounds_to_values(&(1.0..f32::INFINITY), &1.0, &BlanketIncDecCpCmp::new()),
+            range_bounds_to_values(&(1.0..f32::INFINITY), &1.0, &NumberIncDecCpCmp::defaults()),
             None
         );
     }
 
     #[test]
     fn previous_smallest_range_test() {
-        let t = BlanketIncDecCpCmp::new();
+        let t = NumberIncDecCpCmp::defaults();
         let src = mrs_set_b();
 
         let (begin, end) = previous_smallest_range(&0, &22, &src, &t);
@@ -191,7 +191,7 @@ mod util_tests {
 
     #[test]
     fn previous_range_begin_end_tests() {
-        let t = BlanketIncDecCpCmp::new();
+        let t = NumberIncDecCpCmp::defaults();
         let checked = checkset_a_reversed();
         let src = mrs_set_a();
 
@@ -206,7 +206,7 @@ mod util_tests {
 
     #[test]
     fn next_smallest_range_test() {
-        let t = BlanketIncDecCpCmp::new();
+        let t = NumberIncDecCpCmp::defaults();
         let mut src = mrs_set_a();
 
         let (mut begin, mut end) = next_smallest_range(&0, &22, &src, &t);
@@ -243,7 +243,7 @@ mod util_tests {
     fn sort_more() {
         let mut set = mrs_set();
         set.push(Mrs::new(8, 11)); // force equal ctest
-        let l = BlanketIncDecCpCmp::new();
+        let l = NumberIncDecCpCmp::defaults();
         set.sort_by(|a, b| sort_forward(a, b, &l));
         let expected = vec![
             Mrs::new(0, 3),
@@ -262,7 +262,7 @@ mod util_tests {
 
     #[test]
     fn sort() {
-        let l = BlanketIncDecCpCmp::new();
+        let l = NumberIncDecCpCmp::defaults();
         // Sorting in consolidation order.
         let correct = vec![
             Mrs::new(8, 11),
@@ -288,7 +288,7 @@ mod util_tests {
 
     #[test]
     fn sort_reverse_test() {
-        let l = BlanketIncDecCpCmp::new();
+        let l = NumberIncDecCpCmp::defaults();
         // Sorting in consolidation order.
         let correct = vec![
             Mrs::new(13, 22),
@@ -318,7 +318,7 @@ mod util_tests {
 
     #[test]
     fn relations_test() {
-        let t = BlanketIncDecCpCmp::new();
+        let t = NumberIncDecCpCmp::defaults();
         // Compare Range Positional relationships
         assert!(matches!(
             range_relation(&Mrs::new(1, 2), &Mrs::new(1, 2), &t),
@@ -356,7 +356,7 @@ mod util_tests {
     }
     #[test]
     fn inf_bounds() {
-        let t = BlanketIncDecCpCmp::new();
+        let t = NumberIncDecCpCmp::defaults();
         let bad = known_bad_mrs();
         let good = checked_bad();
         assert_eq!(first_range_begin_end(&bad, &t).unwrap(), good[0]);

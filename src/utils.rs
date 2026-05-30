@@ -12,6 +12,9 @@ pub enum RangeRelation<B, O, A> {
     Overlap(O),
     /// Range a is after range b
     After(A),
+
+    /// Represents a state of No data
+    Empty,
 }
 
 /// Compares the positional relationship between a and b.
