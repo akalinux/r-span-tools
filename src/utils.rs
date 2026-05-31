@@ -9,23 +9,23 @@ use std::{cmp::Ordering, mem, ops::RangeBounds};
 /// The additional states, represent the initialization of the set.
 ///  - empty or no data
 ///  - last or final
-pub enum RangeRelation<B, O, A, L> {
+pub enum RangeRelation<T> {
     /// Range a is before range b
-    Before(B),
+    Before(T),
 
     /// Range a and b overlap
-    Overlap(O),
+    Overlap(T),
 
     /// Range a is after range b
-    After(A),
+    After(T),
 
     /// Represents final set of data
-    Last(L),
+    Last(T),
 }
 
-impl<B, O, A, L> RangeRelation<B, O, A, L> {
+impl<T> RangeRelation<T> {
     /// Unwraps the state of [RangeRelation::Last] or panics!
-    pub fn last(self) -> L {
+    pub fn last(self) -> T {
         match self {
             RangeRelation::Last(data) => data,
             _ => panic!("Not Last!"),
@@ -33,7 +33,7 @@ impl<B, O, A, L> RangeRelation<B, O, A, L> {
     }
 
     /// Unwraps the state of [RangeRelation::Before] or panics!
-    pub fn before(self) -> B {
+    pub fn before(self) -> T {
         match self {
             RangeRelation::Before(data) => data,
             _ => panic!("Not Before!"),
@@ -41,7 +41,7 @@ impl<B, O, A, L> RangeRelation<B, O, A, L> {
     }
 
     /// Unwraps the state of [RangeRelation::Overlap] or panics!
-    pub fn overlap(self) -> O {
+    pub fn overlap(self) -> T {
         match self {
             RangeRelation::Overlap(data) => data,
             _ => panic!("Not Overlap!"),
@@ -49,7 +49,7 @@ impl<B, O, A, L> RangeRelation<B, O, A, L> {
     }
 
     /// Unwraps the state of [RangeRelation::After] or panics!
-    pub fn after(self) -> A {
+    pub fn after(self) -> T {
         match self {
             RangeRelation::After(data) => data,
             _ => panic!("Not After!"),
@@ -97,7 +97,7 @@ pub fn range_relation<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(
     a: &R,
     b: &R,
     t: &C,
-) -> RangeRelation<(), (), (), ()> {
+) -> RangeRelation<()> {
     if t.lt(a.get_end(), b.get_begin()) {
         return RangeRelation::Before(());
     } else if t.lt(b.get_end(), a.get_begin()) {
@@ -437,7 +437,7 @@ pub fn auto_range<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>, F: GetBeginEndO
 ) -> Option<(R, Vec<(usize, R)>)> {
     let a = t.cp(r.get_begin());
     let b = t.cp(r.get_end());
-    match f.get_begin_end_opt_factory(Some((a, b))) {
+    match f.factory(Some((a, b))) {
         Some(nr) => Some((nr, vec![(i, r)])),
         _ => None,
     }
@@ -451,14 +451,14 @@ pub fn grow<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>, F: GetBeginEndOption<
 ) -> Option<R> {
     if t.lt(x.get_begin(), y.get_begin()) {
         if t.lt(x.get_end(), y.get_end()) {
-            return f.get_begin_end_opt_factory(Some((t.cp(x.get_begin()), t.cp(y.get_end()))));
+            return f.factory(Some((t.cp(x.get_begin()), t.cp(y.get_end()))));
         } else {
-            return f.get_begin_end_opt_factory(Some((t.cp(x.get_begin()), t.cp(x.get_end()))));
+            return f.factory(Some((t.cp(x.get_begin()), t.cp(x.get_end()))));
         }
     } else if t.lt(x.get_end(), y.get_end()) {
-        return f.get_begin_end_opt_factory(Some((t.cp(y.get_begin()), t.cp(y.get_end()))));
+        return f.factory(Some((t.cp(y.get_begin()), t.cp(y.get_end()))));
     } else {
-        return f.get_begin_end_opt_factory(Some((t.cp(y.get_begin()), t.cp(x.get_end()))));
+        return f.factory(Some((t.cp(y.get_begin()), t.cp(x.get_end()))));
     }
 }
 
@@ -475,25 +475,8 @@ pub fn consolidate<
     t: &C,
     f: &F,
     offset: usize,
-) -> (
-    usize,
-    Option<
-        RangeRelation<
-            (R, Vec<(usize, R)>),
-            (R, Vec<(usize, R)>),
-            (R, Vec<(usize, R)>),
-            (R, Vec<(usize, R)>),
-        >,
-    >,
-) {
-    let mut next: Option<
-        RangeRelation<
-            (R, Vec<(usize, R)>),
-            (R, Vec<(usize, R)>),
-            (R, Vec<(usize, R)>),
-            (R, Vec<(usize, R)>),
-        >,
-    > = None;
+) -> (usize, Option<RangeRelation<(R, Vec<(usize, R)>)>>) {
+    let mut next: Option<RangeRelation<(R, Vec<(usize, R)>)>> = None;
     let mut idx = offset;
     for range in iter {
         if t.is_invalid_set(range.get_begin(), range.get_end()) {

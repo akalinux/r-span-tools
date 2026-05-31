@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 use std::marker::PhantomData;
-use std::ops::{Bound, RangeBounds};
+use std::ops::{Bound, RangeBounds, RangeInclusive};
 
 // re-export to be nice!
 pub use crate::builder::*;
@@ -115,6 +115,23 @@ impl<T> GetBeginEnd<T> for Mrs<T> {
     // Consumes the instance of self returing a tuple containing (a,z).
     fn to_tuple(self) -> (T, T) {
         return (self.a, self.z);
+    }
+}
+
+impl<T> GetBeginEnd<T> for RangeInclusive<T> {
+    // Returns a borrowed instance of self.z
+    fn get_begin(&self) -> &T {
+        return &self.start();
+    }
+
+    // Returns a borrowed instance of self.z
+    fn get_end(&self) -> &T {
+        return &self.end();
+    }
+
+    // Consumes the instance of self returing a tuple containing (a,z).
+    fn to_tuple(self) -> (T, T) {
+        return self.into_inner();
     }
 }
 

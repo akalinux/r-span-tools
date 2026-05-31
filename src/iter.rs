@@ -25,14 +25,7 @@ pub struct Consolidate<
     X: Borrow<F>,
     Y: Borrow<C>,
 {
-    next: Option<
-        RangeRelation<
-            (R, Vec<(usize, R)>),
-            (R, Vec<(usize, R)>),
-            (R, Vec<(usize, R)>),
-            (R, Vec<(usize, R)>),
-        >,
-    >,
+    next: Option<RangeRelation<(R, Vec<(usize, R)>)>>,
     iter: I,
     last: Option<(R, Vec<(usize, R)>)>,
     cmp: Y,
@@ -55,12 +48,7 @@ where
     X: Borrow<F>,
     Y: Borrow<C>,
 {
-    type Item = RangeRelation<
-        (R, Vec<(usize, R)>),
-        (R, Vec<(usize, R)>),
-        (R, Vec<(usize, R)>),
-        (R, Vec<(usize, R)>),
-    >;
+    type Item = RangeRelation<(R, Vec<(usize, R)>)>;
     fn next(&mut self) -> Option<Self::Item> {
         let next: Option<Self::Item>;
         match &self.next {
@@ -101,11 +89,21 @@ pub struct OverlapIter<
 }
 
 pub trait GetBeginEndOption<T, R: GetBeginEnd<T>> {
-    fn get_begin_end_opt_factory(&self, opt: Option<(T, T)>) -> Option<R>;
+    fn factory(&self, opt: Option<(T, T)>) -> Option<R>;
 }
 
 pub struct MrsFactory<T> {
     _t: PhantomData<T>,
+}
+
+pub struct RiFactory<T> {
+    _t: PhantomData<T>,
+}
+
+impl<T> RiFactory<T> {
+    pub fn new() -> Self {
+        return Self { _t: PhantomData };
+    }
 }
 
 impl<T> MrsFactory<T> {
@@ -115,7 +113,16 @@ impl<T> MrsFactory<T> {
 }
 
 impl<T> GetBeginEndOption<T, Mrs<T>> for MrsFactory<T> {
-    fn get_begin_end_opt_factory(&self, opt: Option<(T, T)>) -> Option<Mrs<T>> {
+    fn factory(&self, opt: Option<(T, T)>) -> Option<Mrs<T>> {
+        match opt {
+            Some((a, z)) => Some(Mrs::new(a, z)),
+            None => None,
+        }
+    }
+}
+
+impl<T> GetBeginEndOption<T, Mrs<T>> for RiFactory<T> {
+    fn factory(&self, opt: Option<(T, T)>) -> Option<Mrs<T>> {
         match opt {
             Some((a, z)) => Some(Mrs::new(a, z)),
             None => None,
@@ -134,13 +141,10 @@ where
     pub fn new(src: L, step: V, cmp: X, factory: Y) -> Self {
         let next = factory
             .borrow()
-            .get_begin_end_opt_factory(first_range_begin_end(
-                &*src.borrow().borrow(),
-                cmp.borrow(),
-            ));
+            .factory(first_range_begin_end(&*src.borrow().borrow(), cmp.borrow()));
         let back = factory
             .borrow()
-            .get_begin_end_opt_factory(last_range_begin_end(&*src.borrow().borrow(), cmp.borrow()));
+            .factory(last_range_begin_end(&*src.borrow().borrow(), cmp.borrow()));
         Self {
             src,
             step,
@@ -168,33 +172,29 @@ where
                 Some(b) => match range_relation(n, b, self.cmp.borrow()) {
                     RangeRelation::Overlap(_) => {
                         if let Some(begin) = self.cmp.borrow().inc(n.get_end(), &self.step) {
-                            next = self.factory.borrow().get_begin_end_opt_factory(
-                                next_range_begin_end(
-                                    &begin,
-                                    &[
-                                        MrsP {
-                                            r: b,
-                                            _t: PhantomData,
-                                        },
-                                        MrsP {
-                                            r: n,
-                                            _t: PhantomData,
-                                        },
-                                    ],
-                                    self.cmp.borrow(),
-                                ),
-                            );
+                            next = self.factory.borrow().factory(next_range_begin_end(
+                                &begin,
+                                &[
+                                    MrsP {
+                                        r: b,
+                                        _t: PhantomData,
+                                    },
+                                    MrsP {
+                                        r: n,
+                                        _t: PhantomData,
+                                    },
+                                ],
+                                self.cmp.borrow(),
+                            ));
                         }
                     }
                     RangeRelation::Before(_) => {
                         if let Some(begin) = self.cmp.borrow().inc(n.get_end(), &self.step) {
-                            next = self.factory.borrow().get_begin_end_opt_factory(
-                                next_range_begin_end(
-                                    &begin,
-                                    &*self.src.borrow().borrow(),
-                                    self.cmp.borrow(),
-                                ),
-                            );
+                            next = self.factory.borrow().factory(next_range_begin_end(
+                                &begin,
+                                &*self.src.borrow().borrow(),
+                                self.cmp.borrow(),
+                            ));
                         }
                     }
                     _ => return None,
@@ -221,33 +221,29 @@ where
             match range_relation(b, n, self.cmp.borrow()) {
                 RangeRelation::Overlap(_) => {
                     if let Some(end) = self.cmp.borrow().dec(b.get_begin(), &self.step) {
-                        back = self.factory.borrow().get_begin_end_opt_factory(
-                            previous_range_begin_end(
-                                &end,
-                                &[
-                                    MrsP {
-                                        r: n,
-                                        _t: PhantomData,
-                                    },
-                                    MrsP {
-                                        r: b,
-                                        _t: PhantomData,
-                                    },
-                                ],
-                                self.cmp.borrow(),
-                            ),
-                        );
+                        back = self.factory.borrow().factory(previous_range_begin_end(
+                            &end,
+                            &[
+                                MrsP {
+                                    r: n,
+                                    _t: PhantomData,
+                                },
+                                MrsP {
+                                    r: b,
+                                    _t: PhantomData,
+                                },
+                            ],
+                            self.cmp.borrow(),
+                        ));
                     }
                 }
                 RangeRelation::After(_) => {
                     if let Some(end) = self.cmp.borrow().dec(b.get_begin(), &self.step) {
-                        back = self.factory.borrow().get_begin_end_opt_factory(
-                            previous_range_begin_end(
-                                &end,
-                                &*self.src.borrow().borrow(),
-                                self.cmp.borrow(),
-                            ),
-                        );
+                        back = self.factory.borrow().factory(previous_range_begin_end(
+                            &end,
+                            &*self.src.borrow().borrow(),
+                            self.cmp.borrow(),
+                        ));
                     }
                 }
                 _ => return None,
@@ -284,7 +280,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, B: GetBeginEndOption<T, R>>
     }
 }
 
-impl<T, V> Accumulate<T, V, AnyIncDecCpCmp<T, V>, Mrs<T>, MrsFactory<T>>
+impl<T, V> Accumulate<T, V, AnyIncDecCpCmp<T, V>, Mrs<T>, RiFactory<T>>
 where
     T: PartialOrd + Copy + Add<V, Output = T> + Sub<V, Output = T>,
     V: Copy,
@@ -294,19 +290,19 @@ where
         rebound: V,
         min: T,
         max: T,
-    ) -> Accumulate<T, V, AnyIncDecCpCmp<T, V>, Mrs<T>, MrsFactory<T>> {
+    ) -> Accumulate<T, V, AnyIncDecCpCmp<T, V>, Mrs<T>, RiFactory<T>> {
         Self {
             list: Vec::new(),
             step,
             rebound,
             cmp: AnyIncDecCpCmp::new(min, max),
-            factory: MrsFactory::new(),
+            factory: RiFactory::new(),
             _r: PhantomData,
         }
     }
 }
 
-impl<T> Accumulate<T, T, NumberIncDecCpCmp<T>, Mrs<T>, MrsFactory<T>>
+impl<T> Accumulate<T, T, NumberIncDecCpCmp<T>, Mrs<T>, RiFactory<T>>
 where
     T: Clone + Copy,
     NumberIncDecCpCmp<T>: DefaultValues<T, T>,
@@ -318,7 +314,7 @@ where
             step: t.default_step(),
             rebound: t.default_rebound(),
             cmp: NumberIncDecCpCmp::new(t.min(), t.max()),
-            factory: MrsFactory::new(),
+            factory: RiFactory::new(),
             _r: PhantomData,
         };
     }
@@ -329,7 +325,7 @@ where
             step,
             rebound,
             cmp: NumberIncDecCpCmp::new(min, max),
-            factory: MrsFactory::new(),
+            factory: RiFactory::new(),
             _r: PhantomData,
         };
     }
@@ -355,7 +351,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, B: GetBeginEndOption<T, R>>
         if self.cmp.is_invalid_set(&src.0, &src.1) {
             return None;
         }
-        match self.factory.get_begin_end_opt_factory(Some(src)) {
+        match self.factory.factory(Some(src)) {
             Some(mrs) => {
                 self.list.push(mrs);
                 let id = self.list.len() - 1;
