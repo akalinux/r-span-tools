@@ -1,5 +1,5 @@
-use crate::{GetBeginEnd, builder::IncDecCpCmp};
-use std::{cmp::Ordering, ops::RangeBounds};
+use crate::{GetBeginEnd, GetBeginEndOption, builder::IncDecCpCmp};
+use std::{cmp::Ordering, mem, ops::RangeBounds};
 
 /// This enum is used to represent positional relationships in 3 states
 ///  - before a range
@@ -356,4 +356,87 @@ pub fn previous_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
         return Some(previous_smallest_range(begin, end, src, t));
     }
     return None;
+}
+
+pub fn auto_range<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>, F: GetBeginEndOption<T, R>>(
+    i: usize,
+    r: R,
+    t: &C,
+    f: &F,
+) -> Option<(R, Vec<(usize, R)>)> {
+    let a = t.cp(r.get_begin());
+    let b = t.cp(r.get_end());
+    match f.get_begin_end_opt_factory(Some((a, b))) {
+        Some(nr) => Some((nr, vec![(i, r)])),
+        _ => None,
+    }
+}
+
+pub fn grow<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>, F: GetBeginEndOption<T, R>>(
+    x: &R,
+    y: &R,
+    t: &C,
+    f: &F,
+) -> Option<R> {
+    if t.lt(x.get_begin(), y.get_begin()) {
+        if t.lt(x.get_end(), y.get_end()) {
+            return f.get_begin_end_opt_factory(Some((t.cp(x.get_begin()), t.cp(y.get_end()))));
+        } else {
+            return f.get_begin_end_opt_factory(Some((t.cp(x.get_begin()), t.cp(x.get_end()))));
+        }
+    } else if t.lt(x.get_end(), y.get_end()) {
+        return f.get_begin_end_opt_factory(Some((t.cp(y.get_begin()), t.cp(y.get_end()))));
+    } else {
+        return f.get_begin_end_opt_factory(Some((t.cp(y.get_begin()), t.cp(x.get_end()))));
+    }
+}
+
+pub fn consolidate<
+    T,
+    V,
+    R: GetBeginEnd<T>,
+    C: IncDecCpCmp<T, V>,
+    F: GetBeginEndOption<T, R>,
+    I: Iterator<Item = R>,
+>(
+    last: &mut Option<(R, Vec<(usize, R)>)>,
+    iter: &mut I,
+    t: &C,
+    f: &F,
+) -> Option<RangeRelation<(R, Vec<(usize, R)>), (R, Vec<(usize, R)>), (R, Vec<(usize, R)>)>> {
+    let mut next: Option<
+        RangeRelation<(R, Vec<(usize, R)>), (R, Vec<(usize, R)>), (R, Vec<(usize, R)>)>,
+    > = None;
+    for (idx, range) in iter.enumerate() {
+        if t.is_invalid_set(range.get_begin(), range.get_end()) {
+            continue;
+        }
+        if let Some(mut ar) = auto_range(idx, range, t, f) {
+            let nv = mem::replace(last, None);
+            if let Some((src, mut list)) = nv {
+                match range_relation(&src, &ar.0, t) {
+                    RangeRelation::Overlap(_) => {
+                        if let Some(nr) = grow(&src, &ar.0, t, f) {
+                            list.append(&mut ar.1);
+                            next = Some(RangeRelation::Overlap((nr, list)));
+                        }
+                    }
+                    RangeRelation::Before(_) => {
+                        *last = Some(ar);
+                        next = Some(RangeRelation::Before((src, list)));
+                        break;
+                    }
+                    RangeRelation::After(_) => {
+                        *last = Some(ar);
+                        next = Some(RangeRelation::After((src, list)));
+                        break;
+                    }
+                    _ => {}
+                }
+            } else {
+                *last = Some(ar);
+            }
+        }
+    }
+    return next;
 }

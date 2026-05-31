@@ -12,6 +12,144 @@ use std::mem;
 use std::ops::{Add, RangeBounds, Sub};
 use std::rc::Rc;
 
+pub struct Consolidate<
+    T,
+    V,
+    R: GetBeginEnd<T>,
+    F: GetBeginEndOption<T, R>,
+    I: Iterator<Item = R>,
+    C: IncDecCpCmp<T, V>,
+    X,
+    Y,
+> where
+    X: Borrow<F>,
+    Y: Borrow<C>,
+{
+    next: Option<RangeRelation<(R, Vec<(usize, R)>), (R, Vec<(usize, R)>), (R, Vec<(usize, R)>)>>,
+    iter: I,
+    last: Option<(R, Vec<(usize, R)>)>,
+    cmp: Y,
+    facotry: X,
+    _p: PhantomData<(F, T, V, C)>,
+}
+
+fn auto_range<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>, F: GetBeginEndOption<T, R>>(
+    i: usize,
+    r: R,
+    t: &C,
+    f: &F,
+) -> Option<(R, Vec<(usize, R)>)> {
+    let a = t.cp(r.get_begin());
+    let b = t.cp(r.get_end());
+    match f.get_begin_end_opt_factory(Some((a, b))) {
+        Some(nr) => Some((nr, vec![(i, r)])),
+        _ => None,
+    }
+}
+
+fn grow<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>, F: GetBeginEndOption<T, R>>(
+    x: &R,
+    y: &R,
+    t: &C,
+    f: &F,
+) -> Option<R> {
+    if t.lt(x.get_begin(), y.get_begin()) {
+        if t.lt(x.get_end(), y.get_end()) {
+            return f.get_begin_end_opt_factory(Some((t.cp(x.get_begin()), t.cp(y.get_end()))));
+        } else {
+            return f.get_begin_end_opt_factory(Some((t.cp(x.get_begin()), t.cp(x.get_end()))));
+        }
+    } else if t.lt(x.get_end(), y.get_end()) {
+        return f.get_begin_end_opt_factory(Some((t.cp(y.get_begin()), t.cp(y.get_end()))));
+    } else {
+        return f.get_begin_end_opt_factory(Some((t.cp(y.get_begin()), t.cp(x.get_end()))));
+    }
+}
+
+fn consolidate<
+    T,
+    V,
+    R: GetBeginEnd<T>,
+    C: IncDecCpCmp<T, V>,
+    F: GetBeginEndOption<T, R>,
+    I: Iterator<Item = R>,
+>(
+    last: &mut Option<(R, Vec<(usize, R)>)>,
+    iter: &mut I,
+    t: &C,
+    f: &F,
+) -> Option<RangeRelation<(R, Vec<(usize, R)>), (R, Vec<(usize, R)>), (R, Vec<(usize, R)>)>> {
+    let mut next: Option<
+        RangeRelation<(R, Vec<(usize, R)>), (R, Vec<(usize, R)>), (R, Vec<(usize, R)>)>,
+    > = None;
+    for (idx, range) in iter.enumerate() {
+        if t.is_invalid_set(range.get_begin(), range.get_end()) {
+            continue;
+        }
+        if let Some(mut ar) = auto_range(idx, range, t, f) {
+            let nv = mem::replace(last, None);
+            if let Some((src, mut list)) = nv {
+                match range_relation(&src, &ar.0, t) {
+                    RangeRelation::Overlap(_) => {
+                        if let Some(nr) = grow(&src, &ar.0, t, f) {
+                            list.append(&mut ar.1);
+                            next = Some(RangeRelation::Overlap((nr, list)));
+                        }
+                    }
+                    RangeRelation::Before(_) => {
+                        *last = Some(ar);
+                        next = Some(RangeRelation::Before((src, list)));
+                        break;
+                    }
+                    RangeRelation::After(_) => {
+                        *last = Some(ar);
+                        next = Some(RangeRelation::After((src, list)));
+                        break;
+                    }
+                    _ => {}
+                }
+            } else {
+                *last = Some(ar);
+            }
+        }
+    }
+    return next;
+}
+impl<
+    T,
+    V,
+    R: GetBeginEnd<T>,
+    F: GetBeginEndOption<T, R>,
+    I: Iterator<Item = R>,
+    X,
+    Y,
+    C: IncDecCpCmp<T, V>,
+> Iterator for Consolidate<T, V, R, F, I, C, X, Y>
+where
+    X: Borrow<F>,
+    Y: Borrow<C>,
+{
+    type Item = RangeRelation<(R, Vec<(usize, R)>), (R, Vec<(usize, R)>), (R, Vec<(usize, R)>)>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut next: Option<Self::Item>;
+        match &self.next {
+            Some(r) => {
+                let t = self.cmp.borrow();
+                let f = self.facotry.borrow();
+                let iter = &mut self.iter;
+                match &r {
+                    _ => next = consolidate(&mut self.last, iter, t, f),
+                }
+            }
+            None => return None,
+        };
+
+        if next.is_none() && !self.last.is_none() {
+            next = mem::replace(&mut self.next, None)
+        }
+        return mem::replace(&mut self.next, next);
+    }
+}
 pub struct OverlapIter<
     T,
     V,
