@@ -2,10 +2,10 @@
 mod util_tests {
 
     use common_range_tools::{
-        GetBeginEnd, Mrs, RangeRelation, builder::NumberIncDecCpCmp, first_range_begin_end,
-        last_range_begin_end, next_range_begin_end, next_smallest_range, previous_range_begin_end,
-        previous_smallest_range, range_bounds_to_values, range_relation, sort_forward,
-        sort_reverse,
+        GetBeginEnd, Mrs, MrsFactory, RangeRelation, auto_range, builder::NumberIncDecCpCmp,
+        consolidate, first_range_begin_end, grow, last_range_begin_end, next_range_begin_end,
+        next_smallest_range, previous_range_begin_end, previous_smallest_range,
+        range_bounds_to_values, range_relation, sort_forward, sort_reverse,
     };
 
     #[test]
@@ -364,5 +364,162 @@ mod util_tests {
         assert_eq!(next_range_begin_end(&3, &bad, &t).unwrap(), good[2]);
         assert_eq!(next_range_begin_end(&5, &bad, &t).unwrap(), good[3]);
         matches!(next_range_begin_end(&i32::MAX, &bad, &t), None);
+    }
+
+    #[test]
+    fn growth_tests() {
+        let mut x = Mrs::new(1, 6);
+        let mut y = Mrs::new(3, 9);
+        let f = MrsFactory::new();
+        let t = NumberIncDecCpCmp::defaults();
+
+        assert_eq!(
+            grow(&x, &y, &t, &f).unwrap().to_tuple(),
+            Mrs::new(1, 9).to_tuple()
+        );
+        assert_eq!(
+            grow(&y, &x, &t, &f).unwrap().to_tuple(),
+            Mrs::new(1, 9).to_tuple()
+        );
+        x = Mrs::new(1, 6);
+        y = Mrs::new(1, 9);
+        assert_eq!(
+            grow(&y, &x, &t, &f).unwrap().to_tuple(),
+            Mrs::new(1, 9).to_tuple()
+        );
+        assert_eq!(
+            grow(&x, &y, &t, &f).unwrap().to_tuple(),
+            Mrs::new(1, 9).to_tuple()
+        );
+        x = Mrs::new(1, 6);
+        y = Mrs::new(2, 5);
+        assert_eq!(
+            grow(&x, &y, &t, &f).unwrap().to_tuple(),
+            Mrs::new(1, 6).to_tuple()
+        );
+        assert_eq!(
+            grow(&y, &x, &t, &f).unwrap().to_tuple(),
+            Mrs::new(1, 6).to_tuple()
+        );
+        assert_eq!(
+            grow(&x, &x, &t, &f).unwrap().to_tuple(),
+            Mrs::new(1, 6).to_tuple()
+        );
+    }
+
+    #[test]
+    fn auto_range_tests() {
+        let f = MrsFactory::new();
+        let mut t = NumberIncDecCpCmp::defaults();
+        let mut res = auto_range(0, Mrs::new(1, 2), &t, &f);
+        let (r, l) = res.unwrap();
+        assert_eq!(r.to_tuple(), (1, 2));
+        assert_eq!(l.len(), 1);
+        assert_eq!(l[0].0, 0);
+        assert_eq!(l[0].1.to_tuple_ref(), (&1, &2));
+        t.set_min(7);
+        res = auto_range(0, Mrs::new(1, 2), &t, &f);
+        matches!(res, None);
+    }
+
+    #[test]
+    fn consolidate_tests() {
+        let f = MrsFactory::new();
+        let t = NumberIncDecCpCmp::defaults();
+        let mut iter = vec![Mrs::new(1, 2)].into_iter();
+        let mut last = None;
+        let (_, mut next) = consolidate(&mut last, &mut iter, &t, &f, 0);
+
+        let mut res = next.unwrap();
+        matches!(last, None);
+        assert!(res.is_last());
+        let (mut r, mut set) = res.last();
+        assert_eq!(r.to_tuple(), (1, 2));
+        assert_eq!(set.len(), 1);
+        assert_eq!(&set[0].0, &0);
+        assert_eq!(set[0].1.to_tuple_ref(), (&1, &2));
+        iter = vec![
+            // Block A
+            Mrs::new(1, 2), // 0
+            Mrs::new(2, 3), // 1
+            // Block B
+            Mrs::new(4, 4), // 2
+            // Block C
+            Mrs::new(1, 1), // 3
+            // Block D
+            Mrs::new(5, 6), // 4
+            Mrs::new(6, 7), // 6
+            // Block E
+            Mrs::new(8, 8), // 7
+        ]
+        .into_iter();
+
+        // Block A results
+        let mut offset;
+        (offset, next) = consolidate(&mut last, &mut iter, &t, &f, 0);
+        assert!(!last.is_none());
+        assert!(!next.is_none());
+        res = next.unwrap();
+        assert!(res.is_before());
+        (r, set) = res.before();
+        assert_eq!(r.to_tuple(), (1, 3));
+        assert_eq!(set.len(), 2);
+        assert_eq!(&set[0].0, &0);
+        assert_eq!(set[0].1.to_tuple_ref(), (&1, &2));
+        assert_eq!(&set[1].0, &1);
+        assert_eq!(set[1].1.to_tuple_ref(), (&2, &3));
+
+        // Block B
+        (offset, next) = consolidate(&mut last, &mut iter, &t, &f, offset);
+        assert!(!last.is_none());
+        assert!(!next.is_none());
+
+        res = next.unwrap();
+        assert!(res.is_after());
+        (r, set) = res.after();
+        assert_eq!(r.to_tuple(), (4, 4));
+        assert_eq!(set.len(), 1);
+        assert_eq!(&set[0].0, &2);
+        assert_eq!(set[0].1.to_tuple_ref(), (&4, &4));
+
+        // Block C
+        (offset, next) = consolidate(&mut last, &mut iter, &t, &f, offset);
+        assert!(!last.is_none());
+        assert!(!next.is_none());
+        res = next.unwrap();
+        assert!(res.is_before());
+        (r, set) = res.before();
+        assert_eq!(r.to_tuple(), (1, 1));
+        assert_eq!(set.len(), 1);
+        assert_eq!(set[0].1.to_tuple_ref(), (&1, &1));
+        assert_eq!(&set[0].0, &3);
+
+        // Block D
+        (offset, next) = consolidate(&mut last, &mut iter, &t, &f, offset);
+        assert!(!last.is_none());
+        assert!(!next.is_none());
+        res = next.unwrap();
+        assert!(res.is_before());
+        (r, set) = res.before();
+        assert_eq!(r.to_tuple(), (5, 7));
+        assert_eq!(set.len(), 2);
+        assert_eq!(&set[0].0, &4);
+        assert_eq!(set[0].1.to_tuple_ref(), (&5, &6));
+        assert_eq!(&set[1].0, &5);
+        assert_eq!(set[1].1.to_tuple_ref(), (&6, &7));
+
+        (_, next) = consolidate(&mut last, &mut iter, &t, &f, offset);
+        assert!(last.is_none());
+        assert!(!next.is_none());
+        res = next.unwrap();
+        assert!(res.is_last());
+        (r, set) = res.last();
+        assert_eq!(r.to_tuple(), (8, 8));
+        assert_eq!(set.len(), 1);
+        assert_eq!(&set[0].0, &6);
+        assert_eq!(set[0].1.to_tuple_ref(), (&8, &8));
+        (_, next) = consolidate(&mut last, &mut iter, &t, &f, offset);
+        assert!(last.is_none());
+        assert!(next.is_none());
     }
 }

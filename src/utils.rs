@@ -5,18 +5,89 @@ use std::{cmp::Ordering, mem, ops::RangeBounds};
 ///  - before a range
 ///  - overlap with a range
 ///  - after a range
-pub enum RangeRelation<B, O, A> {
+///
+/// The additional states, represent the initialization of the set.
+///  - empty or no data
+///  - last or final
+pub enum RangeRelation<B, O, A, L> {
     /// Range a is before range b
     Before(B),
+
     /// Range a and b overlap
     Overlap(O),
+
     /// Range a is after range b
     After(A),
 
-    /// Represents a state of No data
-    Empty,
+    /// Represents final set of data
+    Last(L),
 }
 
+impl<B, O, A, L> RangeRelation<B, O, A, L> {
+    /// Unwraps the state of [RangeRelation::Last] or panics!
+    pub fn last(self) -> L {
+        match self {
+            RangeRelation::Last(data) => data,
+            _ => panic!("Not Last!"),
+        }
+    }
+
+    /// Unwraps the state of [RangeRelation::Before] or panics!
+    pub fn before(self) -> B {
+        match self {
+            RangeRelation::Before(data) => data,
+            _ => panic!("Not Before!"),
+        }
+    }
+
+    /// Unwraps the state of [RangeRelation::Overlap] or panics!
+    pub fn overlap(self) -> O {
+        match self {
+            RangeRelation::Overlap(data) => data,
+            _ => panic!("Not Overlap!"),
+        }
+    }
+
+    /// Unwraps the state of [RangeRelation::After] or panics!
+    pub fn after(self) -> A {
+        match self {
+            RangeRelation::After(data) => data,
+            _ => panic!("Not After!"),
+        }
+    }
+
+    /// Returns true if [crate::RangeRelation::Last].
+    pub fn is_last(&self) -> bool {
+        match self {
+            RangeRelation::Last(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if [crate::RangeRelation::Overlap].
+    pub fn is_overlap(&self) -> bool {
+        match self {
+            RangeRelation::Overlap(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if [crate::RangeRelation::Before].
+    pub fn is_before(&self) -> bool {
+        match self {
+            RangeRelation::Before(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns true if [crate::RangeRelation::After].
+    pub fn is_after(&self) -> bool {
+        match self {
+            RangeRelation::After(_) => true,
+            _ => false,
+        }
+    }
+}
 /// Compares the positional relationship between a and b.
 ///
 /// - [`crate::RangeRelation::Before`] a is before b.
@@ -26,7 +97,7 @@ pub fn range_relation<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(
     a: &R,
     b: &R,
     t: &C,
-) -> RangeRelation<(), (), ()> {
+) -> RangeRelation<(), (), (), ()> {
     if t.lt(a.get_end(), b.get_begin()) {
         return RangeRelation::Before(());
     } else if t.lt(b.get_end(), a.get_begin()) {
@@ -403,22 +474,41 @@ pub fn consolidate<
     iter: &mut I,
     t: &C,
     f: &F,
-) -> Option<RangeRelation<(R, Vec<(usize, R)>), (R, Vec<(usize, R)>), (R, Vec<(usize, R)>)>> {
+    offset: usize,
+) -> (
+    usize,
+    Option<
+        RangeRelation<
+            (R, Vec<(usize, R)>),
+            (R, Vec<(usize, R)>),
+            (R, Vec<(usize, R)>),
+            (R, Vec<(usize, R)>),
+        >,
+    >,
+) {
     let mut next: Option<
-        RangeRelation<(R, Vec<(usize, R)>), (R, Vec<(usize, R)>), (R, Vec<(usize, R)>)>,
+        RangeRelation<
+            (R, Vec<(usize, R)>),
+            (R, Vec<(usize, R)>),
+            (R, Vec<(usize, R)>),
+            (R, Vec<(usize, R)>),
+        >,
     > = None;
-    for (idx, range) in iter.enumerate() {
+    let mut idx = offset;
+    for range in iter {
         if t.is_invalid_set(range.get_begin(), range.get_end()) {
+            idx += 1;
             continue;
         }
         if let Some(mut ar) = auto_range(idx, range, t, f) {
+            idx += 1;
             let nv = mem::replace(last, None);
             if let Some((src, mut list)) = nv {
                 match range_relation(&src, &ar.0, t) {
                     RangeRelation::Overlap(_) => {
                         if let Some(nr) = grow(&src, &ar.0, t, f) {
                             list.append(&mut ar.1);
-                            next = Some(RangeRelation::Overlap((nr, list)));
+                            *last = Some((nr, list));
                         }
                     }
                     RangeRelation::Before(_) => {
@@ -436,7 +526,13 @@ pub fn consolidate<
             } else {
                 *last = Some(ar);
             }
+        } else {
+            idx += 1;
         }
     }
-    return next;
+    if next.is_none() && !last.is_none() {
+        let res = mem::replace(last, None);
+        return (idx, Some(RangeRelation::Last(res.unwrap())));
+    }
+    return (idx, next);
 }
