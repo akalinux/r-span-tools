@@ -1,8 +1,8 @@
 use crate::builder::IncDecCpCmp;
 use crate::{
-    AnyIncDecCpCmp, DefaultValues, GetBeginEnd, Mrs, MrsP, NumberIncDecCpCmp, RangeRelation,
-    consolidate, first_range_begin_end, last_range_begin_end, next_range_begin_end,
-    previous_range_begin_end, range_bounds_to_values, range_relation,
+    AnyIncDecCpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, Mrs, MrsP, NumberIncDecCpCmp,
+    RangeRelation, RiFactory, consolidate, first_range_begin_end, last_range_begin_end,
+    next_range_begin_end, previous_range_begin_end, range_bounds_to_values, range_relation,
 };
 
 use std::borrow::Borrow;
@@ -86,48 +86,6 @@ pub struct OverlapIter<
     back: Option<R>,
     factory: Y,
     _marker: PhantomData<(T, R, C, B)>,
-}
-
-pub trait GetBeginEndOption<T, R: GetBeginEnd<T>> {
-    fn factory(&self, opt: Option<(T, T)>) -> Option<R>;
-}
-
-pub struct MrsFactory<T> {
-    _t: PhantomData<T>,
-}
-
-pub struct RiFactory<T> {
-    _t: PhantomData<T>,
-}
-
-impl<T> RiFactory<T> {
-    pub fn new() -> Self {
-        return Self { _t: PhantomData };
-    }
-}
-
-impl<T> MrsFactory<T> {
-    pub fn new() -> Self {
-        return Self { _t: PhantomData };
-    }
-}
-
-impl<T> GetBeginEndOption<T, Mrs<T>> for MrsFactory<T> {
-    fn factory(&self, opt: Option<(T, T)>) -> Option<Mrs<T>> {
-        match opt {
-            Some((a, z)) => Some(Mrs::new(a, z)),
-            None => None,
-        }
-    }
-}
-
-impl<T> GetBeginEndOption<T, Mrs<T>> for RiFactory<T> {
-    fn factory(&self, opt: Option<(T, T)>) -> Option<Mrs<T>> {
-        match opt {
-            Some((a, z)) => Some(Mrs::new(a, z)),
-            None => None,
-        }
-    }
 }
 
 impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X, B: GetBeginEndOption<T, R>, Y>
@@ -334,7 +292,7 @@ where
 macro_rules! impl_accumulate_num_core{
     ($($t:ty),*) => {
         $(
-            impl Accumulate<$t, $t, NumberIncDecCpCmp<$t>, Mrs<$t>, MrsFactory<$t>>
+            impl Accumulate<$t, $t, NumberIncDecCpCmp<$t>, Mrs<$t>,RiFactory<$t>>
             where NumberIncDecCpCmp<$t>: DefaultValues<$t,$t> {}
 
         )*

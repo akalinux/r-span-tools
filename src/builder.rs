@@ -3,6 +3,8 @@ use std::{
     ops::{Add, Bound, Sub},
 };
 
+use crate::{GetBeginEnd, Mrs};
+
 /// The **Number Implementation** of [crate::IncDecCpCmp].  
 ///
 /// Acts as the general proxy layer for safly working with primitive number types inside [crate].
@@ -419,3 +421,45 @@ macro_rules! impl_inc_dec_cp_cmp_trait_f {
 impl_inc_dec_cp_cmp_trait_u!(u8, u16, u32, u64, u128, usize);
 impl_inc_dec_cp_cmp_trait_i!(i8, i16, i32, i64, i128, isize);
 impl_inc_dec_cp_cmp_trait_f!(f32, f64);
+
+pub trait GetBeginEndOption<T, R: GetBeginEnd<T>> {
+    fn factory(&self, opt: Option<(T, T)>) -> Option<R>;
+}
+
+pub struct MrsFactory<T> {
+    _t: PhantomData<T>,
+}
+
+pub struct RiFactory<T> {
+    _t: PhantomData<T>,
+}
+
+impl<T> RiFactory<T> {
+    pub fn new() -> Self {
+        return Self { _t: PhantomData };
+    }
+}
+
+impl<T> MrsFactory<T> {
+    pub fn new() -> Self {
+        return Self { _t: PhantomData };
+    }
+}
+
+impl<T> GetBeginEndOption<T, Mrs<T>> for MrsFactory<T> {
+    fn factory(&self, opt: Option<(T, T)>) -> Option<Mrs<T>> {
+        match opt {
+            Some((a, z)) => Some(Mrs::new(a, z)),
+            None => None,
+        }
+    }
+}
+
+impl<T> GetBeginEndOption<T, Mrs<T>> for RiFactory<T> {
+    fn factory(&self, opt: Option<(T, T)>) -> Option<Mrs<T>> {
+        match opt {
+            Some((a, z)) => Some(Mrs::new(a, z)),
+            None => None,
+        }
+    }
+}
