@@ -147,11 +147,7 @@ pub fn range_bounds_to_values<T, V>(
 /// - GetBeginEnd.get_begin() asc
 /// - GetBeginEnd.get_end() desc
 ///
-pub fn sort_forward<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(
-    a: &R,
-    b: &R,
-    t: &C,
-) -> Ordering {
+pub fn sort_forward<T, R: GetBeginEnd<T>, C: CpCmp<T>>(a: &R, b: &R, t: &C) -> Ordering {
     if t.lt(b.get_begin(), a.get_begin()) {
         return Ordering::Greater;
     } else if t.lt(a.get_begin(), b.get_begin()) {
@@ -176,11 +172,7 @@ pub fn sort_forward<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(
 /// - GetBeginEnd.get_end() desc
 /// - GetBeginEnd.get_begin() asc
 ///
-pub fn sort_reverse<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(
-    a: &R,
-    b: &R,
-    t: &C,
-) -> Ordering {
+pub fn sort_reverse<T, R: GetBeginEnd<T>, C: CpCmp<T>>(a: &R, b: &R, t: &C) -> Ordering {
     if t.lt(a.get_end(), b.get_end()) {
         return Ordering::Greater;
     } else if t.lt(b.get_end(), a.get_end()) {
@@ -197,11 +189,11 @@ pub fn sort_reverse<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(
     return Ordering::Equal;
 }
 
-fn contains<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(check: &R, value: &T, t: &C) -> bool {
+fn contains<T, R: GetBeginEnd<T>, C: CpCmp<T>>(check: &R, value: &T, t: &C) -> bool {
     return t.contains(check.get_begin(), check.get_end(), value);
 }
 
-pub fn next_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+pub fn next_smallest_range<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
     begin: &T,
     end: &T,
     src: &[R],
@@ -234,7 +226,7 @@ pub fn next_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     }
 }
 
-pub fn previous_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+pub fn previous_smallest_range<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
     begin: &T,
     end: &T,
     src: &[R],
@@ -267,7 +259,7 @@ pub fn previous_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     }
 }
 
-pub(crate) fn min_max<'r, T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(
+pub(crate) fn min_max<'r, T, R: GetBeginEnd<T>, C: CpCmp<T>>(
     src: &'r [R],
     t: &C,
 ) -> Option<(&'r T, &'r T)> {
@@ -301,7 +293,7 @@ pub(crate) fn min_max<'r, T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(
 }
 
 /// Looks for the first most range, if found returns an Option<(T,T)>.
-pub fn first_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+pub fn first_range_begin_end<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
     src: &[R],
     t: &C,
 ) -> Option<(T, T)> {
@@ -315,10 +307,7 @@ pub fn first_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
 }
 
 /// Looks for the last most range, if found returns an Option<(T,T)>.
-pub fn last_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
-    src: &[R],
-    t: &C,
-) -> Option<(T, T)> {
+pub fn last_range_begin_end<T, C: CpCmp<T>, R: GetBeginEnd<T>>(src: &[R], t: &C) -> Option<(T, T)> {
     let check = min_max(src, t);
     if let Some((begin, end)) = check {
         return Some(previous_smallest_range(begin, end, src, t));
@@ -330,7 +319,7 @@ pub fn last_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
 /// Searches for the next smallest range valid range of (T,T) overlaps with begin.
 /// If no range overlaps with end, it finds the next smallest range after begin.
 /// Returns None when no matches were found.
-pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+pub fn next_range_begin_end<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
     begin: &T,
     src: &[R],
     t: &C,
@@ -375,7 +364,7 @@ pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
 /// Searches for the previous smallest range valid range of (T,T) overlaps with end.
 /// If no range overlaps with end, it finds the previous smallest range before begin.
 /// Returns None when no matches were found.
-pub fn previous_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+pub fn previous_range_begin_end<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
     end: &T,
     src: &[R],
     t: &C,
@@ -445,17 +434,16 @@ pub fn grow<T, R: GetBeginEnd<T>, C: CpCmp<T>, F: GetBeginEndOption<T, R>>(
     t: &C,
     f: &F,
 ) -> Option<R> {
+    let a;
     if t.lt(x.get_begin(), y.get_begin()) {
-        if t.lt(x.get_end(), y.get_end()) {
-            return f.factory(Some((t.cp(x.get_begin()), t.cp(y.get_end()))));
-        } else {
-            return f.factory(Some((t.cp(x.get_begin()), t.cp(x.get_end()))));
-        }
-    } else if t.lt(x.get_end(), y.get_end()) {
-        return f.factory(Some((t.cp(y.get_begin()), t.cp(y.get_end()))));
+        a = t.cp(x.get_begin())
     } else {
-        return f.factory(Some((t.cp(y.get_begin()), t.cp(x.get_end()))));
+        a = t.cp(y.get_begin())
     }
+    if t.lt(x.get_end(), y.get_end()) {
+        return f.factory(Some((a, t.cp(y.get_end()))));
+    }
+    return f.factory(Some((a, t.cp(x.get_end()))));
 }
 
 pub fn consolidate<

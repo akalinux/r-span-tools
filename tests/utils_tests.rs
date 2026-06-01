@@ -14,15 +14,12 @@ mod util_tests {
 
         // Empty set test
         assert_eq!(
-            first_range_begin_end::<i32, i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(&[], &t),
+            first_range_begin_end::<i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(&[], &t),
             None
         );
 
         assert_eq!(
-            first_range_begin_end::<i32, i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(
-                &[Mrs::new(0, -1)],
-                &t
-            ),
+            first_range_begin_end::<i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(&[Mrs::new(0, -1)], &t),
             None
         );
 
@@ -75,15 +72,12 @@ mod util_tests {
 
         // Empty set test
         assert_eq!(
-            last_range_begin_end::<i32, i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(&[], &t),
+            last_range_begin_end::<i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(&[], &t),
             None
         );
 
         assert_eq!(
-            last_range_begin_end::<i32, i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(
-                &[Mrs::new(0, -1)],
-                &t
-            ),
+            last_range_begin_end::<i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(&[Mrs::new(0, -1)], &t),
             None
         );
 
