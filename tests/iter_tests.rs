@@ -3,8 +3,7 @@
 use std::rc::Rc;
 
 use common_range_tools::{
-    AnyIncDecCpCmp, Consolidate, ConsolidationOrder, NumberIncDecCpCmp, RangeRelation, RiFactory,
-    sort_reverse,
+    Consolidate, ConsolidationOrder, NumberIncDecCpCmp, RangeRelation, RiFactory, sort_reverse,
 };
 
 use crate::iter_tests::mrs_set;
@@ -367,16 +366,7 @@ fn consolidator_forward_num_tests() {
 
 #[test]
 fn consolidator_any_defaults() {
-    let mut iter: Consolidate<
-        i32,
-        i32,
-        std::ops::RangeInclusive<i32>,
-        RiFactory<i32>,
-        std::vec::IntoIter<std::ops::RangeInclusive<i32>>,
-        AnyIncDecCpCmp<i32, _>,
-        Rc<RiFactory<i32>>,
-        Rc<AnyIncDecCpCmp<i32, i32>>,
-    > = Consolidate::any_defaults(mrs_set().into_iter(), 0, 22);
+    let mut iter = Consolidate::any_defaults(mrs_set().into_iter(), 0, 22);
 
     assert_eq!(iter.next().unwrap().0, 0..=3);
     assert_eq!(iter.next().unwrap().0, 4..=6);
@@ -398,8 +388,8 @@ fn consolidator_num_defaults() {
 
 #[test]
 fn consolidator_reverse_tests() {
-    let cmp = Rc::new(NumberIncDecCpCmp::<i32>::defaults());
-    let f = Rc::new(RiFactory::<i32>::new());
+    let cmp = Rc::new(NumberIncDecCpCmp::defaults());
+    let f = Rc::new(RiFactory::new());
 
     let mut src = mrs_set();
     src.sort_by(|a, b| sort_reverse(a, b, cmp.as_ref()));

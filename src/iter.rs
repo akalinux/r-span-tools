@@ -147,23 +147,22 @@ where
     }
 }
 
-impl<T, V, I: Iterator<Item = RangeInclusive<T>>>
+impl<T, I: Iterator<Item = RangeInclusive<T>>>
     Consolidate<
         T,
-        V,
+        T,
         RangeInclusive<T>,
         RiFactory<T>,
         I,
-        AnyIncDecCpCmp<T, V>,
+        AnyIncDecCpCmp<T, T>,
         Rc<RiFactory<T>>,
-        Rc<AnyIncDecCpCmp<T, V>>,
+        Rc<AnyIncDecCpCmp<T, T>>,
     >
 where
-    T: PartialOrd + Clone + Copy + Add<V, Output = T> + Sub<V, Output = T>,
-    V: Copy,
+    T: PartialOrd + Clone + Copy + Add<T, Output = T> + Sub<T, Output = T>,
 {
     pub fn any_defaults(iter: I, min: T, max: T) -> Self {
-        return Self::new(
+        return Self::any(
             ConsolidationOrder::Forward,
             iter,
             Rc::new(AnyIncDecCpCmp::new(min, max)),
