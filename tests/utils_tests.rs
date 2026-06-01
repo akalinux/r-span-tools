@@ -454,6 +454,7 @@ mod util_tests {
         ]
         .into_iter();
 
+        last = None;
         // Block A results
         let mut offset;
         (offset, next) = consolidate(&mut last, &mut iter, &t, &f, 0);

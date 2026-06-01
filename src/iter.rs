@@ -1,6 +1,6 @@
 use crate::builder::IncDecCpCmp;
 use crate::{
-    AnyIncDecCpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, Mrs, MrsP, NumberIncDecCpCmp,
+    AnyIncDecCpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, MrsP, NumberIncDecCpCmp,
     RangeRelation, RiFactory, consolidate, first_range_begin_end, last_range_begin_end,
     next_range_begin_end, previous_range_begin_end, range_bounds_to_values, range_relation,
 };
@@ -9,9 +9,49 @@ use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::mem;
+use std::ops::RangeInclusive;
 use std::ops::{Add, RangeBounds, Sub};
 use std::rc::Rc;
 
+// Represents the consolidation order.
+pub enum ConsolidationOrder {
+    /// Flags an object stating data is expected in the order provided by [crate::sort_forward].
+    Forward,
+
+    /// Flags an object stating data is expected in the order provided by [crate::sort_reverse].
+    Reverse,
+}
+
+impl ConsolidationOrder {
+    /// Filters instances of [crate::RangeRelation] for validity against the given [crate::ConsolidationOrder].
+    /// When an invalid direction is detected a None is returned.
+    ///
+    /// There are 2 valid directions for consolidation
+    ///  - Forward: see [crate::sort_forward].
+    ///  - Reverse: see [crate::sort_reverse]
+    ///
+    /// Invalid state for: [crate::ConsolidationOrder::Forward]
+    ///   - [crate::RangeRelation::After] is not valid.
+    ///
+    /// Invalid states for: [crate::ConsolidationOrder::Reverse]
+    ///   - [crate::RangeRelation::Before] is not valid.
+    pub fn check_direction<T>(&self, state: Option<RangeRelation<T>>) -> Option<T> {
+        if state.is_none() {
+            return None;
+        }
+        match state.unwrap() {
+            RangeRelation::Last(v) | RangeRelation::Overlap(v) => Some(v),
+            RangeRelation::After(v) => match self {
+                Self::Forward => None,
+                Self::Reverse => Some(v),
+            },
+            RangeRelation::Before(v) => match self {
+                Self::Forward => Some(v),
+                Self::Reverse => None,
+            },
+        }
+    }
+}
 pub struct Consolidate<
     T,
     V,
@@ -25,13 +65,111 @@ pub struct Consolidate<
     X: Borrow<F>,
     Y: Borrow<C>,
 {
-    next: Option<RangeRelation<(R, Vec<(usize, R)>)>>,
     iter: I,
     last: Option<(R, Vec<(usize, R)>)>,
     cmp: Y,
     facotry: X,
     offset: usize,
+    order: ConsolidationOrder,
     _p: PhantomData<(F, T, V, C)>,
+}
+impl<
+    T,
+    V,
+    R: GetBeginEnd<T>,
+    F: GetBeginEndOption<T, R>,
+    I: Iterator<Item = R>,
+    C: IncDecCpCmp<T, V>,
+    X,
+    Y,
+> Consolidate<T, V, R, F, I, C, X, Y>
+where
+    X: Borrow<F>,
+    Y: Borrow<C>,
+{
+    pub fn new(order: ConsolidationOrder, iter: I, cmp: Y, factory: X) -> Self {
+        return Self {
+            iter,
+            last: None,
+            cmp: cmp,
+            facotry: factory,
+            order,
+            offset: 0,
+            _p: PhantomData,
+        };
+    }
+}
+impl<Y, X, T, I: Iterator<Item = RangeInclusive<T>>>
+    Consolidate<T, T, RangeInclusive<T>, RiFactory<T>, I, NumberIncDecCpCmp<T>, Y, X>
+where
+    NumberIncDecCpCmp<T>: DefaultValues<T, T>,
+    X: Borrow<NumberIncDecCpCmp<T>>,
+    Y: Borrow<RiFactory<T>>,
+    T: Copy + Clone,
+{
+    pub fn num(order: ConsolidationOrder, iter: I, cmp: X, factory: Y) -> Self {
+        return Self::new(order, iter, cmp, factory);
+    }
+}
+
+impl<T, I: Iterator<Item = RangeInclusive<T>>>
+    Consolidate<
+        T,
+        T,
+        RangeInclusive<T>,
+        RiFactory<T>,
+        I,
+        NumberIncDecCpCmp<T>,
+        Rc<RiFactory<T>>,
+        Rc<NumberIncDecCpCmp<T>>,
+    >
+where
+    NumberIncDecCpCmp<T>: DefaultValues<T, T>,
+    T: Copy + Clone,
+{
+    pub fn num_defaults(iter: I) -> Self {
+        let cmp = Rc::new(NumberIncDecCpCmp::<T>::defaults());
+        let factory = Rc::new(RiFactory::<T>::new());
+        return Self::new(ConsolidationOrder::Forward, iter, cmp, factory);
+    }
+}
+
+impl<Y, X, R: GetBeginEnd<T>, T, V, I: Iterator<Item = R>, F: GetBeginEndOption<T, R>>
+    Consolidate<T, V, R, F, I, AnyIncDecCpCmp<T, V>, X, Y>
+where
+    T: PartialOrd + Clone + Copy + Add<V, Output = T> + Sub<V, Output = T>,
+    V: Copy,
+    X: Borrow<F>,
+    Y: Borrow<AnyIncDecCpCmp<T, V>>,
+{
+    pub fn any(order: ConsolidationOrder, iter: I, cmp: Y, factory: X) -> Self {
+        return Self::new(order, iter, cmp, factory);
+    }
+}
+
+impl<T, V, I: Iterator<Item = RangeInclusive<T>>>
+    Consolidate<
+        T,
+        V,
+        RangeInclusive<T>,
+        RiFactory<T>,
+        I,
+        AnyIncDecCpCmp<T, V>,
+        Rc<RiFactory<T>>,
+        Rc<AnyIncDecCpCmp<T, V>>,
+    >
+where
+    T: PartialOrd + Clone + Copy + Add<V, Output = T> + Sub<V, Output = T>,
+    V: Copy,
+{
+    pub fn any_defaults(iter: I, min: T, max: T) -> Self {
+        return Self::new(
+            ConsolidationOrder::Forward,
+            iter,
+            Rc::new(AnyIncDecCpCmp::new(min, max)),
+            Rc::new(RiFactory::new()),
+        );
+    }
 }
 
 impl<
@@ -48,22 +186,15 @@ where
     X: Borrow<F>,
     Y: Borrow<C>,
 {
-    type Item = RangeRelation<(R, Vec<(usize, R)>)>;
+    type Item = (R, Vec<(usize, R)>);
     fn next(&mut self) -> Option<Self::Item> {
-        let next: Option<Self::Item>;
-        match &self.next {
-            Some(r) => {
-                let t = self.cmp.borrow();
-                let f = self.facotry.borrow();
-                let iter = &mut self.iter;
-                match &r {
-                    _ => (self.offset, next) = consolidate(&mut self.last, iter, t, f, self.offset),
-                }
-            }
-            None => return None,
-        };
+        let t = self.cmp.borrow();
+        let f = self.facotry.borrow();
+        let iter = &mut self.iter;
+        let next;
+        (self.offset, next) = consolidate(&mut self.last, iter, t, f, self.offset);
 
-        return mem::replace(&mut self.next, next);
+        return self.order.check_direction(next);
     }
 }
 pub struct OverlapIter<
@@ -238,7 +369,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, B: GetBeginEndOption<T, R>>
     }
 }
 
-impl<T, V> Accumulate<T, V, AnyIncDecCpCmp<T, V>, Mrs<T>, RiFactory<T>>
+impl<T, V> Accumulate<T, V, AnyIncDecCpCmp<T, V>, RangeInclusive<T>, RiFactory<T>>
 where
     T: PartialOrd + Copy + Add<V, Output = T> + Sub<V, Output = T>,
     V: Copy,
@@ -248,7 +379,7 @@ where
         rebound: V,
         min: T,
         max: T,
-    ) -> Accumulate<T, V, AnyIncDecCpCmp<T, V>, Mrs<T>, RiFactory<T>> {
+    ) -> Accumulate<T, V, AnyIncDecCpCmp<T, V>, RangeInclusive<T>, RiFactory<T>> {
         Self {
             list: Vec::new(),
             step,
@@ -260,7 +391,7 @@ where
     }
 }
 
-impl<T> Accumulate<T, T, NumberIncDecCpCmp<T>, Mrs<T>, RiFactory<T>>
+impl<T> Accumulate<T, T, NumberIncDecCpCmp<T>, RangeInclusive<T>, RiFactory<T>>
 where
     T: Clone + Copy,
     NumberIncDecCpCmp<T>: DefaultValues<T, T>,
@@ -292,7 +423,7 @@ where
 macro_rules! impl_accumulate_num_core{
     ($($t:ty),*) => {
         $(
-            impl Accumulate<$t, $t, NumberIncDecCpCmp<$t>, Mrs<$t>,RiFactory<$t>>
+            impl Accumulate<$t, $t, NumberIncDecCpCmp<$t>, RangeInclusive<$t>,RiFactory<$t>>
             where NumberIncDecCpCmp<$t>: DefaultValues<$t,$t> {}
 
         )*

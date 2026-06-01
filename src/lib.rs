@@ -71,10 +71,17 @@ impl<T> Mrs<T> {
     }
 }
 
-impl<T> From<Mrs<T>> for std::ops::RangeInclusive<T> {
+impl<T> From<Mrs<T>> for RangeInclusive<T> {
     fn from(value: Mrs<T>) -> Self {
         let (a, z) = value.to_tuple();
         return std::ops::RangeInclusive::new(a, z);
+    }
+}
+
+impl<T> From<RangeInclusive<T>> for Mrs<T> {
+    fn from(value: RangeInclusive<T>) -> Self {
+        let (a, z) = value.to_tuple();
+        return Mrs::new(a, z);
     }
 }
 

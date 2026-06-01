@@ -1,12 +1,22 @@
 #![cfg(test)]
 
+use std::rc::Rc;
+
+use common_range_tools::{
+    AnyIncDecCpCmp, Consolidate, ConsolidationOrder, NumberIncDecCpCmp, RangeRelation, RiFactory,
+    sort_reverse,
+};
+
+use crate::iter_tests::mrs_set;
+
 mod iter_tests {
 
+    use std::ops::RangeInclusive;
     use std::{cell::RefCell, rc::Rc};
 
     use common_range_tools::{
         Accumulate, DefaultValues, GetBeginEnd, IncDecCpCmp, Mrs, MrsFactory, NumberIncDecCpCmp,
-        OverlapIter,
+        OverlapIter, RiFactory,
     };
 
     fn checkset() -> [(i32, i32); 9] {
@@ -85,17 +95,17 @@ mod iter_tests {
         x: i32,
     }
 
-    pub(crate) fn mrs_set() -> Vec<Mrs<i32>> {
+    pub(crate) fn mrs_set() -> Vec<RangeInclusive<i32>> {
         return vec![
-            Mrs::new(0, 3),
-            Mrs::new(1, 2),
-            Mrs::new(4, 5),
-            Mrs::new(4, 6),
+            RangeInclusive::new(0, 3),
+            RangeInclusive::new(1, 2),
+            RangeInclusive::new(4, 5),
+            RangeInclusive::new(4, 6),
             // gap 1 is 7-7
-            Mrs::new(8, 11),
+            RangeInclusive::new(8, 11),
             // gap 2 is 12-12
-            Mrs::new(13, 22),
-            Mrs::new(15, 19),
+            RangeInclusive::new(13, 22),
+            RangeInclusive::new(15, 19),
         ];
     }
 
@@ -110,16 +120,16 @@ mod iter_tests {
             i32,
             i32,
             NumberIncDecCpCmp<i32>,
-            Mrs<i32>,
-            Rc<RefCell<Vec<Mrs<i32>>>>,
-            Rc<NumberIncDecCpCmp<i32>>,
-            MrsFactory<i32>,
-            Rc<MrsFactory<i32>>,
+            RangeInclusive<i32>,
+            Rc<RefCell<Vec<RangeInclusive<i32>>>>,
+            Rc<NumberIncDecCpCmp<_>>,
+            RiFactory<i32>,
+            Rc<RiFactory<i32>>,
         > = OverlapIter::new(
             Rc::new(RefCell::new(src)),
             1,
             Rc::new(t),
-            Rc::new(MrsFactory::new()),
+            Rc::new(RiFactory::new()),
         );
         let mut count = 0;
 
@@ -134,7 +144,7 @@ mod iter_tests {
     fn iter_test_rev() {
         let checkset = checkset_rev();
 
-        let src = mrs_set();
+        let src = mrs_set().iter().map(|v| v.clone().into()).collect();
         let t = NumberIncDecCpCmp::defaults();
 
         let iter: OverlapIter<
@@ -170,16 +180,16 @@ mod iter_tests {
             i32,
             i32,
             NumberIncDecCpCmp<i32>,
-            Mrs<i32>,
-            Rc<RefCell<Vec<Mrs<i32>>>>,
+            RangeInclusive<i32>,
+            Rc<RefCell<Vec<RangeInclusive<i32>>>>,
             Rc<NumberIncDecCpCmp<i32>>,
-            MrsFactory<i32>,
-            Rc<MrsFactory<i32>>,
+            RiFactory<i32>,
+            Rc<RiFactory<i32>>,
         > = OverlapIter::new(
             Rc::new(RefCell::new(src)),
             1,
             Rc::new(t),
-            Rc::new(MrsFactory::new()),
+            Rc::new(RiFactory::new()),
         );
 
         assert_eq!(iter.next().unwrap().to_tuple(), fwd[0]);
@@ -315,4 +325,96 @@ mod iter_tests {
         a.set_step(Point { x: 2 });
         assert_eq!(a.get_step(), &Point { x: 2 });
     }
+}
+
+#[test]
+fn consolidation_order_tests() {
+    let mut check: Option<RangeRelation<()>> = None;
+    matches!(ConsolidationOrder::Forward.check_direction(check), None);
+
+    check = Some(RangeRelation::Before(()));
+    matches!(ConsolidationOrder::Forward.check_direction(check), Some(()));
+    check = Some(RangeRelation::Last(()));
+    matches!(ConsolidationOrder::Forward.check_direction(check), Some(()));
+    check = Some(RangeRelation::Overlap(()));
+    matches!(ConsolidationOrder::Forward.check_direction(check), Some(()));
+    check = Some(RangeRelation::After(()));
+    matches!(ConsolidationOrder::Forward.check_direction(check), None);
+
+    check = Some(RangeRelation::After(()));
+    matches!(ConsolidationOrder::Reverse.check_direction(check), Some(()));
+    check = Some(RangeRelation::Last(()));
+    matches!(ConsolidationOrder::Reverse.check_direction(check), Some(()));
+    check = Some(RangeRelation::Overlap(()));
+    matches!(ConsolidationOrder::Reverse.check_direction(check), Some(()));
+    check = Some(RangeRelation::Before(()));
+    matches!(ConsolidationOrder::Reverse.check_direction(check), None);
+}
+
+#[test]
+fn consolidator_forward_num_tests() {
+    let cmp = Rc::new(NumberIncDecCpCmp::<i32>::defaults());
+    let f = Rc::new(RiFactory::<i32>::new());
+
+    let mut iter = Consolidate::num(ConsolidationOrder::Forward, mrs_set().into_iter(), cmp, f);
+
+    assert_eq!(iter.next().unwrap().0, 0..=3);
+    assert_eq!(iter.next().unwrap().0, 4..=6);
+    assert_eq!(iter.next().unwrap().0, 8..=11);
+    assert_eq!(iter.next().unwrap().0, 13..=22);
+    assert!(iter.next().is_none());
+}
+
+#[test]
+fn consolidator_any_defaults() {
+    let mut iter: Consolidate<
+        i32,
+        i32,
+        std::ops::RangeInclusive<i32>,
+        RiFactory<i32>,
+        std::vec::IntoIter<std::ops::RangeInclusive<i32>>,
+        AnyIncDecCpCmp<i32, _>,
+        Rc<RiFactory<i32>>,
+        Rc<AnyIncDecCpCmp<i32, i32>>,
+    > = Consolidate::any_defaults(mrs_set().into_iter(), 0, 22);
+
+    assert_eq!(iter.next().unwrap().0, 0..=3);
+    assert_eq!(iter.next().unwrap().0, 4..=6);
+    assert_eq!(iter.next().unwrap().0, 8..=11);
+    assert_eq!(iter.next().unwrap().0, 13..=22);
+    assert!(iter.next().is_none());
+}
+
+#[test]
+fn consolidator_num_defaults() {
+    let mut iter = Consolidate::num_defaults(mrs_set().into_iter());
+
+    assert_eq!(iter.next().unwrap().0, 0..=3);
+    assert_eq!(iter.next().unwrap().0, 4..=6);
+    assert_eq!(iter.next().unwrap().0, 8..=11);
+    assert_eq!(iter.next().unwrap().0, 13..=22);
+    assert!(iter.next().is_none());
+}
+
+#[test]
+fn consolidator_reverse_tests() {
+    let cmp = Rc::new(NumberIncDecCpCmp::<i32>::defaults());
+    let f = Rc::new(RiFactory::<i32>::new());
+
+    let mut src = mrs_set();
+    src.sort_by(|a, b| sort_reverse(a, b, cmp.as_ref()));
+    let mut iter = Consolidate::num(
+        ConsolidationOrder::Reverse,
+        src.into_iter(),
+        cmp.clone(),
+        f.clone(),
+    );
+
+    assert_eq!(iter.next().unwrap().0, 13..=22);
+    assert_eq!(iter.next().unwrap().0, 8..=11);
+    assert_eq!(iter.next().unwrap().0, 4..=6);
+    assert_eq!(iter.next().unwrap().0, 0..=3);
+    assert!(iter.next().is_none());
+    iter = Consolidate::num(ConsolidationOrder::Reverse, mrs_set().into_iter(), cmp, f);
+    assert!(iter.next().is_none());
 }

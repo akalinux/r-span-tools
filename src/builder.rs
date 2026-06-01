@@ -1,3 +1,4 @@
+use std::ops::RangeInclusive;
 use std::{
     marker::PhantomData,
     ops::{Add, Bound, Sub},
@@ -455,10 +456,10 @@ impl<T> GetBeginEndOption<T, Mrs<T>> for MrsFactory<T> {
     }
 }
 
-impl<T> GetBeginEndOption<T, Mrs<T>> for RiFactory<T> {
-    fn factory(&self, opt: Option<(T, T)>) -> Option<Mrs<T>> {
+impl<T> GetBeginEndOption<T, RangeInclusive<T>> for RiFactory<T> {
+    fn factory(&self, opt: Option<(T, T)>) -> Option<RangeInclusive<T>> {
         match opt {
-            Some((a, z)) => Some(Mrs::new(a, z)),
+            Some((a, z)) => Some(RangeInclusive::new(a, z)),
             None => None,
         }
     }
