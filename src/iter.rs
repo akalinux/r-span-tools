@@ -1,6 +1,6 @@
 use crate::builder::IncDecCpCmp;
 use crate::{
-    AnyIncDecCpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, MrsP, NumberIncDecCpCmp,
+    AnyIncDecCpCmp, CpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, MrsP, NumberIncDecCpCmp,
     RangeRelation, RiFactory, consolidate, first_range_begin_end, last_range_begin_end,
     next_range_begin_end, previous_range_begin_end, range_bounds_to_values, range_relation,
 };
@@ -54,11 +54,10 @@ impl ConsolidationOrder {
 }
 pub struct Consolidate<
     T,
-    V,
     R: GetBeginEnd<T>,
     F: GetBeginEndOption<T, R>,
     I: Iterator<Item = R>,
-    C: IncDecCpCmp<T, V>,
+    C: CpCmp<T>,
     X,
     Y,
 > where
@@ -71,18 +70,10 @@ pub struct Consolidate<
     facotry: X,
     offset: usize,
     order: ConsolidationOrder,
-    _p: PhantomData<(F, T, V, C)>,
+    _p: PhantomData<(F, T, C)>,
 }
-impl<
-    T,
-    V,
-    R: GetBeginEnd<T>,
-    F: GetBeginEndOption<T, R>,
-    I: Iterator<Item = R>,
-    C: IncDecCpCmp<T, V>,
-    X,
-    Y,
-> Consolidate<T, V, R, F, I, C, X, Y>
+impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, C: CpCmp<T>, X, Y>
+    Consolidate<T, R, F, I, C, X, Y>
 where
     X: Borrow<F>,
     Y: Borrow<C>,
@@ -100,7 +91,7 @@ where
     }
 }
 impl<Y, X, T, I: Iterator<Item = RangeInclusive<T>>>
-    Consolidate<T, T, RangeInclusive<T>, RiFactory<T>, I, NumberIncDecCpCmp<T>, Y, X>
+    Consolidate<T, RangeInclusive<T>, RiFactory<T>, I, NumberIncDecCpCmp<T>, Y, X>
 where
     NumberIncDecCpCmp<T>: DefaultValues<T, T>,
     X: Borrow<NumberIncDecCpCmp<T>>,
@@ -114,7 +105,6 @@ where
 
 impl<T, I: Iterator<Item = RangeInclusive<T>>>
     Consolidate<
-        T,
         T,
         RangeInclusive<T>,
         RiFactory<T>,
@@ -134,13 +124,12 @@ where
     }
 }
 
-impl<Y, X, R: GetBeginEnd<T>, T, V, I: Iterator<Item = R>, F: GetBeginEndOption<T, R>>
-    Consolidate<T, V, R, F, I, AnyIncDecCpCmp<T, V>, X, Y>
+impl<Y, X, R: GetBeginEnd<T>, T, I: Iterator<Item = R>, F: GetBeginEndOption<T, R>>
+    Consolidate<T, R, F, I, AnyIncDecCpCmp<T>, X, Y>
 where
-    T: PartialOrd + Clone + Copy + Add<V, Output = T> + Sub<V, Output = T>,
-    V: Copy,
+    T: PartialOrd + Clone + Copy,
     X: Borrow<F>,
-    Y: Borrow<AnyIncDecCpCmp<T, V>>,
+    Y: Borrow<AnyIncDecCpCmp<T>>,
 {
     pub fn any(order: ConsolidationOrder, iter: I, cmp: Y, factory: X) -> Self {
         return Self::new(order, iter, cmp, factory);
@@ -150,13 +139,12 @@ where
 impl<T, I: Iterator<Item = RangeInclusive<T>>>
     Consolidate<
         T,
-        T,
         RangeInclusive<T>,
         RiFactory<T>,
         I,
-        AnyIncDecCpCmp<T, T>,
+        AnyIncDecCpCmp<T>,
         Rc<RiFactory<T>>,
-        Rc<AnyIncDecCpCmp<T, T>>,
+        Rc<AnyIncDecCpCmp<T>>,
     >
 where
     T: PartialOrd + Clone + Copy + Add<T, Output = T> + Sub<T, Output = T>,
@@ -171,16 +159,8 @@ where
     }
 }
 
-impl<
-    T,
-    V,
-    R: GetBeginEnd<T>,
-    F: GetBeginEndOption<T, R>,
-    I: Iterator<Item = R>,
-    X,
-    Y,
-    C: IncDecCpCmp<T, V>,
-> Iterator for Consolidate<T, V, R, F, I, C, X, Y>
+impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, X, Y, C: CpCmp<T>>
+    Iterator for Consolidate<T, R, F, I, C, X, Y>
 where
     X: Borrow<F>,
     Y: Borrow<C>,
@@ -344,7 +324,7 @@ where
 /// This object acts as a conversion tool for accumulating instances of [std::ops::RangeBounds] and converting them to an internal representation.
 /// The Internal representation is used by the [std::iter::IntoIterator] instance that is created to find the most common intersections.
 /// This implementation is meant to be generic and can be easily tailored to any data type or structure that requires computing intersections.
-pub struct Accumulate<T, V, C: IncDecCpCmp<T, V>, R, B> {
+pub struct Intersector<T, V, C: IncDecCpCmp<T, V>, R, B> {
     list: Vec<R>,
     step: V,
     rebound: V,
@@ -354,7 +334,7 @@ pub struct Accumulate<T, V, C: IncDecCpCmp<T, V>, R, B> {
 }
 
 impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, B: GetBeginEndOption<T, R>>
-    Accumulate<T, V, C, R, B>
+    Intersector<T, V, C, R, B>
 {
     pub fn new(list: Vec<R>, step: V, rebound: V, cmp: C, factory: B) -> Self {
         Self {
@@ -368,7 +348,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, B: GetBeginEndOption<T, R>>
     }
 }
 
-impl<T, V> Accumulate<T, V, AnyIncDecCpCmp<T, V>, RangeInclusive<T>, RiFactory<T>>
+impl<T, V> Intersector<T, V, AnyIncDecCpCmp<T>, RangeInclusive<T>, RiFactory<T>>
 where
     T: PartialOrd + Copy + Add<V, Output = T> + Sub<V, Output = T>,
     V: Copy,
@@ -378,7 +358,7 @@ where
         rebound: V,
         min: T,
         max: T,
-    ) -> Accumulate<T, V, AnyIncDecCpCmp<T, V>, RangeInclusive<T>, RiFactory<T>> {
+    ) -> Intersector<T, V, AnyIncDecCpCmp<T>, RangeInclusive<T>, RiFactory<T>> {
         Self {
             list: Vec::new(),
             step,
@@ -390,18 +370,18 @@ where
     }
 }
 
-impl<T> Accumulate<T, T, NumberIncDecCpCmp<T>, RangeInclusive<T>, RiFactory<T>>
+impl<T> Intersector<T, T, NumberIncDecCpCmp<T>, RangeInclusive<T>, RiFactory<T>>
 where
-    T: Clone + Copy,
+    T: PartialOrd + Copy + Add<T, Output = T> + Sub<T, Output = T>,
     NumberIncDecCpCmp<T>: DefaultValues<T, T>,
 {
     pub fn num_defaults() -> Self {
-        let t = NumberIncDecCpCmp::defaults();
+        let cmp = NumberIncDecCpCmp::defaults();
         return Self {
             list: Vec::new(),
-            step: t.default_step(),
-            rebound: t.default_rebound(),
-            cmp: NumberIncDecCpCmp::new(t.min(), t.max()),
+            step: cmp.default_step(),
+            rebound: cmp.default_rebound(),
+            cmp,
             factory: RiFactory::new(),
             _r: PhantomData,
         };
@@ -419,21 +399,21 @@ where
     }
 }
 
-macro_rules! impl_accumulate_num_core{
+macro_rules! impl_intersector_num_core{
     ($($t:ty),*) => {
         $(
-            impl Accumulate<$t, $t, NumberIncDecCpCmp<$t>, RangeInclusive<$t>,RiFactory<$t>>
+            impl Intersector<$t, $t, NumberIncDecCpCmp<$t>, RangeInclusive<$t>,RiFactory<$t>>
             where NumberIncDecCpCmp<$t>: DefaultValues<$t,$t> {}
 
         )*
     };
 }
-impl_accumulate_num_core!(
+impl_intersector_num_core!(
     i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64
 );
 
 impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, B: GetBeginEndOption<T, R>>
-    Accumulate<T, V, C, R, B>
+    Intersector<T, V, C, R, B>
 {
     pub fn add_from_tuple(&mut self, src: (T, T)) -> Option<(usize, &R)> {
         if self.cmp.is_invalid_set(&src.0, &src.1) {
@@ -488,7 +468,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, B: GetBeginEndOption<T, R>>
 }
 
 impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, B: GetBeginEndOption<T, R>> IntoIterator
-    for Accumulate<T, V, C, R, B>
+    for Intersector<T, V, C, R, B>
 {
     type Item = R;
 

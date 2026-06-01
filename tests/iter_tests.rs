@@ -14,8 +14,8 @@ mod iter_tests {
     use std::{cell::RefCell, rc::Rc};
 
     use common_range_tools::{
-        Accumulate, DefaultValues, GetBeginEnd, IncDecCpCmp, Mrs, MrsFactory, NumberIncDecCpCmp,
-        OverlapIter, RiFactory,
+        CpCmp, DefaultValues, GetBeginEnd, IncDecCpCmp, Intersector, Mrs, MrsFactory,
+        NumberIncDecCpCmp, OverlapIter, RiFactory,
     };
 
     fn checkset() -> [(i32, i32); 9] {
@@ -50,23 +50,9 @@ mod iter_tests {
     const MAX: Point = Point { x: i32::MAX };
     struct TestCmp {}
 
-    impl IncDecCpCmp<Point, Point> for TestCmp {
+    impl CpCmp<Point> for TestCmp {
         fn cp(&self, v: &Point) -> Point {
             return v.clone();
-        }
-
-        fn inc(&self, a: &Point, b: &Point) -> Option<Point> {
-            match a.x.checked_add(b.x) {
-                Some(x) => Some(Point { x }),
-                None => None,
-            }
-        }
-
-        fn dec(&self, a: &Point, b: &Point) -> Option<Point> {
-            match a.x.checked_sub(b.x) {
-                Some(x) => Some(Point { x }),
-                None => None,
-            }
         }
 
         fn lt(&self, a: &Point, b: &Point) -> bool {
@@ -86,6 +72,22 @@ mod iter_tests {
         }
         fn max_ref(&self) -> &Point {
             &MAX
+        }
+    }
+
+    impl IncDecCpCmp<Point, Point> for TestCmp {
+        fn inc(&self, a: &Point, b: &Point) -> Option<Point> {
+            match a.x.checked_add(b.x) {
+                Some(x) => Some(Point { x }),
+                None => None,
+            }
+        }
+
+        fn dec(&self, a: &Point, b: &Point) -> Option<Point> {
+            match a.x.checked_sub(b.x) {
+                Some(x) => Some(Point { x }),
+                None => None,
+            }
         }
     }
 
@@ -205,7 +207,7 @@ mod iter_tests {
 
     #[test]
     fn bi_tests_with_any() {
-        let mut a = Accumulate::any(1, 1, 0, 22);
+        let mut a = Intersector::any(1, 1, 0, 22);
         for r in mrs_set() {
             let (_, check) = a.add_range(&r).unwrap();
             assert_eq!(check.to_tuple_ref(), r.to_tuple_ref());
@@ -228,7 +230,7 @@ mod iter_tests {
     }
     #[test]
     fn bi_tests_with_num_defalts() {
-        let mut a = Accumulate::num_defaults();
+        let mut a = Intersector::num_defaults();
         for r in mrs_set() {
             let (_, check) = a.add_range(&r).unwrap();
             assert_eq!(check.to_tuple_ref(), r.to_tuple_ref());
@@ -253,7 +255,7 @@ mod iter_tests {
     #[test]
     fn bi_tests_with_num() {
         let cmp = NumberIncDecCpCmp::defaults();
-        let mut a = Accumulate::num(
+        let mut a = Intersector::num(
             cmp.default_step(),
             cmp.default_rebound(),
             cmp.min(),
@@ -285,7 +287,7 @@ mod iter_tests {
     fn accumulate_struct() {
         let t = TestCmp {};
         let list: Vec<Mrs<Point>> = Vec::new();
-        let mut a = Accumulate::new(list, Point { x: 1 }, Point { x: 1 }, t, MrsFactory::new());
+        let mut a = Intersector::new(list, Point { x: 1 }, Point { x: 1 }, t, MrsFactory::new());
 
         a.add_range(&(..Point { x: 2 }));
         a.add_range(&(Point { x: 1 }..Point { x: 3 }));
@@ -311,7 +313,7 @@ mod iter_tests {
             (Point { x: 5 }, Point { x: i32::MAX })
         );
         matches!(i.next(), None);
-        a = Accumulate::new(
+        a = Intersector::new(
             Vec::new(),
             Point { x: 1 },
             Point { x: 1 },

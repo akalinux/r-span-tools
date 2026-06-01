@@ -33,26 +33,19 @@ where
 ///
 /// Note: unlike [crate::NumberIncDecCpCmp], the self.inc(a,b) and self.dec(a,b) are unchecked!
 /// If you are working with primitive numbers use: [crate::NumberIncDecCpCmp] in stead.
-pub struct AnyIncDecCpCmp<T, V>
+pub struct AnyIncDecCpCmp<T>
 where
-    T: PartialOrd + Clone + Copy + Add<V, Output = T> + Sub<V, Output = T>,
-    V: Copy,
+    T: PartialOrd + Clone + Copy,
 {
     min: T,
     max: T,
-    _v: PhantomData<V>,
 }
-impl<T, V> AnyIncDecCpCmp<T, V>
+impl<T> AnyIncDecCpCmp<T>
 where
-    T: PartialOrd + Clone + Copy + Add<V, Output = T> + Sub<V, Output = T>,
-    V: Copy,
+    T: PartialOrd + Clone + Copy,
 {
     pub fn new(min: T, max: T) -> Self {
-        Self {
-            min,
-            max,
-            _v: PhantomData,
-        }
+        Self { min, max }
     }
 
     /// Sets the values returned by self.min() and self.min_ref().
@@ -68,10 +61,9 @@ where
     }
 }
 
-impl<T, V> IncDecCpCmp<T, V> for AnyIncDecCpCmp<T, V>
+impl<T> CpCmp<T> for AnyIncDecCpCmp<T>
 where
-    V: Copy,
-    T: PartialOrd + Copy + Add<V, Output = T> + Sub<V, Output = T>,
+    T: PartialOrd + Copy,
 {
     /// Returns a copy of v.
     fn cp(&self, v: &T) -> T {
@@ -88,6 +80,27 @@ where
         return &self.max;
     }
 
+    /// Returns true if a lt b.
+    fn lt(&self, a: &T, b: &T) -> bool {
+        return a < b;
+    }
+
+    /// Returns a copy of min.
+    fn min(&self) -> T {
+        return self.min;
+    }
+
+    /// Returns a copy of max.
+    fn max(&self) -> T {
+        return self.max;
+    }
+}
+
+impl<T, V> IncDecCpCmp<T, V> for AnyIncDecCpCmp<T>
+where
+    V: Copy,
+    T: PartialOrd + Copy + Add<V, Output = T> + Sub<V, Output = T>,
+{
     /// Increments a by b, if the resulting value is le a None is returned.
     fn inc(&self, a: &T, b: &V) -> Option<T> {
         let x = *a;
@@ -107,23 +120,7 @@ where
         }
         return None;
     }
-
-    /// Returns true if a lt b.
-    fn lt(&self, a: &T, b: &T) -> bool {
-        return a < b;
-    }
-
-    /// Returns a copy of min.
-    fn min(&self) -> T {
-        return self.min;
-    }
-
-    /// Returns a copy of max.
-    fn max(&self) -> T {
-        return self.max;
-    }
 }
-
 impl<T> NumberIncDecCpCmp<T>
 where
     T: Clone + Copy,
@@ -152,55 +149,15 @@ where
     }
 }
 
-/// **Increment, Decrement, Copy, Compare Values and Ranges**
+/// *Decrement, Copy, Compare Values**
 ///
-/// This is the base trait used to represent range manipulation by [crate].  
-/// In general this library implements the proxy or wrapper approach to range and value manipulation as apposed to
-/// manipulation by value.  This means the trait implementation for values does not need to be implemented on the generic type.
-/// Since the operations are not implemented by the values, this frees us from the worry of conflicting trait resoltion.   This
-/// also means we can quickly implement how the values and ranges are manipualted for the same data for a different task.
-///
-/// Example Implementation
-///
-/// ```
-/// use common_range_tools::IncDecCpCmp;
-///
-/// struct MyTrait {}
-/// impl IncDecCpCmp<i32,i32> for MyTrait {
-///
-///     fn dec(&self, a: &i32, b:&i32) ->Option<i32> {
-///         if *b<=0 { return None}
-///         return a.clone().checked_sub(b.clone());
-///     }
-///
-///     fn min(&self) ->i32 { <i32>::MIN }
-///     fn max(&self) ->i32 { <i32>::MAX }
-///     fn min_ref(&self) ->&i32 { &<i32>::MIN }
-///     fn max_ref(&self) ->&i32 { &<i32>::MAX }
-///
-///     fn inc(&self, a: &i32, b: &i32) -> Option<i32> {
-///         if *b<=0 { return None}
-///         return a.clone().checked_add(b.clone())
-///     }
-///
-///     fn cp(&self,v: &i32) ->i32 { return v.clone() }
-///
-///     fn lt(&self,a:&i32,b: &i32) ->bool {  return a<b  }
-/// }
-/// ```
-///
-pub trait IncDecCpCmp<T, V> {
+/// For an implementation examples and details see: [crate::IncDecCpCmp].
+pub trait CpCmp<T> {
     //. Should return a clone or copy of &T.
     fn cp(&self, v: &T) -> T;
 
     fn min_ref(&self) -> &T;
     fn max_ref(&self) -> &T;
-
-    /// Should safely increment a by b.  The value should always go up.. if not then it should return None.
-    fn inc(&self, a: &T, b: &V) -> Option<T>;
-
-    /// Should safely decrement a by b.  The value should always go down... if not then it should return None.
-    fn dec(&self, a: &T, b: &V) -> Option<T>;
 
     /// Returns true if a < b.
     fn lt(&self, a: &T, b: &T) -> bool;
@@ -257,6 +214,54 @@ pub trait IncDecCpCmp<T, V> {
     fn is_invalid_set(&self, a: &T, b: &T) -> bool {
         return self.lt(b, a) || self.lt(a, self.min_ref()) || self.lt(self.max_ref(), b);
     }
+}
+
+/// **Increment, Decrement, Copy, Compare Values and Ranges**
+///
+/// This is the base trait used to represent range manipulation by [crate].  
+/// In general this library implements the proxy or wrapper approach to range and value manipulation as apposed to
+/// manipulation by value.  This means the trait implementation for values does not need to be implemented on the generic type.
+/// Since the operations are not implemented by the values, this frees us from the worry of conflicting trait resoltion.   This
+/// also means we can quickly implement how the values and ranges are manipualted for the same data for a different task.
+///
+/// Example Implementation
+///
+/// ```
+/// use common_range_tools::{CpCmp,IncDecCpCmp};
+///
+/// struct MyTrait {}
+///
+/// // First: implement CpCmp<T> for your trait.
+/// impl CpCmp<i32> for MyTrait {
+///     fn min(&self) ->i32 { <i32>::MIN }
+///     fn max(&self) ->i32 { <i32>::MAX }
+///     fn min_ref(&self) ->&i32 { &<i32>::MIN }
+///     fn max_ref(&self) ->&i32 { &<i32>::MAX }
+///
+///     fn cp(&self,v: &i32) ->i32 { return v.clone() }
+///
+///     fn lt(&self,a:&i32,b: &i32) ->bool {  return a<b  }
+/// }
+///
+/// // Next: implement IncDecCpCmp<T> for your trait.
+/// impl IncDecCpCmp<i32,i32> for MyTrait {
+///     fn dec(&self, a: &i32, b:&i32) ->Option<i32> {
+///         if *b<=0 { return None}
+///         return a.clone().checked_sub(b.clone());
+///     }
+///     fn inc(&self, a: &i32, b: &i32) -> Option<i32> {
+///         if *b<=0 { return None}
+///         return a.clone().checked_add(b.clone())
+///     }
+/// }
+/// ```
+///
+pub trait IncDecCpCmp<T, V>: CpCmp<T> {
+    /// Should safely increment a by b.  The value should always go up.. if not then it should return None.
+    fn inc(&self, a: &T, b: &V) -> Option<T>;
+
+    /// Should safely decrement a by b.  The value should always go down... if not then it should return None.
+    fn dec(&self, a: &T, b: &V) -> Option<T>;
 
     /// Returns the raw adjusted start value.
     ///   - [std::ops::Bound::Unbounded] becomes self.min()
@@ -303,23 +308,11 @@ pub trait DefaultValues<T, V>: IncDecCpCmp<T, V> {
 macro_rules! impl_inc_dec_cp_cmp_trait_i {
     ($($t:ty),*) => {
         $(
-
-
-            impl IncDecCpCmp<$t,$t> for NumberIncDecCpCmp<$t> {
-                fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
-                    if *b<=0 { return None}
-                    return a.clone().checked_sub(b.clone());
-                }
-
+            impl CpCmp<$t> for NumberIncDecCpCmp<$t> {
                 fn min(&self) ->$t { self.min }
                 fn max(&self) ->$t { self.max }
                 fn min_ref(&self) ->&$t { &self.min }
                 fn max_ref(&self) ->&$t { &self.max }
-
-                fn inc(&self, a: &$t, b: &$t) -> Option<$t> {
-                    if *b<=0 { return None}
-                    return a.clone().checked_add(b.clone())
-                }
 
                 fn cp(&self,v: &$t) ->$t {
                     return v.clone();
@@ -327,6 +320,17 @@ macro_rules! impl_inc_dec_cp_cmp_trait_i {
 
                 fn lt(&self,a:&$t,b: &$t) ->bool {
                     return a<b;
+                }
+            }
+
+            impl IncDecCpCmp<$t,$t> for NumberIncDecCpCmp<$t> {
+                fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
+                    if *b<=0 { return None}
+                    return a.clone().checked_sub(b.clone());
+                }
+                fn inc(&self, a: &$t, b: &$t) -> Option<$t> {
+                    if *b<=0 { return None}
+                    return a.clone().checked_add(b.clone())
                 }
             }
 
@@ -343,22 +347,11 @@ macro_rules! impl_inc_dec_cp_cmp_trait_i {
 macro_rules! impl_inc_dec_cp_cmp_trait_u {
     ($($t:ty),*) => {
         $(
-
-
-            impl IncDecCpCmp<$t,$t> for NumberIncDecCpCmp<$t> {
-                fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
-                    if *b==0 { return None}
-                    return a.clone().checked_sub(b.clone());
-                }
+            impl CpCmp<$t> for NumberIncDecCpCmp<$t> {
                 fn min(&self) ->$t { self.min }
                 fn max(&self) ->$t { self.max }
                 fn min_ref(&self) ->&$t { &self.min }
                 fn max_ref(&self) ->&$t { &self.max }
-
-                fn inc(&self, a: &$t, b: &$t) -> Option<$t> {
-                    if *b==0 { return None}
-                    return a.clone().checked_add(b.clone())
-                }
 
                 fn cp(&self,v: &$t) ->$t {
                     return v.clone();
@@ -366,6 +359,16 @@ macro_rules! impl_inc_dec_cp_cmp_trait_u {
 
                 fn lt(&self,a:&$t,b: &$t) ->bool {
                     return a<b;
+                }
+            }
+            impl IncDecCpCmp<$t,$t> for NumberIncDecCpCmp<$t> {
+                fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
+                    if *b==0 { return None}
+                    return a.clone().checked_sub(b.clone());
+                }
+                fn inc(&self, a: &$t, b: &$t) -> Option<$t> {
+                    if *b==0 { return None}
+                    return a.clone().checked_add(b.clone())
                 }
             }
 
@@ -384,28 +387,27 @@ macro_rules! impl_inc_dec_cp_cmp_trait_f {
         $(
 
 
-            impl IncDecCpCmp<$t,$t> for NumberIncDecCpCmp<$t> {
-                fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
-                    let res=a - b;
-                    if res.is_nan() || res >=*a { None } else { Some(res) }
-                }
+            impl CpCmp<$t> for NumberIncDecCpCmp<$t> {
 
                 fn min(&self) ->$t { self.min }
                 fn max(&self) ->$t { self.max }
                 fn min_ref(&self) ->&$t { &self.min }
                 fn max_ref(&self) ->&$t { &self.max }
-
-                fn inc(&self, a: &$t, b: &$t) -> Option<$t> {
-                    let res=a + b;
-                    if res.is_nan() || res <=*a { None } else { Some(res) }
-                }
-
                 fn cp(&self,v: &$t) ->$t {
                     return v.clone();
                 }
-
                 fn lt(&self,a:&$t,b: &$t) ->bool {
                     return a<b;
+                }
+            }
+            impl IncDecCpCmp<$t,$t> for NumberIncDecCpCmp<$t> {
+                fn dec(&self, a: &$t, b:&$t) ->Option<$t> {
+                    let res=a - b;
+                    if res.is_nan() || res >=*a { None } else { Some(res) }
+                }
+                fn inc(&self, a: &$t, b: &$t) -> Option<$t> {
+                    let res=a + b;
+                    if res.is_nan() || res <=*a { None } else { Some(res) }
                 }
             }
 

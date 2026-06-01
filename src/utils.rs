@@ -1,4 +1,4 @@
-use crate::{GetBeginEnd, GetBeginEndOption, builder::IncDecCpCmp};
+use crate::{CpCmp, GetBeginEnd, GetBeginEndOption, builder::IncDecCpCmp};
 use std::{cmp::Ordering, mem, ops::RangeBounds};
 
 /// This enum is used to represent positional relationships in 3 states
@@ -93,11 +93,7 @@ impl<T> RangeRelation<T> {
 /// - [`crate::RangeRelation::Before`] a is before b.
 /// - [`crate::RangeRelation::After`] a is after b.
 /// - [`crate::RangeRelation::Overlap`] a and b overlap to some degree.
-pub fn range_relation<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>>(
-    a: &R,
-    b: &R,
-    t: &C,
-) -> RangeRelation<()> {
+pub fn range_relation<T, R: GetBeginEnd<T>, C: CpCmp<T>>(a: &R, b: &R, t: &C) -> RangeRelation<()> {
     if t.lt(a.get_end(), b.get_begin()) {
         return RangeRelation::Before(());
     } else if t.lt(b.get_end(), a.get_begin()) {
@@ -429,7 +425,7 @@ pub fn previous_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     return None;
 }
 
-pub fn auto_range<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>, F: GetBeginEndOption<T, R>>(
+pub fn auto_range<T, R: GetBeginEnd<T>, C: CpCmp<T>, F: GetBeginEndOption<T, R>>(
     i: usize,
     r: R,
     t: &C,
@@ -443,7 +439,7 @@ pub fn auto_range<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>, F: GetBeginEndO
     }
 }
 
-pub fn grow<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>, F: GetBeginEndOption<T, R>>(
+pub fn grow<T, R: GetBeginEnd<T>, C: CpCmp<T>, F: GetBeginEndOption<T, R>>(
     x: &R,
     y: &R,
     t: &C,
@@ -464,9 +460,8 @@ pub fn grow<T, V, R: GetBeginEnd<T>, C: IncDecCpCmp<T, V>, F: GetBeginEndOption<
 
 pub fn consolidate<
     T,
-    V,
     R: GetBeginEnd<T>,
-    C: IncDecCpCmp<T, V>,
+    C: CpCmp<T>,
     F: GetBeginEndOption<T, R>,
     I: Iterator<Item = R>,
 >(

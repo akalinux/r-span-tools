@@ -5,7 +5,7 @@ mod builder_tests {
 
     use common_range_tools::{
         DefaultValues, GetBeginEnd, Mrs,
-        builder::{AnyIncDecCpCmp, IncDecCpCmp, NumberIncDecCpCmp},
+        builder::{AnyIncDecCpCmp, CpCmp, IncDecCpCmp, NumberIncDecCpCmp},
     };
 
     #[test]
@@ -23,7 +23,7 @@ mod builder_tests {
 
     #[test]
     fn value_inc_dec_cmp_tests() {
-        let mut t: AnyIncDecCpCmp<i32, i32> = AnyIncDecCpCmp::new(i32::MIN, i32::MAX);
+        let mut t: AnyIncDecCpCmp<i32> = AnyIncDecCpCmp::new(i32::MIN, i32::MAX);
         assert!(t.lt(&1, &2));
         matches!(t.inc(&1, &1), Some(2));
         matches!(t.inc(&1, &0), None);
