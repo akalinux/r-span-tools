@@ -13,34 +13,34 @@ mod util_tests {
         let t = NumberIncDecCpCmp::defaults();
 
         // Empty set test
-        assert_eq!(
+        matches!(
             first_range_begin_end::<i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(&[], &t),
             None
         );
 
-        assert_eq!(
+        matches!(
             first_range_begin_end::<i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(&[Mrs::new(0, -1)], &t),
             None
         );
 
-        assert_eq!(
+        matches!(
             first_range_begin_end(&[Mrs::new(1, 1), Mrs::new(6, 7),], &t),
             Some((1, 1))
         );
 
-        assert_eq!(first_range_begin_end(&[Mrs::new(1, 1)], &t), Some((1, 1)));
+        matches!(first_range_begin_end(&[Mrs::new(1, 1)], &t), Some((1, 1)));
 
-        assert_eq!(
+        matches!(
             first_range_begin_end(&[Mrs::new(5, 7), Mrs::new(4, 7),], &t),
             Some((4, 5))
         );
 
-        assert_eq!(
+        matches!(
             first_range_begin_end(&[Mrs::new(5, 7), Mrs::new(6, 7),], &t),
             Some((5, 6))
         );
 
-        assert_eq!(
+        matches!(
             first_range_begin_end(
                 &[
                     Mrs::new(5, 7),
@@ -54,7 +54,7 @@ mod util_tests {
             Some((0, 0))
         );
 
-        assert_eq!(first_range_begin_end(&mrs_set_a(), &t), Some((0, 1)));
+        matches!(first_range_begin_end(&mrs_set_a(), &t), Some((0, 1)));
     }
 
     fn mrs_known_bad() -> Vec<Mrs<i32>> {
@@ -71,29 +71,29 @@ mod util_tests {
         let t = NumberIncDecCpCmp::defaults();
 
         // Empty set test
-        assert_eq!(
+        matches!(
             last_range_begin_end::<i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(&[], &t),
             None
         );
 
-        assert_eq!(
+        matches!(
             last_range_begin_end::<i32, NumberIncDecCpCmp<i32>, Mrs<i32>>(&[Mrs::new(0, -1)], &t),
             None
         );
 
-        assert_eq!(last_range_begin_end(&mrs_known_bad(), &t), Some((5, 7)));
+        matches!(last_range_begin_end(&mrs_known_bad(), &t), Some((5, 7)));
 
-        assert_eq!(
+        matches!(
             last_range_begin_end(&[Mrs::new(5, 7), Mrs::new(4, 7),], &t),
             Some((5, 7))
         );
 
-        assert_eq!(
+        matches!(
             last_range_begin_end(&[Mrs::new(4, 11), Mrs::new(4, 7),], &t),
             Some((7, 11))
         );
-        assert_eq!(last_range_begin_end(&[Mrs::new(4, 11)], &t), Some((4, 11)));
-        assert_eq!(last_range_begin_end(&mrs_set_a(), &t), Some((19, 22)));
+        matches!(last_range_begin_end(&[Mrs::new(4, 11)], &t), Some((4, 11)));
+        matches!(last_range_begin_end(&mrs_set_a(), &t), Some((19, 22)));
     }
 
     fn checkset_a() -> Vec<(i32, i32)> {
