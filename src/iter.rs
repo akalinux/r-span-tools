@@ -21,18 +21,18 @@ pub enum ConsolidationOrder {
 }
 
 impl ConsolidationOrder {
-    /// Filters instances of [crate::RangeRelation] for validity against the given [crate::ConsolidationOrder].
+    /// Filters instances of [RangeRelation] for validity against the given [ConsolidationOrder].
     /// When an invalid direction is detected a None is returned.
     ///
     /// There are 2 valid directions for consolidation
     ///  - Forward: see [crate::sort_forward].
     ///  - Reverse: see [crate::sort_reverse]
     ///
-    /// Invalid state for: [crate::ConsolidationOrder::Forward]
-    ///   - [crate::RangeRelation::After] is not valid.
+    /// Invalid state for: [ConsolidationOrder::Forward]
+    ///   - [RangeRelation::After] is not valid.
     ///
-    /// Invalid states for: [crate::ConsolidationOrder::Reverse]
-    ///   - [crate::RangeRelation::Before] is not valid.
+    /// Invalid states for: [ConsolidationOrder::Reverse]
+    ///   - [RangeRelation::Before] is not valid.
     pub fn check_direction<T>(&self, state: &RangeRelation<T>) -> Result<(), &'static str> {
         match state {
             RangeRelation::Last(_) | RangeRelation::Overlap(_) => Ok(()),
@@ -206,7 +206,7 @@ pub struct OverlapIter<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBegi
 impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
     OverlapIter<T, V, C, R, F>
 {
-    /// Creates a new [crate::OverlapIter] from the slice of R.
+    /// Creates a new [OverlapIter] from the slice of R.
     pub fn new(src: Vec<R>, step: V, cmp: C, factory: F) -> Self {
         let next = factory.factory(first_range_begin_end(&src, &cmp));
         let back = factory.factory(last_range_begin_end(&src, &cmp));

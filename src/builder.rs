@@ -6,13 +6,13 @@ use std::{
 
 use crate::{GetBeginEnd, Mrs};
 
-/// The **Number Implementation** of [crate::IncDecCpCmp].  
+/// The **Number Implementation** of [IncDecCpCmp].  
 ///
 /// Acts as the general proxy layer for safly working with primitive number types inside [crate].
 ///
-/// Note: unlike [crate::AnyIncDecCpCmp], the self.inc(a,b) and self.dec(a,b) are checked.
+/// Note: unlike [AnyIncDecCpCmp], the self.inc(a,b) and self.dec(a,b) are checked.
 ///
-/// The following types implemented for [crate::NumberIncDecCpCmp]
+/// The following types implemented for [NumberIncDecCpCmp]
 ///
 ///  - Unsigned Int: u8, u16, u32, u64, u128, usize
 ///  - Signed Int: i8, i16, i32, i64, i128, isize);
@@ -27,12 +27,12 @@ where
     max: T,
 }
 
-/// The **Generic Implementation** of [crate::IncDecCpCmp].
+/// The **Generic Implementation** of [IncDecCpCmp].
 ///
 /// Acts as the general proxy layer for working with any type inside [crate].
 ///
-/// Note: unlike [crate::NumberIncDecCpCmp], the self.inc(a,b) and self.dec(a,b) are unchecked!
-/// If you are working with primitive numbers use: [crate::NumberIncDecCpCmp] in stead.
+/// Note: unlike [NumberIncDecCpCmp], the self.inc(a,b) and self.dec(a,b) are unchecked!
+/// If you are working with primitive numbers use: [NumberIncDecCpCmp] in stead.
 #[derive(Clone, Copy, Debug)]
 pub struct AnyIncDecCpCmp<T>
 where
@@ -152,7 +152,7 @@ where
 
 /// *Decrement, Copy, Compare Values**
 ///
-/// For an implementation examples and details see: [crate::IncDecCpCmp].
+/// For an implementation examples and details see: [IncDecCpCmp].
 pub trait CpCmp<T> {
     //. Should return a clone or copy of &T.
     fn cp(&self, v: &T) -> T;
@@ -291,7 +291,7 @@ pub trait IncDecCpCmp<T, V>: CpCmp<T> {
 
 /// **Default values**
 ///
-/// Implemenations of this trait drive the internals used for [crate::iter::Intersector::defaults].
+/// Implemenations of this trait drive the internals used for [crate::iter::Intersector].
 pub trait DefaultValues<T, V>: IncDecCpCmp<T, V> {
     /// Returns the default value use for progressing a begin or end value of a range.
     fn default_step(&self) -> V;

@@ -65,7 +65,7 @@ impl<T> RangeRelation<T> {
         }
     }
 
-    /// Returns true if [crate::RangeRelation::Last].
+    /// Returns true if [RangeRelation::Last].
     pub fn is_last(&self) -> bool {
         match self {
             RangeRelation::Last(_) => true,
@@ -73,7 +73,7 @@ impl<T> RangeRelation<T> {
         }
     }
 
-    /// Returns true if [crate::RangeRelation::Overlap].
+    /// Returns true if [RangeRelation::Overlap].
     pub fn is_overlap(&self) -> bool {
         match self {
             RangeRelation::Overlap(_) => true,
@@ -81,7 +81,7 @@ impl<T> RangeRelation<T> {
         }
     }
 
-    /// Returns true if [crate::RangeRelation::Before].
+    /// Returns true if [RangeRelation::Before].
     pub fn is_before(&self) -> bool {
         match self {
             RangeRelation::Before(_) => true,
@@ -89,7 +89,7 @@ impl<T> RangeRelation<T> {
         }
     }
 
-    /// Returns true if [crate::RangeRelation::After].
+    /// Returns true if [RangeRelation::After].
     pub fn is_after(&self) -> bool {
         match self {
             RangeRelation::After(_) => true,
@@ -99,9 +99,9 @@ impl<T> RangeRelation<T> {
 }
 /// Compares the positional relationship between a and b.
 ///
-/// - [`crate::RangeRelation::Before`] a is before b.
-/// - [`crate::RangeRelation::After`] a is after b.
-/// - [`crate::RangeRelation::Overlap`] a and b overlap to some degree.
+/// - [RangeRelation::Before] a is before b.
+/// - [RangeRelation::After] a is after b.
+/// - [RangeRelation::Overlap] a and b overlap to some degree.
 pub fn range_relation<T, R: GetBeginEnd<T>, C: CpCmp<T>>(a: &R, b: &R, t: &C) -> RangeRelation<()> {
     if t.lt(a.get_end(), b.get_begin()) {
         return RangeRelation::Before(());
@@ -126,7 +126,7 @@ pub fn range_relation<T, R: GetBeginEnd<T>, C: CpCmp<T>>(a: &R, b: &R, t: &C) ->
 ///   - [std::ops::Bound::Included] value is not changed
 ///   - [std::ops::Bound::Excluded] value is decremented
 ///
-/// See [crate::IncDecCpCmp] for more details.
+/// See [IncDecCpCmp] for more details.
 ///
 /// Example of range to number conversion.
 ///

@@ -11,10 +11,10 @@ pub mod builder;
 pub mod iter;
 pub mod utils;
 
-/// [`crate::Mrs`] **Minimal Range Span**
+/// [Mrs] **Minimal Range Span**
 ///
 /// In a nut shell this is the minimal struct to represent a range for [crate].
-/// Requires that [crate::GetBeginEnd] and [std::ops::RangeBounds] be imported to use all implemented traits.
+/// Requires that [GetBeginEnd] and [std::ops::RangeBounds] be imported to use all implemented traits.
 ///
 /// ```
 /// use common_range_tools::{
@@ -37,14 +37,14 @@ pub struct Mrs<T> {
     z: T,
 }
 
-/// Proxy data structure for [crate::Mrs].
+/// Proxy data structure for [Mrs].
 pub struct MrsP<'r, T, R: GetBeginEnd<T>> {
     r: &'r R,
     _t: PhantomData<T>,
 }
 
-/// This struct acts as an owned wrapper for the [Option::Some] produced by the [crate::Consolidate] Iterator,
-/// which then acts as a normal instance of [crate::GetBeginEnd].
+/// This struct acts as an owned wrapper for the [Option::Some] produced by the [Consolidate] Iterator,
+/// which then acts as a normal instance of [GetBeginEnd].
 pub struct ConsolidateMrsP<T, R>
 where
     R: GetBeginEnd<T>,
@@ -79,18 +79,18 @@ where
 }
 
 impl<T, R: GetBeginEnd<T>> GetBeginEnd<T> for ConsolidateMrsP<T, R> {
-    /// Wrapper for internal [crate::Mrs] instance.
+    /// Wrapper for internal [Mrs] instance.
     fn get_begin(&self) -> &T {
         return self.r.get_begin();
     }
 
-    /// Wrapper for internal [crate::Mrs] instance.
+    /// Wrapper for internal [Mrs] instance.
     fn get_end(&self) -> &T {
         return self.r.get_end();
     }
 
     /// This will drop the sources if used.
-    /// Consider using [crate::ConsolidateMrsP::as_src] in stead.
+    /// Consider using [ConsolidateMrsP::as_src] in stead.
     fn to_tuple(self) -> (T, T) {
         return self.r.to_tuple();
     }
@@ -109,7 +109,7 @@ impl<T, R: GetBeginEnd<T>> RangeBounds<T> for ConsolidateMrsP<T, R> {
 }
 
 impl<'r, T, R: GetBeginEnd<T>> MrsP<'r, T, R> {
-    /// Creates a new instance of [crate::MrsP].
+    /// Creates a new instance of [MrsP].
     pub fn new(r: &'r R) -> Self {
         return Self { r, _t: PhantomData };
     }
@@ -132,7 +132,7 @@ pub trait GetBeginEnd<T> {
 }
 
 impl<T> Mrs<T> {
-    /// Constructs a new [crate::Mrs] instance.
+    /// Constructs a new [Mrs] instance.
     pub fn new(a: T, z: T) -> Self {
         Self { a, z }
     }
@@ -159,17 +159,17 @@ impl<T> From<Mrs<T>> for (T, T) {
 }
 
 impl<'r, T, R: GetBeginEnd<T>> GetBeginEnd<T> for MrsP<'r, T, R> {
-    /// Wrapper for internal [crate::Mrs] instance.
+    /// Wrapper for internal [Mrs] instance.
     fn get_begin(&self) -> &T {
         return self.r.get_begin();
     }
 
-    /// Wrapper for internal [crate::Mrs] instance.
+    /// Wrapper for internal [Mrs] instance.
     fn get_end(&self) -> &T {
         return self.r.get_end();
     }
 
-    /// Due to the internals being pointer to the real [crate::GetBeginEnd] instance, this method is ***intentionally unimplemented***
+    /// Due to the internals being pointer to the real [GetBeginEnd] instance, this method is ***intentionally unimplemented***
     /// and will panic if called!.
     fn to_tuple(self) -> (T, T) {
         unimplemented!();
