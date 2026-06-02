@@ -33,6 +33,7 @@ where
 ///
 /// Note: unlike [crate::NumberIncDecCpCmp], the self.inc(a,b) and self.dec(a,b) are unchecked!
 /// If you are working with primitive numbers use: [crate::NumberIncDecCpCmp] in stead.
+#[derive(Clone, Copy, Debug)]
 pub struct AnyIncDecCpCmp<T>
 where
     T: PartialOrd + Clone + Copy,

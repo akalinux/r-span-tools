@@ -7,7 +7,6 @@ use crate::iter_tests::mrs_set;
 mod iter_tests {
 
     use std::ops::RangeInclusive;
-    use std::{cell::RefCell, rc::Rc};
 
     use common_range_tools::{
         CpCmp, DefaultValues, GetBeginEnd, IncDecCpCmp, Intersector, Mrs, MrsFactory,
@@ -113,21 +112,7 @@ mod iter_tests {
         let src = mrs_set();
         let t = NumberIncDecCpCmp::defaults();
 
-        let iter: OverlapIter<
-            i32,
-            i32,
-            NumberIncDecCpCmp<i32>,
-            RangeInclusive<i32>,
-            Rc<RefCell<Vec<RangeInclusive<i32>>>>,
-            Rc<NumberIncDecCpCmp<_>>,
-            RiFactory<i32>,
-            Rc<RiFactory<i32>>,
-        > = OverlapIter::new(
-            Rc::new(RefCell::new(src)),
-            1,
-            Rc::new(t),
-            Rc::new(RiFactory::new()),
-        );
+        let iter = OverlapIter::new(src, 1, t, RiFactory::new());
         let mut count = 0;
 
         for (i, res) in iter.enumerate() {
@@ -144,21 +129,7 @@ mod iter_tests {
         let src = mrs_set().iter().map(|v| v.clone().into()).collect();
         let t = NumberIncDecCpCmp::defaults();
 
-        let iter: OverlapIter<
-            i32,
-            i32,
-            NumberIncDecCpCmp<i32>,
-            Mrs<i32>,
-            Rc<RefCell<Vec<Mrs<i32>>>>,
-            Rc<NumberIncDecCpCmp<i32>>,
-            MrsFactory<i32>,
-            Rc<MrsFactory<i32>>,
-        > = OverlapIter::new(
-            Rc::new(RefCell::new(src)),
-            1,
-            Rc::new(t),
-            Rc::new(MrsFactory::new()),
-        );
+        let iter = OverlapIter::new(src, 1, t, MrsFactory::new());
 
         for (i, res) in iter.rev().enumerate() {
             assert_eq!(res.to_tuple(), checkset[i])
@@ -173,21 +144,7 @@ mod iter_tests {
         let src = mrs_set();
         let t: NumberIncDecCpCmp<i32> = NumberIncDecCpCmp::defaults();
 
-        let mut iter: OverlapIter<
-            i32,
-            i32,
-            NumberIncDecCpCmp<i32>,
-            RangeInclusive<i32>,
-            Rc<RefCell<Vec<RangeInclusive<i32>>>>,
-            Rc<NumberIncDecCpCmp<i32>>,
-            RiFactory<i32>,
-            Rc<RiFactory<i32>>,
-        > = OverlapIter::new(
-            Rc::new(RefCell::new(src)),
-            1,
-            Rc::new(t),
-            Rc::new(RiFactory::new()),
-        );
+        let mut iter = OverlapIter::new(src, 1, t, RiFactory::new());
 
         assert_eq!(iter.next().unwrap().to_tuple(), fwd[0]);
         assert_eq!(iter.next_back().unwrap().to_tuple(), rev[0]);

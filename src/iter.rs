@@ -7,7 +7,6 @@ use crate::{
 };
 
 use std::borrow::Borrow;
-use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::RangeInclusive;
@@ -239,43 +238,27 @@ where
         return next;
     }
 }
-pub struct OverlapIter<
-    T,
-    V,
-    C: IncDecCpCmp<T, V>,
-    R: GetBeginEnd<T>,
-    L,
-    X,
-    B: GetBeginEndOption<T, R>,
-    Y,
-> where
-    L: Borrow<RefCell<Vec<R>>>,
-    X: Borrow<C>,
-{
-    src: L,
+pub struct OverlapIter<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> {
+    src: Vec<R>,
     step: V,
-    cmp: X,
+    cmp: C,
     next: Option<R>,
     back: Option<R>,
-    factory: Y,
-    _marker: PhantomData<(T, R, C, B)>,
+    factory: F,
+    _marker: PhantomData<(T, R, C, F)>,
 }
 
-impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X, B: GetBeginEndOption<T, R>, Y>
-    OverlapIter<T, V, C, R, L, X, B, Y>
-where
-    L: Borrow<RefCell<Vec<R>>>,
-    X: Borrow<C>,
-    Y: Borrow<B>,
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
+    OverlapIter<T, V, C, R, F>
 {
     /// Creates a new [crate::OverlapIter] from the slice of R.
-    pub fn new(src: L, step: V, cmp: X, factory: Y) -> Self {
+    pub fn new(src: Vec<R>, step: V, cmp: C, factory: F) -> Self {
         let next = factory
             .borrow()
-            .factory(first_range_begin_end(&*src.borrow().borrow(), cmp.borrow()));
+            .factory(first_range_begin_end(&src, cmp.borrow()));
         let back = factory
             .borrow()
-            .factory(last_range_begin_end(&*src.borrow().borrow(), cmp.borrow()));
+            .factory(last_range_begin_end(&src, cmp.borrow()));
         Self {
             src,
             step,
@@ -288,12 +271,8 @@ where
     }
 }
 
-impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X, B: GetBeginEndOption<T, R>, Y> Iterator
-    for OverlapIter<T, V, C, R, L, X, B, Y>
-where
-    L: Borrow<RefCell<Vec<R>>>,
-    X: Borrow<C>,
-    Y: Borrow<B>,
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> Iterator
+    for OverlapIter<T, V, C, R, F>
 {
     type Item = R;
     fn next(&mut self) -> Option<Self::Item> {
@@ -323,7 +302,7 @@ where
                         if let Some(begin) = self.cmp.borrow().inc(n.get_end(), &self.step) {
                             next = self.factory.borrow().factory(next_range_begin_end(
                                 &begin,
-                                &*self.src.borrow().borrow(),
+                                &self.src,
                                 self.cmp.borrow(),
                             ));
                         }
@@ -337,12 +316,8 @@ where
     }
 }
 
-impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, L, X, B: GetBeginEndOption<T, R>, Y>
-    DoubleEndedIterator for OverlapIter<T, V, C, R, L, X, B, Y>
-where
-    L: Borrow<RefCell<Vec<R>>>,
-    X: Borrow<C>,
-    Y: Borrow<B>,
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> DoubleEndedIterator
+    for OverlapIter<T, V, C, R, F>
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         let mut back = None;
@@ -372,7 +347,7 @@ where
                     if let Some(end) = self.cmp.borrow().dec(b.get_begin(), &self.step) {
                         back = self.factory.borrow().factory(previous_range_begin_end(
                             &end,
-                            &*self.src.borrow().borrow(),
+                            &self.src,
                             self.cmp.borrow(),
                         ));
                     }
@@ -530,19 +505,14 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, B: GetBeginEndOption<T, R>>
     }
 }
 
-impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, B: GetBeginEndOption<T, R>> IntoIterator
-    for Intersector<T, V, C, R, B>
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> IntoIterator
+    for Intersector<T, V, C, R, F>
 {
     type Item = R;
 
-    type IntoIter = OverlapIter<T, V, C, R, Rc<RefCell<Vec<R>>>, Rc<C>, B, Rc<B>>;
+    type IntoIter = OverlapIter<T, V, C, R, F>;
 
     fn into_iter(self) -> Self::IntoIter {
-        return OverlapIter::new(
-            Rc::new(RefCell::new(self.list)),
-            self.step,
-            Rc::new(self.cmp),
-            Rc::new(self.factory),
-        );
+        return OverlapIter::new(self.list, self.step, self.cmp, self.factory);
     }
 }
