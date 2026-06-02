@@ -11,7 +11,6 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::RangeInclusive;
 use std::ops::{Add, RangeBounds, Sub};
-use std::rc::Rc;
 
 // Represents the consolidation order.
 pub enum ConsolidationOrder {
@@ -59,26 +58,18 @@ pub struct Consolidate<
     F: GetBeginEndOption<T, R>,
     I: Iterator<Item = R>,
     C: CpCmp<T>,
-    X,
-    Y,
-> where
-    X: Borrow<F>,
-    Y: Borrow<C>,
-{
+> {
     iter: I,
     last: Option<(R, Vec<(usize, R)>)>,
-    cmp: Y,
-    facotry: X,
+    cmp: C,
+    facotry: F,
     offset: usize,
-    _p: PhantomData<(F, T, C)>,
+    _p: PhantomData<T>,
 }
-impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, C: CpCmp<T>, X, Y>
-    Consolidate<T, R, F, I, C, X, Y>
-where
-    X: Borrow<F>,
-    Y: Borrow<C>,
+impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, C: CpCmp<T>>
+    Consolidate<T, R, F, I, C>
 {
-    pub fn new(iter: I, cmp: Y, factory: X) -> Self {
+    pub fn new(iter: I, cmp: C, factory: F) -> Self {
         return Self {
             iter,
             last: None,
@@ -90,16 +81,13 @@ where
     }
 }
 
-impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, C: CpCmp<T>, X, Y>
-    Consolidate<T, R, F, I, C, X, Y>
-where
-    X: Borrow<F>,
-    Y: Borrow<C>,
+impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, C: CpCmp<T>>
+    Consolidate<T, R, F, I, C>
 {
     pub fn to_consolidate_proxy(
         self,
         order: ConsolidationOrder,
-    ) -> ConsolidateChecker<T, R, F, I, C, X, Y> {
+    ) -> ConsolidateChecker<T, R, F, I, C> {
         return ConsolidateChecker {
             order,
             iter: self,
@@ -114,22 +102,14 @@ pub struct ConsolidateChecker<
     F: GetBeginEndOption<T, R>,
     I: Iterator<Item = R>,
     C: CpCmp<T>,
-    X,
-    Y,
-> where
-    X: Borrow<F>,
-    Y: Borrow<C>,
-{
+> {
     order: ConsolidationOrder,
-    iter: Consolidate<T, R, F, I, C, X, Y>,
-    _p: PhantomData<(T, R, F, C, X, Y, I)>,
+    iter: Consolidate<T, R, F, I, C>,
+    _p: PhantomData<(T, R, F, C, I)>,
 }
 
-impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, C: CpCmp<T>, X, Y>
-    Iterator for ConsolidateChecker<T, R, F, I, C, X, Y>
-where
-    X: Borrow<F>,
-    Y: Borrow<C>,
+impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, C: CpCmp<T>> Iterator
+    for ConsolidateChecker<T, R, F, I, C>
 {
     type Item = Result<ConsolidateMrsP<T, R>, (&'static str, RangeRelation<(R, Vec<(usize, R)>)>)>;
 
@@ -153,79 +133,52 @@ where
     }
 }
 
-impl<Y, X, T, I: Iterator<Item = RangeInclusive<T>>>
-    Consolidate<T, RangeInclusive<T>, RiFactory<T>, I, NumberIncDecCpCmp<T>, Y, X>
+impl<T, I: Iterator<Item = RangeInclusive<T>>>
+    Consolidate<T, RangeInclusive<T>, RiFactory<T>, I, NumberIncDecCpCmp<T>>
 where
     NumberIncDecCpCmp<T>: DefaultValues<T, T>,
-    X: Borrow<NumberIncDecCpCmp<T>>,
-    Y: Borrow<RiFactory<T>>,
     T: Copy + Clone,
 {
-    pub fn num(iter: I, cmp: X, factory: Y) -> Self {
+    pub fn num(iter: I, cmp: NumberIncDecCpCmp<T>, factory: RiFactory<T>) -> Self {
         return Self::new(iter, cmp, factory);
     }
 }
 
 impl<T, I: Iterator<Item = RangeInclusive<T>>>
-    Consolidate<
-        T,
-        RangeInclusive<T>,
-        RiFactory<T>,
-        I,
-        NumberIncDecCpCmp<T>,
-        Rc<RiFactory<T>>,
-        Rc<NumberIncDecCpCmp<T>>,
-    >
+    Consolidate<T, RangeInclusive<T>, RiFactory<T>, I, NumberIncDecCpCmp<T>>
 where
     NumberIncDecCpCmp<T>: DefaultValues<T, T>,
     T: Copy + Clone,
 {
     pub fn num_defaults(iter: I) -> Self {
-        let cmp = Rc::new(NumberIncDecCpCmp::<T>::defaults());
-        let factory = Rc::new(RiFactory::<T>::new());
+        let cmp = NumberIncDecCpCmp::<T>::defaults();
+        let factory = RiFactory::<T>::new();
         return Self::num(iter, cmp, factory);
     }
 }
 
-impl<Y, X, R: GetBeginEnd<T>, T, I: Iterator<Item = R>, F: GetBeginEndOption<T, R>>
-    Consolidate<T, R, F, I, AnyIncDecCpCmp<T>, X, Y>
+impl<R: GetBeginEnd<T>, T, I: Iterator<Item = R>, F: GetBeginEndOption<T, R>>
+    Consolidate<T, R, F, I, AnyIncDecCpCmp<T>>
 where
     T: PartialOrd + Clone + Copy,
-    X: Borrow<F>,
-    Y: Borrow<AnyIncDecCpCmp<T>>,
 {
-    pub fn any(iter: I, cmp: Y, factory: X) -> Self {
+    pub fn any(iter: I, cmp: AnyIncDecCpCmp<T>, factory: F) -> Self {
         return Self::new(iter, cmp, factory);
     }
 }
 
 impl<T, I: Iterator<Item = RangeInclusive<T>>>
-    Consolidate<
-        T,
-        RangeInclusive<T>,
-        RiFactory<T>,
-        I,
-        AnyIncDecCpCmp<T>,
-        Rc<RiFactory<T>>,
-        Rc<AnyIncDecCpCmp<T>>,
-    >
+    Consolidate<T, RangeInclusive<T>, RiFactory<T>, I, AnyIncDecCpCmp<T>>
 where
     T: PartialOrd + Clone + Copy + Add<T, Output = T> + Sub<T, Output = T>,
 {
     pub fn any_defaults(iter: I, min: T, max: T) -> Self {
-        return Self::any(
-            iter,
-            Rc::new(AnyIncDecCpCmp::new(min, max)),
-            Rc::new(RiFactory::new()),
-        );
+        return Self::any(iter, AnyIncDecCpCmp::new(min, max), RiFactory::new());
     }
 }
 
-impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, X, Y, C: CpCmp<T>>
-    Iterator for Consolidate<T, R, F, I, C, X, Y>
-where
-    X: Borrow<F>,
-    Y: Borrow<C>,
+impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, C: CpCmp<T>> Iterator
+    for Consolidate<T, R, F, I, C>
 {
     type Item = RangeRelation<(R, Vec<(usize, R)>)>;
     fn next(&mut self) -> Option<Self::Item> {
