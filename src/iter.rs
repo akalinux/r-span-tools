@@ -6,7 +6,6 @@ use crate::{
     range_relation,
 };
 
-use std::borrow::Borrow;
 use std::marker::PhantomData;
 use std::mem;
 use std::ops::RangeInclusive;
@@ -182,11 +181,14 @@ impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, C:
 {
     type Item = RangeRelation<(R, Vec<(usize, R)>)>;
     fn next(&mut self) -> Option<Self::Item> {
-        let t = self.cmp.borrow();
-        let f = self.facotry.borrow();
-        let iter = &mut self.iter;
         let next;
-        (self.offset, next) = consolidate(&mut self.last, iter, t, f, self.offset);
+        (self.offset, next) = consolidate(
+            &mut self.last,
+            &mut self.iter,
+            &self.cmp,
+            &self.facotry,
+            self.offset,
+        );
 
         return next;
     }
@@ -198,7 +200,7 @@ pub struct OverlapIter<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBegi
     next: Option<R>,
     back: Option<R>,
     factory: F,
-    _marker: PhantomData<(T, R, C, F)>,
+    _marker: PhantomData<(T, R)>,
 }
 
 impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
@@ -206,12 +208,8 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
 {
     /// Creates a new [crate::OverlapIter] from the slice of R.
     pub fn new(src: Vec<R>, step: V, cmp: C, factory: F) -> Self {
-        let next = factory
-            .borrow()
-            .factory(first_range_begin_end(&src, cmp.borrow()));
-        let back = factory
-            .borrow()
-            .factory(last_range_begin_end(&src, cmp.borrow()));
+        let next = factory.factory(first_range_begin_end(&src, &cmp));
+        let back = factory.factory(last_range_begin_end(&src, &cmp));
         Self {
             src,
             step,
@@ -232,10 +230,10 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> 
         let mut next = None;
         if let Some(n) = &self.next {
             match &self.back {
-                Some(b) => match range_relation(n, b, self.cmp.borrow()) {
+                Some(b) => match range_relation(n, b, &self.cmp) {
                     RangeRelation::Overlap(_) => {
-                        if let Some(begin) = self.cmp.borrow().inc(n.get_end(), &self.step) {
-                            next = self.factory.borrow().factory(next_range_begin_end(
+                        if let Some(begin) = self.cmp.inc(n.get_end(), &self.step) {
+                            next = self.factory.factory(next_range_begin_end(
                                 &begin,
                                 &[
                                     MrsP {
@@ -247,17 +245,15 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> 
                                         _t: PhantomData,
                                     },
                                 ],
-                                self.cmp.borrow(),
+                                &self.cmp,
                             ));
                         }
                     }
                     RangeRelation::Before(_) => {
-                        if let Some(begin) = self.cmp.borrow().inc(n.get_end(), &self.step) {
-                            next = self.factory.borrow().factory(next_range_begin_end(
-                                &begin,
-                                &self.src,
-                                self.cmp.borrow(),
-                            ));
+                        if let Some(begin) = self.cmp.inc(n.get_end(), &self.step) {
+                            next = self
+                                .factory
+                                .factory(next_range_begin_end(&begin, &self.src, &self.cmp));
                         }
                     }
                     _ => return None,
@@ -277,10 +273,10 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> 
         if let Some(b) = &self.back
             && let Some(n) = &self.next
         {
-            match range_relation(b, n, self.cmp.borrow()) {
+            match range_relation(b, n, &self.cmp) {
                 RangeRelation::Overlap(_) => {
-                    if let Some(end) = self.cmp.borrow().dec(b.get_begin(), &self.step) {
-                        back = self.factory.borrow().factory(previous_range_begin_end(
+                    if let Some(end) = self.cmp.dec(b.get_begin(), &self.step) {
+                        back = self.factory.factory(previous_range_begin_end(
                             &end,
                             &[
                                 MrsP {
@@ -292,17 +288,15 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> 
                                     _t: PhantomData,
                                 },
                             ],
-                            self.cmp.borrow(),
+                            &self.cmp,
                         ));
                     }
                 }
                 RangeRelation::After(_) => {
-                    if let Some(end) = self.cmp.borrow().dec(b.get_begin(), &self.step) {
-                        back = self.factory.borrow().factory(previous_range_begin_end(
-                            &end,
-                            &self.src,
-                            self.cmp.borrow(),
-                        ));
+                    if let Some(end) = self.cmp.dec(b.get_begin(), &self.step) {
+                        back = self
+                            .factory
+                            .factory(previous_range_begin_end(&end, &self.src, &self.cmp));
                     }
                 }
                 _ => return None,
