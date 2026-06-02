@@ -3,7 +3,8 @@
 use std::rc::Rc;
 
 use common_range_tools::{
-    Consolidate, ConsolidationOrder, NumberIncDecCpCmp, RangeRelation, RiFactory, sort_reverse,
+    Consolidate, ConsolidationOrder, GetBeginEnd, NumberIncDecCpCmp, RangeRelation, RiFactory,
+    sort_reverse,
 };
 
 use crate::iter_tests::mrs_set;
@@ -408,5 +409,16 @@ fn consolidator_reverse_tests() {
     assert_eq!(iter.next().unwrap().0, 0..=3);
     assert!(iter.next().is_none());
     iter = Consolidate::num(ConsolidationOrder::Reverse, mrs_set().into_iter(), cmp, f);
+    assert!(iter.next().is_none());
+}
+
+#[test]
+fn consolidator_to_proxy_tests() {
+    let mut iter = Consolidate::num_defaults(mrs_set().into_iter()).to_consolidate_proxy();
+
+    assert_eq!(iter.next().unwrap().to_tuple(), (0, 3));
+    assert_eq!(iter.next().unwrap().to_tuple(), (4, 6));
+    assert_eq!(iter.next().unwrap().to_tuple(), (8, 11));
+    assert_eq!(iter.next().unwrap().to_tuple(), (13, 22));
     assert!(iter.next().is_none());
 }

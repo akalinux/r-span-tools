@@ -43,6 +43,64 @@ pub struct MrsP<'r, T, R: GetBeginEnd<T>> {
     _t: PhantomData<T>,
 }
 
+pub struct ConsolidateMrsP<T, R>
+where
+    R: GetBeginEnd<T>,
+{
+    r: R,
+    src: Vec<(usize, R)>,
+    _t: PhantomData<T>,
+}
+
+impl<T, R> ConsolidateMrsP<T, R>
+where
+    R: GetBeginEnd<T>,
+{
+    pub fn new(src: (R, Vec<(usize, R)>)) -> Self {
+        Self {
+            r: src.0,
+            src: src.1,
+            _t: PhantomData,
+        }
+    }
+    pub fn as_src(self) -> (R, Vec<(usize, R)>) {
+        return (self.r, self.src);
+    }
+    pub fn src(&self) -> &Vec<(usize, R)> {
+        return &self.src;
+    }
+}
+
+impl<T, R: GetBeginEnd<T>> GetBeginEnd<T> for ConsolidateMrsP<T, R> {
+    /// Wrapper for internal [crate::Mrs] instance.
+    fn get_begin(&self) -> &T {
+        return self.r.get_begin();
+    }
+
+    /// Wrapper for internal [crate::Mrs] instance.
+    fn get_end(&self) -> &T {
+        return self.r.get_end();
+    }
+
+    /// This will drop the sources if used.
+    /// You should use [crate::ConsolidateMrsP::into] in stead.
+    fn to_tuple(self) -> (T, T) {
+        return self.r.to_tuple();
+    }
+}
+
+impl<T, R: GetBeginEnd<T>> RangeBounds<T> for ConsolidateMrsP<T, R> {
+    /// Wraps the return value from self.get_begin() in a [std::ops::Bound::Included].
+    fn start_bound(&self) -> Bound<&T> {
+        return Bound::Included(&self.get_begin());
+    }
+
+    /// Wraps the return value from self.get_end() in a [std::ops::Bound::Included].
+    fn end_bound(&self) -> Bound<&T> {
+        return Bound::Included(&self.get_end());
+    }
+}
+
 impl<'r, T, R: GetBeginEnd<T>> MrsP<'r, T, R> {
     pub fn new(r: &'r R) -> Self {
         return Self { r, _t: PhantomData };
@@ -74,7 +132,7 @@ impl<T> Mrs<T> {
 impl<T> From<Mrs<T>> for RangeInclusive<T> {
     fn from(value: Mrs<T>) -> Self {
         let (a, z) = value.to_tuple();
-        return std::ops::RangeInclusive::new(a, z);
+        return RangeInclusive::new(a, z);
     }
 }
 
@@ -102,7 +160,7 @@ impl<'r, T, R: GetBeginEnd<T>> GetBeginEnd<T> for MrsP<'r, T, R> {
         return self.r.get_end();
     }
 
-    /// Due to the internals being pointer to the real [crate::Mrs] instance, this method is ***intentionally unimplemented***.
+    /// Due to the internals being pointer to the real [crate::GetBeginEnd] instance, this method is ***intentionally unimplemented***.
     fn to_tuple(self) -> (T, T) {
         unimplemented!();
     }

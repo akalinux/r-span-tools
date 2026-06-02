@@ -517,4 +517,10 @@ mod util_tests {
         assert!(last.is_none());
         assert!(next.is_none());
     }
+
+    #[test]
+    fn unpack_overlap() {
+        assert!(RangeRelation::Overlap(()).is_overlap());
+        assert_eq!(RangeRelation::Overlap(()).overlap(), ());
+    }
 }

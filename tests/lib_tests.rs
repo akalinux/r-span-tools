@@ -2,7 +2,7 @@
 mod lip_tests {
     use std::ops::{Bound, RangeBounds, RangeInclusive};
 
-    use common_range_tools::{GetBeginEnd, Mrs, MrsP};
+    use common_range_tools::{ConsolidateMrsP, GetBeginEnd, Mrs, MrsP};
     use std::panic::catch_unwind;
 
     #[test]
@@ -32,10 +32,22 @@ mod lip_tests {
 
     #[test]
     fn test_range_bounds() {
-        assert!(matches!(Mrs::new(0, 1).start_bound(), Bound::Included(&0)));
-        assert!(matches!(Mrs::new(0, 1).end_bound(), Bound::Included(&1)));
+        matches!(Mrs::new(0, 1).start_bound(), Bound::Included(&0));
+        matches!(Mrs::new(0, 1).end_bound(), Bound::Included(&1));
         assert!(Mrs::new(0, 1).contains(&1));
         assert!(Mrs::new(0, 1).contains(&0));
         assert!(!Mrs::new(0, 1).contains(&-1));
+    }
+
+    #[test]
+    fn consolidate_proxy_tests() {
+        let mut p = ConsolidateMrsP::new((Mrs::new(0, 1), vec![(0, Mrs::new(0, 1))]));
+        matches!(p.start_bound(), Bound::Included(&0));
+        matches!(p.end_bound(), Bound::Included(&1));
+        assert_eq!(p.to_tuple_ref(), (&0, &1));
+
+        p = ConsolidateMrsP::new(p.as_src());
+        p.src(); // coverage...
+        assert_eq!(p.to_tuple(), (0, 1));
     }
 }

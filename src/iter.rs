@@ -1,8 +1,9 @@
 use crate::builder::IncDecCpCmp;
 use crate::{
-    AnyIncDecCpCmp, CpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, MrsP, NumberIncDecCpCmp,
-    RangeRelation, RiFactory, consolidate, first_range_begin_end, last_range_begin_end,
-    next_range_begin_end, previous_range_begin_end, range_bounds_to_values, range_relation,
+    AnyIncDecCpCmp, ConsolidateMrsP, CpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, MrsP,
+    NumberIncDecCpCmp, RangeRelation, RiFactory, consolidate, first_range_begin_end,
+    last_range_begin_end, next_range_begin_end, previous_range_begin_end, range_bounds_to_values,
+    range_relation,
 };
 
 use std::borrow::Borrow;
@@ -90,6 +91,57 @@ where
         };
     }
 }
+
+impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, C: CpCmp<T>, X, Y>
+    Consolidate<T, R, F, I, C, X, Y>
+where
+    X: Borrow<F>,
+    Y: Borrow<C>,
+{
+    pub fn to_consolidate_proxy(self) -> ConsolidateProxy<T, R, F, I, C, X, Y> {
+        return ConsolidateProxy {
+            iter: self,
+            _p: PhantomData,
+        };
+    }
+}
+
+pub struct ConsolidateProxy<
+    T,
+    R: GetBeginEnd<T>,
+    F: GetBeginEndOption<T, R>,
+    I: Iterator<Item = R>,
+    C: CpCmp<T>,
+    X,
+    Y,
+> where
+    X: Borrow<F>,
+    Y: Borrow<C>,
+{
+    iter: Consolidate<T, R, F, I, C, X, Y>,
+    _p: PhantomData<(T, R, F, C, X, Y, I)>,
+}
+
+impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, C: CpCmp<T>, X, Y>
+    Iterator for ConsolidateProxy<T, R, F, I, C, X, Y>
+where
+    X: Borrow<F>,
+    Y: Borrow<C>,
+{
+    type Item = ConsolidateMrsP<T, R>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(src) = self.iter.next() {
+            return Some(ConsolidateMrsP {
+                r: src.0,
+                src: src.1,
+                _t: PhantomData,
+            });
+        }
+        return None;
+    }
+}
+
 impl<Y, X, T, I: Iterator<Item = RangeInclusive<T>>>
     Consolidate<T, RangeInclusive<T>, RiFactory<T>, I, NumberIncDecCpCmp<T>, Y, X>
 where
