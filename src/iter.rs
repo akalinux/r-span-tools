@@ -36,19 +36,20 @@ impl ConsolidationOrder {
     ///
     /// Invalid states for: [crate::ConsolidationOrder::Reverse]
     ///   - [crate::RangeRelation::Before] is not valid.
-    pub fn check_direction<T>(&self, state: Option<RangeRelation<T>>) -> Option<T> {
-        if state.is_none() {
-            return None;
-        }
-        match state.unwrap() {
-            RangeRelation::Last(v) | RangeRelation::Overlap(v) => Some(v),
-            RangeRelation::After(v) => match self {
-                Self::Forward => None,
-                Self::Reverse => Some(v),
+    pub fn check_direction<T>(&self, state: &RangeRelation<T>) -> Result<(), &'static str> {
+        match state {
+            RangeRelation::Last(_) | RangeRelation::Overlap(_) => Ok(()),
+            RangeRelation::After(_) => match self {
+                Self::Forward => {
+                    Err("Out of Forward Sequence, Expected: Before|Last|Overlap, got: After")
+                }
+                Self::Reverse => Ok(()),
             },
-            RangeRelation::Before(v) => match self {
-                Self::Forward => Some(v),
-                Self::Reverse => None,
+            RangeRelation::Before(_) => match self {
+                Self::Forward => Ok(()),
+                Self::Reverse => {
+                    Err("Out of Forward Sequence, Expected: After|Last|Overlap, got: Before")
+                }
             },
         }
     }
@@ -70,7 +71,6 @@ pub struct Consolidate<
     cmp: Y,
     facotry: X,
     offset: usize,
-    order: ConsolidationOrder,
     _p: PhantomData<(F, T, C)>,
 }
 impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, C: CpCmp<T>, X, Y>
@@ -79,13 +79,12 @@ where
     X: Borrow<F>,
     Y: Borrow<C>,
 {
-    pub fn new(order: ConsolidationOrder, iter: I, cmp: Y, factory: X) -> Self {
+    pub fn new(iter: I, cmp: Y, factory: X) -> Self {
         return Self {
             iter,
             last: None,
             cmp: cmp,
             facotry: factory,
-            order,
             offset: 0,
             _p: PhantomData,
         };
@@ -98,15 +97,19 @@ where
     X: Borrow<F>,
     Y: Borrow<C>,
 {
-    pub fn to_consolidate_proxy(self) -> ConsolidateProxy<T, R, F, I, C, X, Y> {
-        return ConsolidateProxy {
+    pub fn to_consolidate_proxy(
+        self,
+        order: ConsolidationOrder,
+    ) -> ConsolidateChecker<T, R, F, I, C, X, Y> {
+        return ConsolidateChecker {
+            order,
             iter: self,
             _p: PhantomData,
         };
     }
 }
 
-pub struct ConsolidateProxy<
+pub struct ConsolidateChecker<
     T,
     R: GetBeginEnd<T>,
     F: GetBeginEndOption<T, R>,
@@ -118,25 +121,34 @@ pub struct ConsolidateProxy<
     X: Borrow<F>,
     Y: Borrow<C>,
 {
+    order: ConsolidationOrder,
     iter: Consolidate<T, R, F, I, C, X, Y>,
     _p: PhantomData<(T, R, F, C, X, Y, I)>,
 }
 
 impl<T, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>, I: Iterator<Item = R>, C: CpCmp<T>, X, Y>
-    Iterator for ConsolidateProxy<T, R, F, I, C, X, Y>
+    Iterator for ConsolidateChecker<T, R, F, I, C, X, Y>
 where
     X: Borrow<F>,
     Y: Borrow<C>,
 {
-    type Item = ConsolidateMrsP<T, R>;
+    type Item = Result<ConsolidateMrsP<T, R>, (&'static str, RangeRelation<(R, Vec<(usize, R)>)>)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if let Some(src) = self.iter.next() {
-            return Some(ConsolidateMrsP {
-                r: src.0,
-                src: src.1,
-                _t: PhantomData,
-            });
+        if let Some(r) = self.iter.next() {
+            match self.order.check_direction(&r) {
+                Ok(()) => {
+                    let src = r.unwrap();
+                    return Some(Ok(ConsolidateMrsP {
+                        r: src.0,
+                        src: src.1,
+                        _t: PhantomData,
+                    }));
+                }
+                Err(msg) => {
+                    return Some(Err((msg, r)));
+                }
+            }
         }
         return None;
     }
@@ -150,8 +162,8 @@ where
     Y: Borrow<RiFactory<T>>,
     T: Copy + Clone,
 {
-    pub fn num(order: ConsolidationOrder, iter: I, cmp: X, factory: Y) -> Self {
-        return Self::new(order, iter, cmp, factory);
+    pub fn num(iter: I, cmp: X, factory: Y) -> Self {
+        return Self::new(iter, cmp, factory);
     }
 }
 
@@ -172,7 +184,7 @@ where
     pub fn num_defaults(iter: I) -> Self {
         let cmp = Rc::new(NumberIncDecCpCmp::<T>::defaults());
         let factory = Rc::new(RiFactory::<T>::new());
-        return Self::new(ConsolidationOrder::Forward, iter, cmp, factory);
+        return Self::num(iter, cmp, factory);
     }
 }
 
@@ -183,8 +195,8 @@ where
     X: Borrow<F>,
     Y: Borrow<AnyIncDecCpCmp<T>>,
 {
-    pub fn any(order: ConsolidationOrder, iter: I, cmp: Y, factory: X) -> Self {
-        return Self::new(order, iter, cmp, factory);
+    pub fn any(iter: I, cmp: Y, factory: X) -> Self {
+        return Self::new(iter, cmp, factory);
     }
 }
 
@@ -203,7 +215,6 @@ where
 {
     pub fn any_defaults(iter: I, min: T, max: T) -> Self {
         return Self::any(
-            ConsolidationOrder::Forward,
             iter,
             Rc::new(AnyIncDecCpCmp::new(min, max)),
             Rc::new(RiFactory::new()),
@@ -217,7 +228,7 @@ where
     X: Borrow<F>,
     Y: Borrow<C>,
 {
-    type Item = (R, Vec<(usize, R)>);
+    type Item = RangeRelation<(R, Vec<(usize, R)>)>;
     fn next(&mut self) -> Option<Self::Item> {
         let t = self.cmp.borrow();
         let f = self.facotry.borrow();
@@ -225,7 +236,7 @@ where
         let next;
         (self.offset, next) = consolidate(&mut self.last, iter, t, f, self.offset);
 
-        return self.order.check_direction(next);
+        return next;
     }
 }
 pub struct OverlapIter<

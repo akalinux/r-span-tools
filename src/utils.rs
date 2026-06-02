@@ -24,6 +24,15 @@ pub enum RangeRelation<T> {
 }
 
 impl<T> RangeRelation<T> {
+    /// Unwraps the Value.
+    pub fn unwrap(self) -> T {
+        match self {
+            RangeRelation::After(v)
+            | RangeRelation::Before(v)
+            | RangeRelation::Last(v)
+            | RangeRelation::Overlap(v) => return v,
+        }
+    }
     /// Unwraps the state of [RangeRelation::Last] or panics!
     pub fn last(self) -> T {
         match self {

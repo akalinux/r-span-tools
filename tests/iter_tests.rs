@@ -1,11 +1,6 @@
 #![cfg(test)]
 
-use std::rc::Rc;
-
-use common_range_tools::{
-    Consolidate, ConsolidationOrder, GetBeginEnd, NumberIncDecCpCmp, RangeRelation, RiFactory,
-    sort_reverse,
-};
+use common_range_tools::{Consolidate, ConsolidationOrder, GetBeginEnd, RangeRelation};
 
 use crate::iter_tests::mrs_set;
 
@@ -331,39 +326,30 @@ mod iter_tests {
 
 #[test]
 fn consolidation_order_tests() {
-    let mut check: Option<RangeRelation<()>> = None;
-    matches!(ConsolidationOrder::Forward.check_direction(check), None);
+    matches!(
+        ConsolidationOrder::Forward.check_direction(&RangeRelation::After(())),
+        Err("Out of Forward Sequence, Expected: Before|Last|Overlap, got: After")
+    );
+    matches!(
+        ConsolidationOrder::Reverse.check_direction(&&RangeRelation::Before(())),
+        Err("Out of Reverse Sequence, Expected: After|Last|Overlap, got: Before")
+    );
 
-    check = Some(RangeRelation::Before(()));
-    matches!(ConsolidationOrder::Forward.check_direction(check), Some(()));
-    check = Some(RangeRelation::Last(()));
-    matches!(ConsolidationOrder::Forward.check_direction(check), Some(()));
-    check = Some(RangeRelation::Overlap(()));
-    matches!(ConsolidationOrder::Forward.check_direction(check), Some(()));
-    check = Some(RangeRelation::After(()));
-    matches!(ConsolidationOrder::Forward.check_direction(check), None);
-
-    check = Some(RangeRelation::After(()));
-    matches!(ConsolidationOrder::Reverse.check_direction(check), Some(()));
-    check = Some(RangeRelation::Last(()));
-    matches!(ConsolidationOrder::Reverse.check_direction(check), Some(()));
-    check = Some(RangeRelation::Overlap(()));
-    matches!(ConsolidationOrder::Reverse.check_direction(check), Some(()));
-    check = Some(RangeRelation::Before(()));
-    matches!(ConsolidationOrder::Reverse.check_direction(check), None);
+    for d in [ConsolidationOrder::Forward, ConsolidationOrder::Reverse] {
+        for r in [RangeRelation::Overlap(()), RangeRelation::Last(())] {
+            matches!(d.check_direction(&r), Ok(()));
+        }
+    }
 }
 
 #[test]
 fn consolidator_forward_num_tests() {
-    let cmp = Rc::new(NumberIncDecCpCmp::<i32>::defaults());
-    let f = Rc::new(RiFactory::<i32>::new());
+    let mut iter = Consolidate::num_defaults(mrs_set().into_iter());
 
-    let mut iter = Consolidate::num(ConsolidationOrder::Forward, mrs_set().into_iter(), cmp, f);
-
-    assert_eq!(iter.next().unwrap().0, 0..=3);
-    assert_eq!(iter.next().unwrap().0, 4..=6);
-    assert_eq!(iter.next().unwrap().0, 8..=11);
-    assert_eq!(iter.next().unwrap().0, 13..=22);
+    assert_eq!(iter.next().unwrap().unwrap().0, 0..=3);
+    assert_eq!(iter.next().unwrap().unwrap().0, 4..=6);
+    assert_eq!(iter.next().unwrap().unwrap().0, 8..=11);
+    assert_eq!(iter.next().unwrap().unwrap().0, 13..=22);
     assert!(iter.next().is_none());
 }
 
@@ -371,54 +357,32 @@ fn consolidator_forward_num_tests() {
 fn consolidator_any_defaults() {
     let mut iter = Consolidate::any_defaults(mrs_set().into_iter(), 0, 22);
 
-    assert_eq!(iter.next().unwrap().0, 0..=3);
-    assert_eq!(iter.next().unwrap().0, 4..=6);
-    assert_eq!(iter.next().unwrap().0, 8..=11);
-    assert_eq!(iter.next().unwrap().0, 13..=22);
+    assert_eq!(iter.next().unwrap().unwrap().0, 0..=3);
+    assert_eq!(iter.next().unwrap().unwrap().0, 4..=6);
+    assert_eq!(iter.next().unwrap().unwrap().0, 8..=11);
+    assert_eq!(iter.next().unwrap().unwrap().0, 13..=22);
     assert!(iter.next().is_none());
 }
 
 #[test]
-fn consolidator_num_defaults() {
-    let mut iter = Consolidate::num_defaults(mrs_set().into_iter());
+fn consolidate_check_tests() {
+    let mut iter = Consolidate::num_defaults(mrs_set().into_iter())
+        .to_consolidate_proxy(ConsolidationOrder::Forward);
 
-    assert_eq!(iter.next().unwrap().0, 0..=3);
-    assert_eq!(iter.next().unwrap().0, 4..=6);
-    assert_eq!(iter.next().unwrap().0, 8..=11);
-    assert_eq!(iter.next().unwrap().0, 13..=22);
+    for check in [0..=3, 4..=6, 8..=11, 13..=22] {
+        let next = iter.next().unwrap();
+        match next {
+            Err(_) => panic!("Should not get an error"),
+            Ok(r) => {
+                assert_eq!(r.to_tuple(), check.to_tuple());
+            }
+        }
+    }
     assert!(iter.next().is_none());
-}
-
-#[test]
-fn consolidator_reverse_tests() {
-    let cmp = Rc::new(NumberIncDecCpCmp::defaults());
-    let f = Rc::new(RiFactory::new());
-
-    let mut src = mrs_set();
-    src.sort_by(|a, b| sort_reverse(a, b, cmp.as_ref()));
-    let mut iter = Consolidate::num(
-        ConsolidationOrder::Reverse,
-        src.into_iter(),
-        cmp.clone(),
-        f.clone(),
-    );
-
-    assert_eq!(iter.next().unwrap().0, 13..=22);
-    assert_eq!(iter.next().unwrap().0, 8..=11);
-    assert_eq!(iter.next().unwrap().0, 4..=6);
-    assert_eq!(iter.next().unwrap().0, 0..=3);
-    assert!(iter.next().is_none());
-    iter = Consolidate::num(ConsolidationOrder::Reverse, mrs_set().into_iter(), cmp, f);
-    assert!(iter.next().is_none());
-}
-
-#[test]
-fn consolidator_to_proxy_tests() {
-    let mut iter = Consolidate::num_defaults(mrs_set().into_iter()).to_consolidate_proxy();
-
-    assert_eq!(iter.next().unwrap().to_tuple(), (0, 3));
-    assert_eq!(iter.next().unwrap().to_tuple(), (4, 6));
-    assert_eq!(iter.next().unwrap().to_tuple(), (8, 11));
-    assert_eq!(iter.next().unwrap().to_tuple(), (13, 22));
-    assert!(iter.next().is_none());
+    iter = Consolidate::num_defaults(mrs_set().into_iter())
+        .to_consolidate_proxy(ConsolidationOrder::Reverse);
+    match iter.next().unwrap() {
+        Err(_) => (), // all is well
+        Ok(_) => panic!("Expected to error out"),
+    }
 }

@@ -43,6 +43,8 @@ pub struct MrsP<'r, T, R: GetBeginEnd<T>> {
     _t: PhantomData<T>,
 }
 
+/// This struct acts as an owned wrapper for the [Option::Some] produced by the [crate::Consolidate] Iterator,
+/// which then acts as a normal instance of [crate::GetBeginEnd].
 pub struct ConsolidateMrsP<T, R>
 where
     R: GetBeginEnd<T>,
@@ -56,6 +58,7 @@ impl<T, R> ConsolidateMrsP<T, R>
 where
     R: GetBeginEnd<T>,
 {
+    /// Wwraps the data set and makes it operate as if it is the instance src.0.
     pub fn new(src: (R, Vec<(usize, R)>)) -> Self {
         Self {
             r: src.0,
@@ -63,9 +66,13 @@ where
             _t: PhantomData,
         }
     }
+
+    /// Converts back to the orignal data set used to create this instance.
     pub fn as_src(self) -> (R, Vec<(usize, R)>) {
         return (self.r, self.src);
     }
+
+    /// Returns a ref to the internal data set.
     pub fn src(&self) -> &Vec<(usize, R)> {
         return &self.src;
     }
@@ -83,7 +90,7 @@ impl<T, R: GetBeginEnd<T>> GetBeginEnd<T> for ConsolidateMrsP<T, R> {
     }
 
     /// This will drop the sources if used.
-    /// You should use [crate::ConsolidateMrsP::into] in stead.
+    /// Consider using [crate::ConsolidateMrsP::as_src] in stead.
     fn to_tuple(self) -> (T, T) {
         return self.r.to_tuple();
     }
@@ -102,6 +109,7 @@ impl<T, R: GetBeginEnd<T>> RangeBounds<T> for ConsolidateMrsP<T, R> {
 }
 
 impl<'r, T, R: GetBeginEnd<T>> MrsP<'r, T, R> {
+    /// Creates a new instance of [crate::MrsP].
     pub fn new(r: &'r R) -> Self {
         return Self { r, _t: PhantomData };
     }
@@ -124,7 +132,8 @@ pub trait GetBeginEnd<T> {
 }
 
 impl<T> Mrs<T> {
-    pub const fn new(a: T, z: T) -> Self {
+    /// Constructs a new [crate::Mrs] instance.
+    pub fn new(a: T, z: T) -> Self {
         Self { a, z }
     }
 }
@@ -160,7 +169,8 @@ impl<'r, T, R: GetBeginEnd<T>> GetBeginEnd<T> for MrsP<'r, T, R> {
         return self.r.get_end();
     }
 
-    /// Due to the internals being pointer to the real [crate::GetBeginEnd] instance, this method is ***intentionally unimplemented***.
+    /// Due to the internals being pointer to the real [crate::GetBeginEnd] instance, this method is ***intentionally unimplemented***
+    /// and will panic if called!.
     fn to_tuple(self) -> (T, T) {
         unimplemented!();
     }
