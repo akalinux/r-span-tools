@@ -102,7 +102,11 @@ impl<T> RangeRelation<T> {
 /// - [RangeRelation::Before] a is before b.
 /// - [RangeRelation::After] a is after b.
 /// - [RangeRelation::Overlap] a and b overlap to some degree.
-pub fn range_relation<T, R: GetBeginEnd<T>, C: CpCmp<T>>(a: &R, b: &R, t: &C) -> RangeRelation<()> {
+pub fn range_relation<T, R: GetBeginEnd<T>, N: GetBeginEnd<T>, C: CpCmp<T>>(
+    a: &R,
+    b: &N,
+    t: &C,
+) -> RangeRelation<()> {
     if t.lt(a.get_end(), b.get_begin()) {
         return RangeRelation::Before(());
     } else if t.lt(b.get_end(), a.get_begin()) {

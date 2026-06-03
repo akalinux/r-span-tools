@@ -324,7 +324,7 @@ fn consolidator_any_defaults() {
 #[test]
 fn consolidate_check_tests() {
     let mut iter = Consolidate::num_defaults(mrs_set().into_iter())
-        .to_consolidate_proxy(ConsolidationOrder::Forward);
+        .to_consolidate_checker(ConsolidationOrder::Forward);
 
     for check in [0..=3, 4..=6, 8..=11, 13..=22] {
         let next = iter.next().unwrap();
@@ -337,9 +337,22 @@ fn consolidate_check_tests() {
     }
     assert!(iter.next().is_none());
     iter = Consolidate::num_defaults(mrs_set().into_iter())
-        .to_consolidate_proxy(ConsolidationOrder::Reverse);
+        .to_consolidate_checker(ConsolidationOrder::Reverse);
     match iter.next().unwrap() {
         Err(_) => (), // all is well
         Ok(_) => panic!("Expected to error out"),
     }
+}
+
+#[test]
+fn next_range_wanted_tests() {
+    assert!(ConsolidationOrder::Forward.wants_next(&RangeRelation::Last(())));
+    assert!(ConsolidationOrder::Forward.wants_next(&RangeRelation::Overlap(())));
+    assert!(ConsolidationOrder::Forward.wants_next(&RangeRelation::Before(())));
+    assert!(!ConsolidationOrder::Forward.wants_next(&RangeRelation::After(())));
+
+    assert!(ConsolidationOrder::Reverse.wants_next(&RangeRelation::Last(())));
+    assert!(ConsolidationOrder::Reverse.wants_next(&RangeRelation::Overlap(())));
+    assert!(ConsolidationOrder::Reverse.wants_next(&RangeRelation::After(())));
+    assert!(!ConsolidationOrder::Reverse.wants_next(&RangeRelation::Before(())));
 }
