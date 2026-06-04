@@ -2,8 +2,8 @@
 mod util_tests {
 
     use common_range_tools::{
-        GetBeginEnd, Mrs, MrsFactory, RangeRelation, auto_range, builder::NumberIncDecCpCmp,
-        consolidate, first_range_begin_end, grow, last_range_begin_end, next_range_begin_end,
+        GetBeginEnd, Mrs, MrsFactory, RangeRelation, builder::NumberIncDecCpCmp, consolidate,
+        first_range_begin_end, grow, last_range_begin_end, next_range_begin_end,
         next_smallest_range, previous_range_begin_end, previous_smallest_range,
         range_bounds_to_values, range_relation, sort_forward, sort_reverse,
     };
@@ -367,53 +367,17 @@ mod util_tests {
         let f = MrsFactory::new();
         let t = NumberIncDecCpCmp::defaults();
 
-        assert_eq!(
-            grow(&x, &y, &t, &f).unwrap().to_tuple(),
-            Mrs::new(1, 9).to_tuple()
-        );
-        assert_eq!(
-            grow(&y, &x, &t, &f).unwrap().to_tuple(),
-            Mrs::new(1, 9).to_tuple()
-        );
+        assert_eq!(grow(&x, &y, &t, &f).to_tuple(), Mrs::new(1, 9).to_tuple());
+        assert_eq!(grow(&y, &x, &t, &f).to_tuple(), Mrs::new(1, 9).to_tuple());
         x = Mrs::new(1, 6);
         y = Mrs::new(1, 9);
-        assert_eq!(
-            grow(&y, &x, &t, &f).unwrap().to_tuple(),
-            Mrs::new(1, 9).to_tuple()
-        );
-        assert_eq!(
-            grow(&x, &y, &t, &f).unwrap().to_tuple(),
-            Mrs::new(1, 9).to_tuple()
-        );
-        x = Mrs::new(1, 6);
-        y = Mrs::new(2, 5);
-        assert_eq!(
-            grow(&x, &y, &t, &f).unwrap().to_tuple(),
-            Mrs::new(1, 6).to_tuple()
-        );
-        assert_eq!(
-            grow(&y, &x, &t, &f).unwrap().to_tuple(),
-            Mrs::new(1, 6).to_tuple()
-        );
-        assert_eq!(
-            grow(&x, &x, &t, &f).unwrap().to_tuple(),
-            Mrs::new(1, 6).to_tuple()
-        );
-    }
-
-    #[test]
-    fn auto_range_tests() {
-        let f = MrsFactory::new();
-        let mut t = NumberIncDecCpCmp::defaults();
-        let mut res = auto_range(0, Mrs::new(1, 2), &t, &f);
-        let (r, l) = res.unwrap();
-        assert_eq!(r.to_tuple(), (1, 2));
-        assert_eq!(l.len(), 1);
-        assert_eq!(l[0].0, 0);
-        assert_eq!(l[0].1.to_tuple_ref(), (&1, &2));
-        t.set_min(7);
-        res = auto_range(0, Mrs::new(1, 2), &t, &f);
-        matches!(res, None);
+        assert_eq!(grow(&y, &x, &t, &f).to_tuple(), Mrs::new(1, 9).to_tuple());
+        assert_eq!(grow(&x, &y, &t, &f).to_tuple(), Mrs::new(1, 9).to_tuple());
+        x = Mrs::new(0, 3);
+        y = Mrs::new(1, 2);
+        assert_eq!(grow(&x, &y, &t, &f).to_tuple(), Mrs::new(0, 3).to_tuple());
+        assert_eq!(grow(&y, &x, &t, &f).to_tuple(), Mrs::new(0, 3).to_tuple());
+        assert_eq!(grow(&x, &x, &t, &f).to_tuple(), Mrs::new(0, 3).to_tuple());
     }
 
     #[test]
@@ -434,8 +398,8 @@ mod util_tests {
         assert_eq!(set[0].1.to_tuple_ref(), (&1, &2));
         iter = vec![
             // Block A
-            Mrs::new(1, 2), // 0
-            Mrs::new(2, 3), // 1
+            Mrs::new(0, 3), // 0
+            Mrs::new(1, 2), // 1
             // Block B
             Mrs::new(4, 4), // 2
             // Block C
@@ -457,12 +421,12 @@ mod util_tests {
         res = next.unwrap();
         assert!(res.is_before());
         (r, set) = res.before();
-        assert_eq!(r.to_tuple(), (1, 3));
+        assert_eq!(r.to_tuple(), (0, 3));
         assert_eq!(set.len(), 2);
         assert_eq!(&set[0].0, &0);
-        assert_eq!(set[0].1.to_tuple_ref(), (&1, &2));
+        assert_eq!(set[0].1.to_tuple_ref(), (&0, &3));
         assert_eq!(&set[1].0, &1);
-        assert_eq!(set[1].1.to_tuple_ref(), (&2, &3));
+        assert_eq!(set[1].1.to_tuple_ref(), (&1, &2));
 
         // Block B
         (offset, next) = consolidate(&mut last, &mut iter, &t, &f, offset);

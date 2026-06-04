@@ -194,9 +194,14 @@ pub trait CpCmp<T> {
         return self.lt(b, a) || !self.lt(a, b);
     }
 
-    // Returns true if a and b contain c.
+    /// Returns true if a and b contain c.
     fn contains(&self, a: &T, b: &T, c: &T) -> bool {
         return !(self.lt(c, a) || self.lt(b, c));
+    }
+
+    /// Returns a new owned copy of the input ref tuple.
+    fn cp_tpl_ref(&self, src: (&T, &T)) -> (T, T) {
+        return (self.cp(src.0), self.cp(src.1));
     }
 
     /// Returns true if any of the following are true
@@ -428,6 +433,7 @@ impl_inc_dec_cp_cmp_trait_f!(f32, f64);
 
 pub trait GetBeginEndOption<T, R: GetBeginEnd<T>> {
     fn factory(&self, opt: Option<(T, T)>) -> Option<R>;
+    fn new_range(&self, src: (T, T)) -> R;
 }
 
 pub struct MrsFactory<T> {
@@ -451,6 +457,9 @@ impl<T> MrsFactory<T> {
 }
 
 impl<T> GetBeginEndOption<T, Mrs<T>> for MrsFactory<T> {
+    fn new_range(&self, src: (T, T)) -> Mrs<T> {
+        return Mrs::new(src.0, src.1);
+    }
     fn factory(&self, opt: Option<(T, T)>) -> Option<Mrs<T>> {
         match opt {
             Some((a, z)) => Some(Mrs::new(a, z)),
@@ -460,6 +469,9 @@ impl<T> GetBeginEndOption<T, Mrs<T>> for MrsFactory<T> {
 }
 
 impl<T> GetBeginEndOption<T, RangeInclusive<T>> for RiFactory<T> {
+    fn new_range(&self, src: (T, T)) -> RangeInclusive<T> {
+        return RangeInclusive::new(src.0, src.1);
+    }
     fn factory(&self, opt: Option<(T, T)>) -> Option<RangeInclusive<T>> {
         match opt {
             Some((a, z)) => Some(RangeInclusive::new(a, z)),

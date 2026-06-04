@@ -21,6 +21,9 @@ pub enum RangeRelation<T> {
 
     /// Represents final set of data
     Last(T),
+
+    /// Denotes a was not valid
+    Invalid(T),
 }
 
 impl<T> RangeRelation<T> {
@@ -30,9 +33,18 @@ impl<T> RangeRelation<T> {
             RangeRelation::After(v)
             | RangeRelation::Before(v)
             | RangeRelation::Last(v)
+            | RangeRelation::Invalid(v)
             | RangeRelation::Overlap(v) => return v,
         }
     }
+    /// Unwraps the state of [RangeRelation::Invalid] or panics!.
+    pub fn invalid(self) -> T {
+        match self {
+            RangeRelation::Invalid(data) => data,
+            _ => panic!("Not Last!"),
+        }
+    }
+
     /// Unwraps the state of [RangeRelation::Last] or panics!
     pub fn last(self) -> T {
         match self {
@@ -73,6 +85,14 @@ impl<T> RangeRelation<T> {
         }
     }
 
+    /// Returns true if [RangeRelation::Invalid].
+    pub fn is_invalid(&self) -> bool {
+        match self {
+            RangeRelation::Invalid(_) => true,
+            _ => false,
+        }
+    }
+
     /// Returns true if [RangeRelation::Overlap].
     pub fn is_overlap(&self) -> bool {
         match self {
@@ -99,6 +119,7 @@ impl<T> RangeRelation<T> {
 }
 /// Compares the positional relationship between a and b.
 ///
+/// - [RangeRelation::Invalid] a was not a valid range.
 /// - [RangeRelation::Before] a is before b.
 /// - [RangeRelation::After] a is after b.
 /// - [RangeRelation::Overlap] a and b overlap to some degree.
@@ -107,7 +128,9 @@ pub fn range_relation<T, R: GetBeginEnd<T>, N: GetBeginEnd<T>, C: CpCmp<T>>(
     b: &N,
     t: &C,
 ) -> RangeRelation<()> {
-    if t.lt(a.get_end(), b.get_begin()) {
+    if t.is_invalid_set(a.get_begin(), a.get_end()) {
+        return RangeRelation::Invalid(());
+    } else if t.lt(a.get_end(), b.get_begin()) {
         return RangeRelation::Before(());
     } else if t.lt(b.get_end(), a.get_begin()) {
         return RangeRelation::After(());
@@ -427,26 +450,6 @@ pub fn previous_range_begin_end<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
     return None;
 }
 
-pub fn auto_range<
-    T,
-    R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
-    C: CpCmp<T>,
-    F: GetBeginEndOption<T, S>,
->(
-    i: usize,
-    r: R,
-    t: &C,
-    f: &F,
-) -> Option<(S, Vec<(usize, R)>)> {
-    let a = t.cp(r.get_begin());
-    let b = t.cp(r.get_end());
-    match f.factory(Some((a, b))) {
-        Some(nr) => Some((nr, vec![(i, r)])),
-        _ => None,
-    }
-}
-
 pub fn grow<
     T,
     Q: GetBeginEnd<T>,
@@ -459,17 +462,20 @@ pub fn grow<
     y: &S,
     t: &C,
     f: &F,
-) -> Option<Q> {
+) -> Q {
     let a;
     if t.lt(x.get_begin(), y.get_begin()) {
         a = t.cp(x.get_begin())
     } else {
         a = t.cp(y.get_begin())
     }
+    let z;
     if t.lt(x.get_end(), y.get_end()) {
-        return f.factory(Some((a, t.cp(y.get_end()))));
+        z = t.cp(y.get_end());
+    } else {
+        z = t.cp(x.get_end());
     }
-    return f.factory(Some((a, t.cp(x.get_end()))));
+    return f.new_range((a, z));
 }
 
 pub fn consolidate<
@@ -486,46 +492,48 @@ pub fn consolidate<
     f: &F,
     offset: usize,
 ) -> (usize, Option<RangeRelation<(R, Vec<(usize, S)>)>>) {
-    let mut next: Option<RangeRelation<(R, Vec<(usize, S)>)>> = None;
     let mut idx = offset;
     for range in iter {
-        if t.is_invalid_set(range.get_begin(), range.get_end()) {
-            idx += 1;
-            continue;
-        }
-        if let Some(mut ar) = auto_range(idx, range, t, f) {
-            idx += 1;
-            let nv = mem::replace(last, None);
-            if let Some((src, mut list)) = nv {
+        let mut ar = (
+            f.new_range(t.cp_tpl_ref(range.to_tuple_ref())),
+            vec![(idx, range)],
+        );
+        idx += 1;
+        let nv = mem::replace(last, None);
+        if let Some((src, mut list)) = nv {
+            if t.is_invalid_set(src.get_begin(), src.get_end()) {
+                // Right hand side check of range_relation(a,b)
+                *last = Some((ar.0, ar.1));
+                return (idx, Some(RangeRelation::Invalid((src, list))));
+            } else {
                 match range_relation(&src, &ar.0, t) {
                     RangeRelation::Overlap(_) => {
-                        if let Some(nr) = grow(&src, &ar.0, t, f) {
-                            list.append(&mut ar.1);
-                            *last = Some((nr, list));
-                        }
+                        let nr = grow(&src, &ar.0, t, f);
+                        list.append(&mut ar.1);
+                        *last = Some((nr, list));
                     }
                     RangeRelation::Before(_) => {
                         *last = Some(ar);
-                        next = Some(RangeRelation::Before((src, list)));
-                        break;
+                        return (idx, Some(RangeRelation::Before((src, list))));
                     }
                     RangeRelation::After(_) => {
                         *last = Some(ar);
-                        next = Some(RangeRelation::After((src, list)));
-                        break;
+                        return (idx, Some(RangeRelation::After((src, list))));
+                    }
+                    RangeRelation::Invalid(_) => {
+                        *last = Some(ar);
+                        return (idx, Some(RangeRelation::Invalid((src, list))));
                     }
                     _ => {}
                 }
-            } else {
-                *last = Some(ar);
             }
         } else {
-            idx += 1;
+            *last = Some(ar);
         }
     }
-    if next.is_none() && !last.is_none() {
+    if last.is_some() {
         let res = mem::replace(last, None);
         return (idx, Some(RangeRelation::Last(res.unwrap())));
     }
-    return (idx, next);
+    return (idx, None);
 }

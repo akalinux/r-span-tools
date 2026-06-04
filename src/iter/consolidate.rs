@@ -26,16 +26,19 @@ impl ConsolidationOrder {
     /// When an invalid direction is detected a None is returned.
     ///
     /// There are 2 valid directions for consolidation
-    ///  - Forward: see [crate::sort_forward].
+    ///  - Forward: see [crate::sort_forward]
     ///  - Reverse: see [crate::sort_reverse]
     ///
     /// Invalid state for: [ConsolidationOrder::Forward]
     ///   - [RangeRelation::After] is not valid.
+    ///   - [RangeRelation::Invalid] is not valid.
     ///
     /// Invalid states for: [ConsolidationOrder::Reverse]
     ///   - [RangeRelation::Before] is not valid.
+    ///   - [RangeRelation::Invalid] is not valid.
     pub fn check_direction<T>(&self, state: &RangeRelation<T>) -> Result<(), &'static str> {
         match state {
+            RangeRelation::Invalid(_) => Err("Range Compare contained Invalid range(s)"),
             RangeRelation::Last(_) | RangeRelation::Overlap(_) => Ok(()),
             RangeRelation::After(_) => match self {
                 Self::Forward => {
@@ -56,6 +59,7 @@ impl ConsolidationOrder {
     /// Returns true if yes, false if no.
     pub fn wants_next<T>(&self, r: &RangeRelation<T>) -> bool {
         match r {
+            RangeRelation::Invalid(_) => false,
             RangeRelation::Last(_) | RangeRelation::Overlap(_) => return true,
             RangeRelation::After(_) => match self {
                 Self::Forward => return false,

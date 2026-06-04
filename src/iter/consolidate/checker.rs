@@ -54,17 +54,21 @@ impl<
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(r) = self.iter.next() {
-            match self.order.check_direction(&r) {
-                Ok(()) => {
-                    let src = r.unwrap();
-                    return Some(Ok(ConsolidateMrsP {
-                        r: src.0,
-                        src: src.1,
-                        _t: PhantomData,
-                    }));
-                }
-                Err(msg) => {
-                    return Some(Err((msg, r)));
+            if r.is_invalid() {
+                return Some(Err(("Invalid Range Found in iterator", r)));
+            } else {
+                match self.order.check_direction(&r) {
+                    Ok(()) => {
+                        let src = r.unwrap();
+                        return Some(Ok(ConsolidateMrsP {
+                            r: src.0,
+                            src: src.1,
+                            _t: PhantomData,
+                        }));
+                    }
+                    Err(msg) => {
+                        return Some(Err((msg, r)));
+                    }
                 }
             }
         }
