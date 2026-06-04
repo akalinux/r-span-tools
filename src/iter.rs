@@ -17,7 +17,7 @@ pub struct OverlapIter<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBegi
     next: Option<R>,
     back: Option<R>,
     factory: F,
-    _marker: PhantomData<(T, R)>,
+    _marker: PhantomData<T>,
 }
 
 impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>

@@ -1,9 +1,9 @@
-use std::marker::PhantomData;
-
 use crate::{
     Consolidate, ConsolidateMrsP, ConsolidationOrder, CpCmp, GetBeginEnd, GetBeginEndOption,
     RangeRelation,
 };
+pub mod column;
+use std::marker::PhantomData;
 
 pub struct ConsolidateChecker<
     T,
