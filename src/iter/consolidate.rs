@@ -55,7 +55,7 @@ impl ConsolidationOrder {
         }
     }
 
-    /// Cheks if the next range would be weanted.
+    /// Cheks if the next range would be wanted in the set.
     /// Returns true if yes, false if no.
     pub fn wants_next<T>(&self, r: &RangeRelation<T>) -> bool {
         match r {
