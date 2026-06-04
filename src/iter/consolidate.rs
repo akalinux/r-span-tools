@@ -1,4 +1,4 @@
-mod checker;
+pub mod checker;
 
 use std::{
     marker::PhantomData,
@@ -8,7 +8,7 @@ use std::{
 use crate::utils::consolidate;
 use crate::{
     AnyIncDecCpCmp, CpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, NumberIncDecCpCmp,
-    RangeRelation, RiFactory, consolidate::checker::ConsolidateChecker,
+    RangeRelation, RiFactory, iter::consolidate::checker::ConsolidateChecker,
 };
 
 /// Represents the consolidation order.

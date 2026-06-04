@@ -8,6 +8,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::RangeInclusive;
 use std::ops::{Add, RangeBounds, Sub};
+pub mod consolidate;
 
 pub struct OverlapIter<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> {
     src: Vec<R>,

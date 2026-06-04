@@ -5,11 +5,11 @@ use std::ops::{Bound, RangeBounds, RangeInclusive};
 
 // re-export to be nice!
 pub use crate::builder::*;
-pub use crate::consolidate::*;
+pub use crate::iter::consolidate::checker::*;
+pub use crate::iter::consolidate::*;
 pub use crate::iter::*;
 pub use crate::utils::*;
 pub mod builder;
-pub mod consolidate;
 pub mod iter;
 pub mod utils;
 
