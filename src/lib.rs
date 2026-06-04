@@ -5,9 +5,11 @@ use std::ops::{Bound, RangeBounds, RangeInclusive};
 
 // re-export to be nice!
 pub use crate::builder::*;
+pub use crate::consolidate::*;
 pub use crate::iter::*;
 pub use crate::utils::*;
 pub mod builder;
+pub mod consolidate;
 pub mod iter;
 pub mod utils;
 
@@ -45,21 +47,23 @@ pub struct MrsP<'r, T, R: GetBeginEnd<T>> {
 
 /// This struct acts as an owned wrapper for the [Option::Some] produced by the [Consolidate] Iterator,
 /// which then acts as a normal instance of [GetBeginEnd].
-pub struct ConsolidateMrsP<T, R>
+pub struct ConsolidateMrsP<T, R, S>
 where
     R: GetBeginEnd<T>,
+    S: GetBeginEnd<T>,
 {
     r: R,
-    src: Vec<(usize, R)>,
+    src: Vec<(usize, S)>,
     _t: PhantomData<T>,
 }
 
-impl<T, R> ConsolidateMrsP<T, R>
+impl<T, R, S> ConsolidateMrsP<T, R, S>
 where
     R: GetBeginEnd<T>,
+    S: GetBeginEnd<T>,
 {
     /// Wwraps the data set and makes it operate as if it is the instance src.0.
-    pub fn new(src: (R, Vec<(usize, R)>)) -> Self {
+    pub fn new(src: (R, Vec<(usize, S)>)) -> Self {
         Self {
             r: src.0,
             src: src.1,
@@ -68,17 +72,17 @@ where
     }
 
     /// Converts back to the orignal data set used to create this instance.
-    pub fn as_src(self) -> (R, Vec<(usize, R)>) {
+    pub fn as_src(self) -> (R, Vec<(usize, S)>) {
         return (self.r, self.src);
     }
 
     /// Returns a ref to the internal data set.
-    pub fn src(&self) -> &Vec<(usize, R)> {
+    pub fn src(&self) -> &Vec<(usize, S)> {
         return &self.src;
     }
 }
 
-impl<T, R: GetBeginEnd<T>> GetBeginEnd<T> for ConsolidateMrsP<T, R> {
+impl<T, R: GetBeginEnd<T>, S: GetBeginEnd<T>> GetBeginEnd<T> for ConsolidateMrsP<T, R, S> {
     /// Wrapper for internal [Mrs] instance.
     fn get_begin(&self) -> &T {
         return self.r.get_begin();
@@ -96,7 +100,7 @@ impl<T, R: GetBeginEnd<T>> GetBeginEnd<T> for ConsolidateMrsP<T, R> {
     }
 }
 
-impl<T, R: GetBeginEnd<T>> RangeBounds<T> for ConsolidateMrsP<T, R> {
+impl<T, R: GetBeginEnd<T>, S: GetBeginEnd<T>> RangeBounds<T> for ConsolidateMrsP<T, R, S> {
     /// Wraps the return value from self.get_begin() in a [std::ops::Bound::Included].
     fn start_bound(&self) -> Bound<&T> {
         return Bound::Included(&self.get_begin());

@@ -427,12 +427,18 @@ pub fn previous_range_begin_end<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
     return None;
 }
 
-pub fn auto_range<T, R: GetBeginEnd<T>, C: CpCmp<T>, F: GetBeginEndOption<T, R>>(
+pub fn auto_range<
+    T,
+    R: GetBeginEnd<T>,
+    S: GetBeginEnd<T>,
+    C: CpCmp<T>,
+    F: GetBeginEndOption<T, S>,
+>(
     i: usize,
     r: R,
     t: &C,
     f: &F,
-) -> Option<(R, Vec<(usize, R)>)> {
+) -> Option<(S, Vec<(usize, R)>)> {
     let a = t.cp(r.get_begin());
     let b = t.cp(r.get_end());
     match f.factory(Some((a, b))) {
@@ -441,12 +447,19 @@ pub fn auto_range<T, R: GetBeginEnd<T>, C: CpCmp<T>, F: GetBeginEndOption<T, R>>
     }
 }
 
-pub fn grow<T, R: GetBeginEnd<T>, C: CpCmp<T>, F: GetBeginEndOption<T, R>>(
+pub fn grow<
+    T,
+    Q: GetBeginEnd<T>,
+    R: GetBeginEnd<T>,
+    S: GetBeginEnd<T>,
+    C: CpCmp<T>,
+    F: GetBeginEndOption<T, Q>,
+>(
     x: &R,
-    y: &R,
+    y: &S,
     t: &C,
     f: &F,
-) -> Option<R> {
+) -> Option<Q> {
     let a;
     if t.lt(x.get_begin(), y.get_begin()) {
         a = t.cp(x.get_begin())
@@ -462,17 +475,18 @@ pub fn grow<T, R: GetBeginEnd<T>, C: CpCmp<T>, F: GetBeginEndOption<T, R>>(
 pub fn consolidate<
     T,
     R: GetBeginEnd<T>,
+    S: GetBeginEnd<T>,
     C: CpCmp<T>,
     F: GetBeginEndOption<T, R>,
-    I: Iterator<Item = R>,
+    I: Iterator<Item = S>,
 >(
-    last: &mut Option<(R, Vec<(usize, R)>)>,
+    last: &mut Option<(R, Vec<(usize, S)>)>,
     iter: &mut I,
     t: &C,
     f: &F,
     offset: usize,
-) -> (usize, Option<RangeRelation<(R, Vec<(usize, R)>)>>) {
-    let mut next: Option<RangeRelation<(R, Vec<(usize, R)>)>> = None;
+) -> (usize, Option<RangeRelation<(R, Vec<(usize, S)>)>>) {
+    let mut next: Option<RangeRelation<(R, Vec<(usize, S)>)>> = None;
     let mut idx = offset;
     for range in iter {
         if t.is_invalid_set(range.get_begin(), range.get_end()) {
