@@ -5,6 +5,7 @@ use std::ops::{Bound, RangeBounds, RangeInclusive};
 
 // re-export to be nice!
 pub use crate::builder::*;
+pub use crate::iter::consolidate::checker::column::columns::*;
 pub use crate::iter::consolidate::checker::column::*;
 pub use crate::iter::consolidate::checker::*;
 pub use crate::iter::consolidate::*;

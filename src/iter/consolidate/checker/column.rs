@@ -1,4 +1,5 @@
 use std::{cell::RefCell, marker::PhantomData, rc::Rc};
+pub mod columns;
 
 use crate::{
     ConsolidateChecker, ConsolidateMrsP, CpCmp, GetBeginEnd, GetBeginEndOption, IncDecCpCmp,
@@ -173,11 +174,11 @@ impl<
                     match isec.add_from_tuple_ref(c.as_ref().to_tuple_ref()) {
                         Some((idx, _)) => {
                             col = Ok(idx);
-                            return Ok(Self::builder(col, checker, rows));
+                            return Ok(Self::builder((col, checker, rows)));
                         }
                         None => {
                             col = Err("Failed to add column from: checker");
-                            return Err(Self::builder(col, checker, rows));
+                            return Err(Self::builder((col, checker, rows)));
                         }
                     }
                 }
@@ -189,24 +190,26 @@ impl<
                         src,
                         _t: PhantomData,
                     }));
-                    return Err(Self::builder(col, checker, rows));
+                    return Err(Self::builder((col, checker, rows)));
                 }
             }
         } else {
-            return Err(Self::builder(col, checker, rows));
+            return Err(Self::builder((col, checker, rows)));
         }
     }
 
     /// This method alllows construction of a new instance of [Column] bypassing the operations performed by new.
     pub fn builder(
-        col: Result<usize, &'static str>,
-        checker: ConsolidateChecker<T, R, S, F, I, C>,
-        rows: Vec<Rc<ConsolidateMrsP<T, R, S>>>,
+        inner: (
+            Result<usize, &'static str>,
+            ConsolidateChecker<T, R, S, F, I, C>,
+            Vec<Rc<ConsolidateMrsP<T, R, S>>>,
+        ),
     ) -> Self {
         return Self {
-            col,
-            checker: RefCell::new(checker),
-            rows: RefCell::new(rows),
+            col: inner.0,
+            checker: RefCell::new(inner.1),
+            rows: RefCell::new(inner.2),
         };
     }
 }

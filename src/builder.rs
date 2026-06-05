@@ -436,10 +436,12 @@ pub trait GetBeginEndOption<T, R: GetBeginEnd<T>> {
     fn new_range(&self, src: (T, T)) -> R;
 }
 
+#[derive(Copy, Clone)]
 pub struct MrsFactory<T> {
     _t: PhantomData<T>,
 }
 
+#[derive(Copy, Clone)]
 pub struct RiFactory<T> {
     _t: PhantomData<T>,
 }
