@@ -490,42 +490,43 @@ pub fn consolidate<
     iter: &mut I,
     t: &C,
     f: &F,
-    offset: usize,
+    mut offset: usize,
 ) -> (usize, Option<RangeRelation<(R, Vec<(usize, S)>)>>) {
-    let mut idx = offset;
+    // this value will become our next offset when we are called again!
     for range in iter {
         let mut ar = (
             f.new_range(t.cp_tpl_ref(range.to_tuple_ref())),
-            vec![(idx, range)],
+            vec![(offset, range)],
         );
-        idx += 1;
+
+        offset += 1;
+
         let nv = mem::replace(last, None);
         if let Some((src, mut list)) = nv {
-            if t.is_invalid_set(src.get_begin(), src.get_end()) {
-                // Right hand side check of range_relation(a,b)
-                *last = Some((ar.0, ar.1));
-                return (idx, Some(RangeRelation::Invalid((src, list))));
-            } else {
-                match range_relation(&src, &ar.0, t) {
-                    RangeRelation::Overlap(_) => {
-                        let nr = grow(&src, &ar.0, t, f);
-                        list.append(&mut ar.1);
+            match range_relation(&src, &ar.0, t) {
+                RangeRelation::Overlap(_) => {
+                    let nr = grow(&src, &ar.0, t, f);
+                    list.append(&mut ar.1);
+                    if t.is_invalid_set(nr.get_begin(), nr.get_end()) {
+                        *last = None;
+                        return (offset, Some(RangeRelation::Invalid((nr, list))));
+                    } else {
                         *last = Some((nr, list));
                     }
-                    RangeRelation::Before(_) => {
-                        *last = Some(ar);
-                        return (idx, Some(RangeRelation::Before((src, list))));
-                    }
-                    RangeRelation::After(_) => {
-                        *last = Some(ar);
-                        return (idx, Some(RangeRelation::After((src, list))));
-                    }
-                    RangeRelation::Invalid(_) => {
-                        *last = Some(ar);
-                        return (idx, Some(RangeRelation::Invalid((src, list))));
-                    }
-                    _ => {}
                 }
+                RangeRelation::Before(_) => {
+                    *last = Some(ar);
+                    return (offset, Some(RangeRelation::Before((src, list))));
+                }
+                RangeRelation::After(_) => {
+                    *last = Some(ar);
+                    return (offset, Some(RangeRelation::After((src, list))));
+                }
+                RangeRelation::Invalid(_) => {
+                    *last = Some(ar);
+                    return (offset, Some(RangeRelation::Invalid((src, list))));
+                }
+                _ => {}
             }
         } else {
             *last = Some(ar);
@@ -533,7 +534,7 @@ pub fn consolidate<
     }
     if last.is_some() {
         let res = mem::replace(last, None);
-        return (idx, Some(RangeRelation::Last(res.unwrap())));
+        return (offset, Some(RangeRelation::Last(res.unwrap())));
     }
-    return (idx, None);
+    return (offset, None);
 }
