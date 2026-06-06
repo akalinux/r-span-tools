@@ -516,14 +516,18 @@ fn column_tests_positive() {
 
 #[test]
 fn columns_any_constructor() {
-    let any = AnyIncDecCpCmp::new(1, 10);
-    let cols = Columns::any(ConsolidationOrder::Forward, any, 1, 1);
     assert!(
-        cols.add_column(vec![Mrs::new(1, 2), Mrs::new(1, 1), Mrs::new(3, 3)].into_iter())
+        Columns::any(ConsolidationOrder::Forward, AnyIncDecCpCmp::new(1, 3), 1, 1)
+            .add_column(vec![Mrs::new(1, 2), Mrs::new(1, 1), Mrs::new(3, 3)].into_iter())
             .is_ok()
     );
     assert!(
-        Columns::any(ConsolidationOrder::Reverse, AnyIncDecCpCmp::new(1, 1), 1, 1)
+        Columns::any(ConsolidationOrder::Forward, AnyIncDecCpCmp::new(1, 1), 1, 1)
+            .add_column(vec![Mrs::new(1, 2), Mrs::new(1, 1), Mrs::new(3, 3)].into_iter())
+            .is_err()
+    );
+    assert!(
+        Columns::any(ConsolidationOrder::Reverse, AnyIncDecCpCmp::new(0, 9), 1, 1)
             .add_column(vec![Mrs::new(1, 2), Mrs::new(1, 1), Mrs::new(3, 3)].into_iter())
             .is_err()
     );
