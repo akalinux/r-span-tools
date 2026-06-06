@@ -3,7 +3,7 @@ pub mod columns;
 
 use crate::{
     ConsolidateChecker, ConsolidateMrsP, CpCmp, GetBeginEnd, GetBeginEndOption, IncDecCpCmp,
-    Intersector, OverlapIter, range_relation,
+    Intersector, OverlapIter,
 };
 
 pub struct Column<
@@ -42,21 +42,31 @@ impl<
             Ok(idx) => col = idx.clone(),
         }
 
+        let mut results = Vec::new();
         let rows = self.rows.replace(Vec::new());
         let mut next = self.rows.borrow_mut();
-        let checker = self.checker.borrow();
-        let order = checker.get_order();
-        let cmp = checker.get_cmp();
-        let mut results = Vec::new();
-        for r in rows {
-            let rel = range_relation(r.as_ref(), pos, cmp);
-            if order.wants_next(&rel) {
-                results.push(Rc::clone(&r));
-                next.push(r);
-            } else {
-                // we are beyond the current intersection!
-                next.push(r);
-                return Ok(results);
+        let order;
+        {
+            let checker = self.checker.borrow();
+            order = checker.get_order();
+            let cmp = checker.get_cmp();
+            for r in rows {
+                let (add, done) = order.check_position(r.as_ref(), pos, cmp);
+                if add {
+                    results.push(Rc::clone(&r));
+                    next.push(r);
+                    if done {
+                        return Ok(results);
+                    }
+                } else if done {
+                    next.push(r);
+                    // we are beyond the current intersection!
+                    if let Err(e) = self.process_results(pos, col, iter, &results, &*next) {
+                        self.col = Err(e);
+                        return Err(e);
+                    }
+                    return Ok(results);
+                }
             }
         }
 
@@ -86,16 +96,26 @@ impl<
                     }
                     Ok(r) => {
                         // if we got here, then we didn't get an error
-                        let rel = range_relation(&r, pos, cmp);
+                        let (add, done) =
+                            order.check_position(&r, pos, self.checker.borrow().get_cmp());
                         let r = Rc::new(r);
 
-                        if order.wants_next(&rel) {
+                        if add {
                             results.push(Rc::clone(&r));
                             next.push(r);
-                        } else {
+                            if done {
+                                if let Err(e) =
+                                    self.process_results(pos, col, iter, &results, &*next)
+                                {
+                                    self.col = Err(e);
+                                    return Err(e);
+                                }
+                                return Ok(results);
+                            }
+                        } else if done {
                             next.push(r);
-
-                            if let Err(e) = self.process_results(col, iter, &results) {
+                            // we are beyond the current intersection!
+                            if let Err(e) = self.process_results(pos, col, iter, &results, &*next) {
                                 self.col = Err(e);
                                 return Err(e);
                             }
@@ -106,7 +126,7 @@ impl<
             } else {
                 // No more results!
 
-                if let Err(e) = self.process_results(col, iter, &results) {
+                if let Err(e) = self.process_results(pos, col, iter, &results, &*next) {
                     self.col = Err(e);
                     return Err(e);
                 }
@@ -117,18 +137,49 @@ impl<
 
     fn process_results<V, Q: GetBeginEnd<T>, X: GetBeginEndOption<T, Q>>(
         &self,
+        pos: &Q,
         col: usize,
         iter: &mut OverlapIter<T, V, C, Q, X>,
         results: &Vec<Rc<ConsolidateMrsP<T, R, S>>>,
+        rows: &Vec<Rc<ConsolidateMrsP<T, R, S>>>,
     ) -> Result<(), &'static str>
     where
         C: IncDecCpCmp<T, V>,
     {
+        let checker = &*self.checker.borrow();
+        let t = checker.get_cmp();
+        let order = &checker.order;
         if let Some(r) = results.last() {
+            let last = r.as_ref();
+
+            if order.is_beyond(last, pos, t) {
+                if let Some(r) = iter.copy_range(last) {
+                    if let Err(e) = iter.update_column(col, r, order) {
+                        return Err(e);
+                    }
+                } else {
+                    return Err("iterator failed to copy range");
+                }
+            } else if let Some(r) = rows.last()
+                && order.is_beyond(r.as_ref(), pos, t)
+            {
+                if let Some(r) = iter.copy_range(r.as_ref()) {
+                    if let Err(e) = iter.update_column(col, r, order) {
+                        return Err(e);
+                    }
+                } else {
+                    return Err("iterator failed to copy range");
+                }
+            }
+        } else if let Some(r) = rows.last()
+            && order.is_beyond(r.as_ref(), pos, t)
+        {
             if let Some(r) = iter.copy_range(r.as_ref()) {
-                if let Err(e) = iter.update_column(col, r) {
+                if let Err(e) = iter.update_column(col, r, order) {
                     return Err(e);
                 }
+            } else {
+                return Err("iterator failed to copy range");
             }
         }
         return Ok(());

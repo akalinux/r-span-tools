@@ -5,11 +5,11 @@ use std::{
     ops::{Add, RangeInclusive, Sub},
 };
 
-use crate::utils::consolidate;
 use crate::{
     AnyIncDecCpCmp, CpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, NumberIncDecCpCmp,
     RangeRelation, RiFactory, iter::consolidate::checker::ConsolidateChecker,
 };
+use crate::{range_relation, utils::consolidate};
 
 /// Represents the consolidation order.
 #[derive(Clone, Copy)]
@@ -69,6 +69,46 @@ impl ConsolidationOrder {
                 Self::Forward => return true,
                 Self::Reverse => return false,
             },
+        }
+    }
+
+    pub fn check_position<T>(
+        &self,
+        a: &impl GetBeginEnd<T>,
+        b: &impl GetBeginEnd<T>,
+        t: &impl CpCmp<T>,
+    ) -> (bool, bool) {
+        let r = range_relation(a, b, t);
+        match r {
+            RangeRelation::Invalid(_) => (false, false),
+            RangeRelation::Last(_) => (true, true),
+            RangeRelation::Overlap(_) => match self {
+                ConsolidationOrder::Forward => (true, t.lt(b.get_end(), a.get_end())),
+                ConsolidationOrder::Reverse => (true, t.lt(a.get_begin(), b.get_begin())),
+            },
+            RangeRelation::After(_) => match self {
+                Self::Forward => return (false, true),
+                Self::Reverse => return (false, false),
+            },
+            RangeRelation::Before(_) => match self {
+                Self::Forward => return (false, false),
+                Self::Reverse => return (false, true),
+            },
+        }
+    }
+
+    /// Returns true if the final directional boundry of a is beyond b.
+    ///  - Given, [ConsolidationOrder::Forward] a.get_end() must be gt b.get_end() to return true.
+    ///  - Given, [ConsolidationOrder::Reverse] a.get_begin() must be lt b.get_begin() to return true.
+    pub fn is_beyond<T>(
+        &self,
+        a: &impl GetBeginEnd<T>,
+        b: &impl GetBeginEnd<T>,
+        t: &impl CpCmp<T>,
+    ) -> bool {
+        match self {
+            Self::Forward => t.lt(b.get_end(), a.get_end()),
+            Self::Reverse => t.lt(a.get_begin(), b.get_begin()),
         }
     }
 }

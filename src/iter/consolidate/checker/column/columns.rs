@@ -26,8 +26,8 @@ pub struct Columns<
     order: ConsolidationOrder,
 }
 
-impl<T: Copy + Clone + PartialOrd, I: Iterator<Item = RangeInclusive<T>>>
-    Columns<T, T, I, RangeInclusive<T>, RangeInclusive<T>, NumberIncDecCpCmp<T>, RiFactory<T>>
+impl<S: GetBeginEnd<T>, T: Copy + Clone + PartialOrd, I: Iterator<Item = S>>
+    Columns<T, T, I, RangeInclusive<T>, S, NumberIncDecCpCmp<T>, RiFactory<T>>
 where
     NumberIncDecCpCmp<T>: DefaultValues<T, T>,
 {
@@ -39,19 +39,15 @@ where
 
     pub fn num_defaults() -> Self {
         let cmp = NumberIncDecCpCmp::defaults();
+        let step = cmp.default_step();
+        let rebound = cmp.default_rebound();
         let factory = RiFactory::new();
-        return Self::new(
-            ConsolidationOrder::Forward,
-            cmp,
-            factory,
-            cmp.default_step(),
-            cmp.default_rebound(),
-        );
+        return Self::new(ConsolidationOrder::Forward, cmp, factory, step, rebound);
     }
 }
 
-impl<T, V, I: Iterator<Item = RangeInclusive<T>>>
-    Columns<T, V, I, RangeInclusive<T>, RangeInclusive<T>, AnyIncDecCpCmp<T>, RiFactory<T>>
+impl<S: GetBeginEnd<T>, T, V, I: Iterator<Item = S>>
+    Columns<T, V, I, RangeInclusive<T>, S, AnyIncDecCpCmp<T>, RiFactory<T>>
 where
     V: Copy,
     T: PartialOrd + Copy + Add<V, Output = T> + Sub<V, Output = T>,
@@ -126,6 +122,7 @@ impl<
 
     fn into_iter(self) -> Self::IntoIter {
         return ColumnsIter {
+            order: self.order,
             iter: RefCell::new(self.isec.into_inner().into_iter()),
             cols: self.columns.into_inner(),
         };
@@ -142,6 +139,7 @@ pub struct ColumnsIter<
 > {
     iter: RefCell<OverlapIter<T, V, C, RangeInclusive<T>, RiFactory<T>>>,
     cols: Vec<Column<T, R, S, F, I, C>>,
+    order: ConsolidationOrder,
 }
 
 impl<
@@ -160,8 +158,13 @@ impl<
     );
 
     fn next(&mut self) -> Option<Self::Item> {
+        let next;
         let iter = &mut *self.iter.borrow_mut();
-        if let Some(r) = iter.next() {
+        match &self.order {
+            ConsolidationOrder::Forward => next = iter.next(),
+            ConsolidationOrder::Reverse => next = iter.next_back(),
+        }
+        if let Some(r) = next {
             let mut cols = Vec::new();
 
             for col in &mut self.cols {

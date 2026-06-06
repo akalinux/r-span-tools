@@ -1,6 +1,6 @@
 use crate::{
-    AnyIncDecCpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, IncDecCpCmp, MrsP,
-    NumberIncDecCpCmp, RangeRelation, RiFactory, first_range_begin_end, last_range_begin_end,
+    AnyIncDecCpCmp, ConsolidationOrder, DefaultValues, GetBeginEnd, GetBeginEndOption, IncDecCpCmp,
+    MrsP, NumberIncDecCpCmp, RangeRelation, RiFactory, first_range_begin_end, last_range_begin_end,
     next_range_begin_end, previous_range_begin_end, range_bounds_to_values, range_relation,
 };
 
@@ -16,6 +16,8 @@ pub struct OverlapIter<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBegi
     cmp: C,
     next: Option<R>,
     back: Option<R>,
+    last_next: Option<R>,
+    last_back: Option<R>,
     factory: F,
     _marker: PhantomData<T>,
 }
@@ -33,6 +35,8 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
             cmp,
             next,
             back,
+            last_next: None,
+            last_back: None,
             factory,
             _marker: PhantomData,
         }
@@ -48,25 +52,75 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
 
     /// Updates the internal column to the new [GetBeginEnd] instance.
     /// Returns [Result::Err]f the range is invalid or if the index point does not exist.
-    pub fn update_column(&mut self, idx: usize, range: R) -> Result<(), &'static str> {
+    pub fn update_column(
+        &mut self,
+        idx: usize,
+        range: R,
+        order: &ConsolidationOrder,
+    ) -> Result<(), &'static str> {
         if let Some(col) = self.src.get_mut(idx) {
+            let t = &self.cmp;
             if self.cmp.is_invalid_set(range.get_begin(), range.get_end()) {
                 return Err("Invalid Range");
             }
             *col = range;
+            // I suppose we are rewinding time here??
+            match order {
+                ConsolidationOrder::Forward => {
+                    self.last_back = None;
+                    if let Some(back) = &self.back {
+                        if order.is_beyond(col, back, t) {
+                            self.back = Some(
+                                self.factory
+                                    .new_range((t.cp(col.get_begin()), t.cp(col.get_end()))),
+                            )
+                        }
+                    } else {
+                        self.back = Some(
+                            self.factory
+                                .new_range((t.cp(col.get_begin()), t.cp(col.get_end()))),
+                        )
+                    }
+
+                    if self.next.is_none() {
+                        if let Some(next) = self.try_next(&self.last_next) {
+                            self.last_next = None;
+                            self.next = Some(next);
+                        }
+                    }
+                }
+                ConsolidationOrder::Reverse => {
+                    if let Some(next) = &self.next {
+                        if order.is_beyond(col, next, t) {
+                            self.last_next = None;
+                            self.next = Some(
+                                self.factory
+                                    .new_range((t.cp(col.get_begin()), t.cp(col.get_end()))),
+                            )
+                        }
+                    } else {
+                        self.next = Some(
+                            self.factory
+                                .new_range((t.cp(col.get_begin()), t.cp(col.get_end()))),
+                        )
+                    }
+
+                    if self.back.is_none() {
+                        if let Some(back) = self.try_next_back(&self.last_back) {
+                            self.last_back = None;
+                            self.back = Some(back);
+                        }
+                    }
+                }
+            }
             return Ok(());
         }
         return Err("No such Column");
     }
-}
 
-impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> Iterator
-    for OverlapIter<T, V, C, R, F>
-{
-    type Item = R;
-    fn next(&mut self) -> Option<Self::Item> {
+    fn try_next(&self, src: &Option<R>) -> Option<R> {
         let mut next = None;
-        if let Some(n) = &self.next {
+        if let Some(n) = src {
             match &self.back {
                 Some(b) => match range_relation(n, b, &self.cmp) {
                     RangeRelation::Overlap(_) => {
@@ -99,16 +153,12 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> 
                 None => (),
             }
         }
-        return mem::replace(&mut self.next, next);
+        return next;
     }
-}
 
-impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> DoubleEndedIterator
-    for OverlapIter<T, V, C, R, F>
-{
-    fn next_back(&mut self) -> Option<Self::Item> {
+    fn try_next_back(&self, src: &Option<R>) -> Option<R> {
         let mut back = None;
-        if let Some(b) = &self.back
+        if let Some(b) = src
             && let Some(n) = &self.next
         {
             match range_relation(b, n, &self.cmp) {
@@ -139,6 +189,31 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> 
                 }
                 _ => return None,
             }
+        }
+        return back;
+    }
+}
+
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> Iterator
+    for OverlapIter<T, V, C, R, F>
+{
+    type Item = R;
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = self.try_next(&self.next);
+        if let Some(next) = &self.next {
+            self.last_next = self.copy_range(next);
+        }
+        return mem::replace(&mut self.next, next);
+    }
+}
+
+impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> DoubleEndedIterator
+    for OverlapIter<T, V, C, R, F>
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let back = self.try_next_back(&self.back);
+        if let Some(back) = &self.back {
+            self.last_back = self.copy_range(back);
         }
         return mem::replace(&mut self.back, back);
     }
