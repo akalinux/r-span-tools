@@ -314,26 +314,28 @@ mod util_tests {
     fn relations_test() {
         let t = NumberIncDecCpCmp::defaults();
         // Compare Range Positional relationships
-        assert!(matches!(
+        matches!(
             range_relation(&Mrs::new(1, 2), &Mrs::new(1, 2), &t),
             RangeRelation::Overlap(())
-        )); // a and b overlap
-        assert!(matches!(
+        ); // a and b overlap
+        matches!(
             range_relation(&Mrs::new(1, 1), &Mrs::new(1, 2), &t),
             RangeRelation::Overlap(())
-        )); // a and b overlap
-        assert!(matches!(
+        ); // a and b overlap
+        matches!(
             range_relation(&Mrs::new(2, 2), &Mrs::new(1, 2), &t),
             RangeRelation::Overlap(())
-        )); // a and b overlap
-        assert!(matches!(
+        ); // a and b overlap
+        matches!(
             range_relation(&Mrs::new(0, 0), &Mrs::new(1, 2), &t),
             RangeRelation::Before(())
-        )); // a is before b
-        assert!(matches!(
+        ); // a is before b
+        matches!(
             range_relation(&Mrs::new(3, 4), &Mrs::new(1, 2), &t),
             RangeRelation::After(())
-        )); // a is after b
+        ); // a is after b
+
+        matches!(RangeRelation::Invalid(()).invalid(), ());
     }
 
     pub fn known_bad_mrs() -> Vec<Mrs<i32>> {

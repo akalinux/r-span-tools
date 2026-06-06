@@ -6,8 +6,8 @@ use std::{
 
 use crate::{
     AnyIncDecCpCmp, Column, Consolidate, ConsolidateChecker, ConsolidateMrsP, ConsolidationOrder,
-    DefaultValues, GetBeginEnd, GetBeginEndOption, IncDecCpCmp, Intersector, NumberIncDecCpCmp,
-    OverlapIter, RiFactory,
+    CpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, IncDecCpCmp, Intersector,
+    NumberIncDecCpCmp, OverlapIter, RiFactory,
 };
 
 pub struct Columns<
@@ -39,10 +39,13 @@ where
 
     pub fn num_defaults() -> Self {
         let cmp = NumberIncDecCpCmp::defaults();
-        let step = cmp.default_step();
-        let rebound = cmp.default_rebound();
-        let factory = RiFactory::new();
-        return Self::new(ConsolidationOrder::Forward, cmp, factory, step, rebound);
+        return Self::num(
+            ConsolidationOrder::Forward,
+            cmp.default_step(),
+            cmp.default_step(),
+            cmp.min(),
+            cmp.max(),
+        );
     }
 }
 

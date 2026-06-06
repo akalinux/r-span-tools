@@ -3,8 +3,8 @@
 use std::ops::RangeInclusive;
 
 use common_range_tools::{
-    Column, Columns, Consolidate, ConsolidateChecker, ConsolidationOrder, GetBeginEnd, Intersector,
-    Mrs, MrsFactory, NumberIncDecCpCmp, RangeRelation, RiFactory,
+    AnyIncDecCpCmp, Column, Columns, Consolidate, ConsolidateChecker, ConsolidationOrder,
+    GetBeginEnd, Intersector, Mrs, MrsFactory, NumberIncDecCpCmp, RangeRelation, RiFactory,
 };
 
 use crate::iter_tests::mrs_set;
@@ -451,10 +451,26 @@ fn colums_forward_num_defaults() {
         }
         Err(msg) => panic!("Did not expect error, got: {}", msg),
     }
+
+    match &src[1] {
+        Ok(rows) => {
+            let con = rows[0].as_ref();
+            assert_eq!(con.to_tuple_ref(), (&2, &3));
+            assert_eq!(rows.len(), 1);
+            let src = con.src();
+            assert_eq!(src.len(), 2);
+            assert_eq!(src[0].0, 0);
+            assert_eq!(src[0].1.to_tuple_ref(), (&2, &3));
+            assert_eq!(src[1].0, 1);
+            assert_eq!(src[1].1.to_tuple_ref(), (&2, &2));
+        }
+        Err(msg) => panic!("Did not expect error, got: {}", msg),
+    }
+    assert!(iter.next().is_none());
 }
 
 #[test]
-fn column_tests() {
+fn column_tests_positive() {
     let t = NumberIncDecCpCmp::defaults();
     let con = Consolidate::new(
         vec![Mrs::new(1, 2), Mrs::new(1, 1), Mrs::new(3, 3)].into_iter(),
@@ -496,6 +512,21 @@ fn column_tests() {
     assert!(!col.in_err());
     let inner = col.to_inner();
     assert!(inner.0.is_ok());
+}
+
+#[test]
+fn columns_any_constructor() {
+    let any = AnyIncDecCpCmp::new(1, 10);
+    let cols = Columns::any(ConsolidationOrder::Forward, any, 1, 1);
+    assert!(
+        cols.add_column(vec![Mrs::new(1, 2), Mrs::new(1, 1), Mrs::new(3, 3)].into_iter())
+            .is_ok()
+    );
+    assert!(
+        Columns::any(ConsolidationOrder::Reverse, AnyIncDecCpCmp::new(1, 1), 1, 1)
+            .add_column(vec![Mrs::new(1, 2), Mrs::new(1, 1), Mrs::new(3, 3)].into_iter())
+            .is_err()
+    );
 }
 
 #[test]
