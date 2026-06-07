@@ -47,6 +47,17 @@ where
             cmp.max(),
         );
     }
+
+    pub fn num_defaults_rev() -> Self {
+        let cmp = NumberIncDecCpCmp::defaults();
+        return Self::num(
+            ConsolidationOrder::Reverse,
+            cmp.default_step(),
+            cmp.default_step(),
+            cmp.min(),
+            cmp.max(),
+        );
+    }
 }
 
 impl<S: GetBeginEnd<T>, T, V, I: Iterator<Item = S>>

@@ -531,6 +531,17 @@ fn columns_any_constructor() {
             .add_column(vec![Mrs::new(1, 2), Mrs::new(1, 1), Mrs::new(3, 3)].into_iter())
             .is_err()
     );
+
+    let cols = Columns::any(ConsolidationOrder::Forward, AnyIncDecCpCmp::new(0, 9), 1, 1);
+    assert!(
+        cols.add_column(vec![Mrs::new(1, 2), Mrs::new(1, 1), Mrs::new(3, 3)].into_iter())
+            .is_ok()
+    );
+    assert!(
+        cols.add_column(vec![Mrs::new(-11, 2), Mrs::new(1, 1), Mrs::new(3, 3)].into_iter())
+            .is_err()
+    );
+    assert!(cols.add_column(vec![].into_iter()).is_err());
 }
 
 #[test]
@@ -573,4 +584,128 @@ fn check_position_reverse() {
         ConsolidationOrder::Reverse.check_position(&Mrs::new(0, 0), &Mrs::new(1, 2), &t),
         (false, true)
     );
+}
+
+#[test]
+fn consoldaite_with_gap() {
+    for (ia, ib, a, b) in [
+        (
+            vec![Mrs::new(3, 4), Mrs::new(5, 6)].into_iter(),
+            vec![Mrs::new(1, 2), Mrs::new(7, 8)].into_iter(),
+            0,
+            1,
+        ),
+        (
+            vec![Mrs::new(1, 2), Mrs::new(7, 8)].into_iter(),
+            vec![Mrs::new(3, 4), Mrs::new(5, 6)].into_iter(),
+            1,
+            0,
+        ),
+    ] {
+        let cols = Columns::num_defaults();
+        assert!(cols.add_column(ia).is_ok());
+        assert!(cols.add_column(ib).is_ok());
+        let mut iter = cols.into_iter();
+
+        let (mut range, mut cols) = iter.next().unwrap();
+        assert_eq!(range.to_tuple(), (1, 2));
+        assert_eq!(cols.len(), 2);
+        if let Ok(col) = &cols[a] {
+            assert_eq!(col.len(), 0);
+        }
+        if let Ok(col) = &cols[b] {
+            assert_eq!(col.len(), 1);
+            assert_eq!(col[0].as_ref().to_tuple_ref(), (&1, &2));
+        }
+        (range, cols) = iter.next().unwrap();
+        assert_eq!(range.to_tuple(), (3, 4));
+        if let Ok(col) = &cols[a] {
+            assert_eq!(col.len(), 1);
+            assert_eq!(col[0].as_ref().to_tuple_ref(), (&3, &4));
+        }
+        if let Ok(col) = &cols[b] {
+            assert_eq!(col.len(), 0);
+        }
+        (range, cols) = iter.next().unwrap();
+        assert_eq!(range.to_tuple(), (5, 6));
+        if let Ok(col) = &cols[a] {
+            assert_eq!(col.len(), 1);
+            assert_eq!(col[0].as_ref().to_tuple_ref(), (&5, &6));
+        }
+        if let Ok(col) = &cols[b] {
+            assert_eq!(col.len(), 0);
+        }
+        (range, cols) = iter.next().unwrap();
+        assert_eq!(range.to_tuple(), (7, 8));
+        if let Ok(col) = &cols[a] {
+            assert_eq!(col.len(), 0);
+        }
+        if let Ok(col) = &cols[b] {
+            assert_eq!(col.len(), 1);
+            assert_eq!(col[0].as_ref().to_tuple_ref(), (&7, &8));
+        }
+        assert!(iter.next().is_none());
+    }
+}
+
+#[test]
+fn num_defaults_columns_rev() {
+    for (ia, ib, a, b) in [
+        (
+            vec![Mrs::new(5, 6), Mrs::new(3, 4)].into_iter(),
+            vec![Mrs::new(7, 8), Mrs::new(1, 2)].into_iter(),
+            0,
+            1,
+        ),
+        (
+            vec![Mrs::new(7, 8), Mrs::new(1, 2)].into_iter(),
+            vec![Mrs::new(5, 6), Mrs::new(3, 4)].into_iter(),
+            1,
+            0,
+        ),
+    ] {
+        let cols = Columns::num_defaults_rev();
+        assert!(cols.add_column(ia).is_ok());
+        assert!(cols.add_column(ib).is_ok());
+        let mut iter = cols.into_iter();
+
+        let (mut range, mut cols) = iter.next().unwrap();
+        assert_eq!(range.to_tuple(), (7, 8));
+        assert_eq!(cols.len(), 2);
+        if let Ok(col) = &cols[a] {
+            assert_eq!(col.len(), 0);
+        }
+        if let Ok(col) = &cols[b] {
+            assert_eq!(col.len(), 1);
+            assert_eq!(col[0].as_ref().to_tuple_ref(), (&7, &8));
+        }
+        (range, cols) = iter.next().unwrap();
+        assert_eq!(range.to_tuple(), (5, 6));
+        if let Ok(col) = &cols[a] {
+            assert_eq!(col.len(), 1);
+            assert_eq!(col[0].as_ref().to_tuple_ref(), (&5, &6));
+        }
+        if let Ok(col) = &cols[b] {
+            assert_eq!(col.len(), 0);
+        }
+        (range, cols) = iter.next().unwrap();
+        assert_eq!(range.to_tuple(), (3, 4));
+        if let Ok(col) = &cols[a] {
+            assert_eq!(col.len(), 1);
+            assert_eq!(col[0].as_ref().to_tuple_ref(), (&3, &4));
+        }
+        if let Ok(col) = &cols[b] {
+            assert_eq!(col.len(), 0);
+        }
+        (range, cols) = iter.next().unwrap();
+        assert_eq!(range.to_tuple(), (1, 2));
+        if let Ok(col) = &cols[a] {
+            assert_eq!(col.len(), 0);
+        }
+        if let Ok(col) = &cols[b] {
+            assert_eq!(col.len(), 1);
+            assert_eq!(col[0].as_ref().to_tuple_ref(), (&1, &2));
+        }
+        assert!(iter.next().is_none());
+    }
 }

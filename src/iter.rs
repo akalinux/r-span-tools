@@ -58,64 +58,67 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
         range: R,
         order: &ConsolidationOrder,
     ) -> Result<(), &'static str> {
+        let t = &self.cmp;
         if let Some(col) = self.src.get_mut(idx) {
-            let t = &self.cmp;
             if self.cmp.is_invalid_set(range.get_begin(), range.get_end()) {
                 return Err("Invalid Range");
             }
             *col = range;
-            // I suppose we are rewinding time here??
-            match order {
-                ConsolidationOrder::Forward => {
-                    self.last_back = None;
-                    if let Some(back) = &self.back {
-                        if order.is_beyond(col, back, t) {
-                            self.back = Some(
-                                self.factory
-                                    .new_range((t.cp(col.get_begin()), t.cp(col.get_end()))),
-                            )
-                        }
-                    } else {
-                        self.back = Some(
-                            self.factory
-                                .new_range((t.cp(col.get_begin()), t.cp(col.get_end()))),
-                        )
+        } else {
+            return Err("No such Column");
+        }
+        let col = &self.src[idx];
+        // I suppose we are rewinding time here??
+        match order {
+            ConsolidationOrder::Forward => {
+                self.last_back = None;
+                if let Some(back) = &self.back {
+                    if order.is_beyond(col, back, t) {
+                        self.back = self.copy_range(col)
                     }
-
-                    if self.next.is_none() {
-                        if let Some(next) = self.try_next(&self.last_next) {
-                            self.last_next = None;
-                            self.next = Some(next);
-                        }
-                    }
+                } else {
+                    self.back = self.copy_range(col);
                 }
-                ConsolidationOrder::Reverse => {
-                    if let Some(next) = &self.next {
-                        if order.is_beyond(col, next, t) {
-                            self.last_next = None;
-                            self.next = Some(
-                                self.factory
-                                    .new_range((t.cp(col.get_begin()), t.cp(col.get_end()))),
-                            )
-                        }
-                    } else {
-                        self.next = Some(
-                            self.factory
-                                .new_range((t.cp(col.get_begin()), t.cp(col.get_end()))),
-                        )
-                    }
 
-                    if self.back.is_none() {
-                        if let Some(back) = self.try_next_back(&self.last_back) {
-                            self.last_back = None;
-                            self.back = Some(back);
-                        }
+                if let Some(next) = &self.next {
+                    if order.is_before(col, next, t) {
+                        self.next = self.try_next(&self.last_next);
+                    }
+                } else {
+                    if let Some(next) = self.try_next(&self.last_next) {
+                        self.next = Some(next);
                     }
                 }
             }
-            return Ok(());
+            ConsolidationOrder::Reverse => {
+                self.last_next = None;
+                if let Some(next) = &self.next {
+                    if order.is_beyond(col, next, t) {
+                        self.next = self.copy_range(col);
+                    }
+                } else {
+                    self.next = self.copy_range(col)
+                }
+
+                if self.back.is_none() {
+                    if let Some(back) = self.try_next_back(&self.last_back) {
+                        self.last_back = None;
+                        self.back = Some(back);
+                    }
+                }
+
+                if let Some(back) = &self.back {
+                    if order.is_before(col, back, t) {
+                        self.back = self.try_next_back(&self.last_back);
+                    }
+                } else {
+                    if let Some(back) = self.try_next_back(&self.last_back) {
+                        self.back = Some(back);
+                    }
+                }
+            }
         }
-        return Err("No such Column");
+        return Ok(());
     }
 
     fn try_next(&self, src: &Option<R>) -> Option<R> {

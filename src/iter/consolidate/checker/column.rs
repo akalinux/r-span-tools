@@ -60,11 +60,7 @@ impl<
                     }
                 } else if done {
                     next.push(r);
-                    // we are beyond the current intersection!
-                    if let Err(e) = self.process_results(pos, col, iter, &results, &*next) {
-                        self.col = Err(e);
-                        return Err(e);
-                    }
+
                     return Ok(results);
                 }
             }

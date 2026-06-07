@@ -111,6 +111,17 @@ impl ConsolidationOrder {
             Self::Reverse => t.lt(a.get_begin(), b.get_begin()),
         }
     }
+    pub fn is_before<T>(
+        &self,
+        a: &impl GetBeginEnd<T>,
+        b: &impl GetBeginEnd<T>,
+        t: &impl CpCmp<T>,
+    ) -> bool {
+        match self {
+            Self::Forward => t.lt(a.get_end(), b.get_end()),
+            Self::Reverse => t.lt(b.get_begin(), a.get_begin()),
+        }
+    }
 }
 
 pub struct Consolidate<
