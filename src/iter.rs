@@ -50,6 +50,24 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
         return self.factory.factory(Some((a, z)));
     }
 
+    pub fn potential_next(&self) -> (bool, Option<&R>) {
+        if let Some(next) = &self.next {
+            return (true, Some(next));
+        } else if let Some(next) = &self.last_next {
+            return (false, Some(next));
+        }
+        return (false, None);
+    }
+
+    pub fn potential_back(&self) -> (bool, Option<&R>) {
+        if let Some(back) = &self.back {
+            return (true, Some(back));
+        } else if let Some(back) = &self.last_back {
+            return (false, Some(back));
+        }
+        return (false, None);
+    }
+
     /// Updates the internal column to the new [GetBeginEnd] instance.
     /// Returns [Result::Err]f the range is invalid or if the index point does not exist.
     pub fn update_column(
@@ -82,7 +100,10 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
 
                 if let Some(next) = &self.next {
                     if order.is_before(col, next, t) {
+                        println!("trying column rewind");
                         self.next = self.try_next(&self.last_next);
+                    } else {
+                        println!("no need to rewind")
                     }
                 } else {
                     if let Some(next) = self.try_next(&self.last_next) {
@@ -121,7 +142,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
         return Ok(());
     }
 
-    fn try_next(&self, src: &Option<R>) -> Option<R> {
+    pub fn try_next(&self, src: &Option<R>) -> Option<R> {
         let mut next = None;
         if let Some(n) = src {
             match &self.back {
@@ -159,7 +180,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
         return next;
     }
 
-    fn try_next_back(&self, src: &Option<R>) -> Option<R> {
+    pub fn try_next_back(&self, src: &Option<R>) -> Option<R> {
         let mut back = None;
         if let Some(b) = src
             && let Some(n) = &self.next

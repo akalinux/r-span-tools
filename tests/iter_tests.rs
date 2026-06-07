@@ -709,3 +709,24 @@ fn num_defaults_columns_rev() {
         assert!(iter.next().is_none());
     }
 }
+
+#[test]
+fn sticky_columns_test() {
+    let cols = Columns::num_defaults();
+    assert!(cols.add_column(vec![Mrs::new(0, 3)].into_iter()).is_ok());
+    assert!(
+        cols.add_column(
+            vec![
+                Mrs::new(0, 0),
+                Mrs::new(1, 1),
+                Mrs::new(2, 2),
+                Mrs::new(3, 3),
+            ]
+            .into_iter()
+        )
+        .is_ok()
+    );
+    for (i, row) in cols.into_iter().enumerate() {
+        assert_eq!(row.0.to_tuple_ref(), (&i, &i));
+    }
+}

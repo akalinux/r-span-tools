@@ -55,6 +55,11 @@ mod util_tests {
         );
 
         matches!(first_range_begin_end(&mrs_set_a(), &t), Some((0, 1)));
+
+        matches!(
+            first_range_begin_end(&[Mrs::new(0, 7), Mrs::new(0, 0),], &t),
+            Some((0, 0))
+        );
     }
 
     fn mrs_known_bad() -> Vec<Mrs<i32>> {
