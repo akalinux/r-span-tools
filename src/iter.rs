@@ -50,22 +50,63 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
         return self.factory.factory(Some((a, z)));
     }
 
-    pub fn potential_next(&self) -> (bool, Option<&R>) {
-        if let Some(next) = &self.next {
-            return (true, Some(next));
-        } else if let Some(next) = &self.last_next {
-            return (false, Some(next));
+    /// Returns a ref to the last next and next, each wrapped in an Option.
+    pub fn nexts(&self) -> (Option<&R>, Option<&R>) {
+        let a;
+        let b;
+        match &self.last_back {
+            Some(next) => a = Some(next),
+            _ => a = None,
         }
-        return (false, None);
+        match &self.next {
+            Some(next) => b = Some(next),
+            _ => b = None,
+        }
+
+        return (a, b);
+    }
+    /// Returns a ref to the last back and back, each wrapped in an Option.
+    pub fn backs(&self) -> (Option<&R>, Option<&R>) {
+        let a;
+        let b;
+        match &self.last_back {
+            Some(back) => a = Some(back),
+            _ => a = None,
+        }
+        match &self.back {
+            Some(back) => b = Some(back),
+            _ => b = None,
+        }
+
+        return (a, b);
     }
 
-    pub fn potential_back(&self) -> (bool, Option<&R>) {
-        if let Some(back) = &self.back {
-            return (true, Some(back));
-        } else if let Some(back) = &self.last_back {
-            return (false, Some(back));
+    pub fn recompute_next(&mut self) -> Option<R> {
+        self.last_back = None;
+        self.back = self
+            .factory
+            .factory(last_range_begin_end(&self.src, &self.cmp));
+        let last_next = mem::replace(&mut self.last_next, None);
+        match last_next {
+            Some(x) => self.next = self.try_next(&Some(x)),
+            _ => return None,
         }
-        return (false, None);
+
+        return self.next();
+    }
+
+    pub fn recompute_back(&mut self) -> Option<R> {
+        self.last_next = None;
+        self.next = self
+            .factory
+            .factory(first_range_begin_end(&self.src, &self.cmp));
+        let last_back = mem::replace(&mut self.last_back, None);
+        match last_back {
+            Some(x) => self.back = self.try_next_back(&Some(x)),
+            _ => return None,
+        }
+
+        return self.next_back();
     }
 
     /// Updates the internal column to the new [GetBeginEnd] instance.
