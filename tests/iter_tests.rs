@@ -486,9 +486,8 @@ fn column_tests_positive() {
     let mut iter = isec.into_iter();
     let mut pos = iter.next().unwrap();
     assert_eq!(pos.to_tuple_ref(), (&1, &2));
-    let mut row_res = col.update_column(&pos, &mut iter);
-    assert!(row_res.is_ok());
-    let mut row = unsafe { row_res.unwrap_unchecked() };
+    assert!(!col.update_column(&pos, &mut iter, false));
+    let mut row = unsafe { col.filter_column(&pos).unwrap_unchecked() };
     assert_eq!(row.len(), 1);
     assert_eq!(row[0].as_ref().to_tuple_ref(), (&1, &2));
     assert_eq!(row[0].src().len(), 2);
@@ -497,12 +496,14 @@ fn column_tests_positive() {
 
     assert_eq!(row[0].src()[0].1.to_tuple_ref(), (&1, &2));
     assert_eq!(row[0].src()[1].1.to_tuple_ref(), (&1, &1));
-    pos = iter.next().unwrap();
+    assert!(iter.next().is_none());
+    pos = iter.ln().1.unwrap();
+    assert_eq!(pos.to_tuple_ref(), (&1, &2));
+
+    assert!(col.update_column(&pos, &mut iter, true));
+    pos = iter.recompute_next().unwrap();
     assert_eq!(pos.to_tuple_ref(), (&3, &3));
-    println!("  --- Round 2");
-    row_res = col.update_column(&pos, &mut iter);
-    assert!(row_res.is_ok());
-    row = unsafe { row_res.unwrap_unchecked() };
+    row = unsafe { col.filter_column(&pos).unwrap_unchecked() };
     assert_eq!(row.len(), 1);
     assert_eq!(row[0].as_ref().to_tuple_ref(), (&3, &3));
     assert_eq!(row[0].src().len(), 1);
@@ -617,6 +618,7 @@ fn consoldaite_with_gap() {
             assert_eq!(col.len(), 1);
             assert_eq!(col[0].as_ref().to_tuple_ref(), (&1, &2));
         }
+
         (range, cols) = iter.next().unwrap();
         assert_eq!(range.to_tuple(), (3, 4));
         if let Ok(col) = &cols[a] {
@@ -626,6 +628,7 @@ fn consoldaite_with_gap() {
         if let Ok(col) = &cols[b] {
             assert_eq!(col.len(), 0);
         }
+
         (range, cols) = iter.next().unwrap();
         assert_eq!(range.to_tuple(), (5, 6));
         if let Ok(col) = &cols[a] {
@@ -635,6 +638,7 @@ fn consoldaite_with_gap() {
         if let Ok(col) = &cols[b] {
             assert_eq!(col.len(), 0);
         }
+
         (range, cols) = iter.next().unwrap();
         assert_eq!(range.to_tuple(), (7, 8));
         if let Ok(col) = &cols[a] {
@@ -729,4 +733,66 @@ fn sticky_columns_test() {
     for (i, row) in cols.into_iter().enumerate() {
         assert_eq!(row.0.to_tuple_ref(), (&i, &i));
     }
+}
+
+#[test]
+fn test_redo_next() {
+    let mut isec = Intersector::num_defaults();
+    isec.add_range(&(1..=1));
+    isec.add_range(&(1..=1));
+    let mut iter = isec.into_iter();
+    let mut next = iter.next();
+    assert!(next.is_some());
+    assert_eq!(next.unwrap().to_tuple(), (1, 1));
+    next = iter.next();
+    assert!(next.is_none());
+    assert!(iter.update_column(1, 1..=2).is_ok());
+    next = iter.recompute_next();
+    assert!(next.is_some());
+    assert_eq!(next.unwrap().to_tuple(), (2, 2));
+    assert!(iter.next().is_none());
+    assert!(iter.update_column(0, 3..=3).is_ok());
+    next = iter.recompute_next();
+    assert!(next.is_some());
+    assert_eq!(next.unwrap().to_tuple(), (3, 3));
+    assert!(iter.next().is_none());
+}
+
+#[test]
+fn test_redo_next_rev() {
+    let mut isec = Intersector::num_defaults();
+    isec.add_range(&(3..=3));
+    isec.add_range(&(3..=3));
+    let mut iter = isec.into_iter();
+
+    let mut back = iter.next_back();
+    assert!(back.is_some());
+    assert_eq!(back.unwrap().to_tuple(), (3, 3));
+    assert!(iter.next_back().is_none());
+    assert!(iter.update_column(1, 2..=3).is_ok());
+    back = iter.recompute_back();
+    assert!(back.is_some());
+    assert_eq!(back.unwrap().to_tuple(), (2, 2));
+    assert!(iter.next_back().is_none());
+    assert!(iter.update_column(0, 1..=3).is_ok());
+    back = iter.recompute_back();
+    assert!(back.is_some());
+    assert_eq!(back.unwrap().to_tuple(), (1, 1));
+    assert!(iter.next_back().is_none());
+}
+
+#[test]
+fn test_redo_next_overlaps() {
+    let mut isec = Intersector::num_defaults();
+    isec.add_range(&(2..=3));
+    isec.add_range(&(1..=2));
+    let mut iter = isec.into_iter();
+    let mut next = iter.next();
+    assert!(next.is_some());
+    assert_eq!(next.unwrap().to_tuple(), (1, 2));
+    assert!(iter.update_column(1, 2..=3).is_ok());
+    next = iter.recompute_next();
+    assert!(next.is_some());
+    assert_eq!(next.unwrap().to_tuple(), (3, 3));
+    assert!(iter.next().is_none());
 }

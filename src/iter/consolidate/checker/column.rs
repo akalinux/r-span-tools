@@ -30,156 +30,119 @@ impl<
 {
     pub fn update_column<V, Q: GetBeginEnd<T>, X: GetBeginEndOption<T, Q>>(
         &mut self,
-        pos: &Q,
+        last: &Q,
         iter: &mut OverlapIter<T, V, C, Q, X>,
-    ) -> Result<Vec<Rc<ConsolidateMrsP<T, R, S>>>, &'static str>
+        reset: bool,
+    ) -> bool
     where
         C: IncDecCpCmp<T, V>,
     {
         let col: usize;
         match &self.col {
-            Err(e) => return Err(e),
-            Ok(idx) => col = idx.clone(),
+            Ok(idx) => col = *idx,
+            Err(_) => return false,
         }
-
-        let mut results = Vec::new();
-        let rows = self.rows.replace(Vec::new());
-        let mut next = self.rows.borrow_mut();
         let order;
         {
             let checker = self.checker.borrow();
             order = checker.get_order();
             let cmp = checker.get_cmp();
-            for r in rows {
-                let (add, done) = order.check_position(r.as_ref(), pos, cmp);
-                if add {
-                    results.push(Rc::clone(&r));
-                    next.push(r);
-                    if done {
-                        return Ok(results);
+            if let Some(row) = self.rows.borrow().last() {
+                if reset {
+                    if order.is_beyond(row.as_ref(), last, cmp) {
+                        return false;
                     }
-                } else if done {
-                    next.push(r);
+                } else {
+                    let (overlap, done) = order.check_position(row.as_ref(), last, cmp);
 
-                    return Ok(results);
+                    if overlap || done {
+                        // if we get here then we overlap with the current set or we are beyond it!
+                        return false;
+                    }
                 }
             }
         }
 
-        // if we got here, we need to start pulling from the checker.
         loop {
-            let row = self.checker.borrow_mut().next();
-            if let Some(res) = row {
-                match res {
-                    Err((msg, r)) => {
-                        // Something went wrong with our source iter!!!
-
-                        // clear all values.. they re not the cause of our failure!
-                        results.clear();
-                        let src = r.unwrap();
-
-                        // save the message to the itnernals.
+            let checker = &mut *self.checker.borrow_mut();
+            if let Some(next) = checker.next() {
+                match next {
+                    Err((msg, row)) => {
+                        self.rows.borrow_mut().clear();
+                        self.rows
+                            .borrow_mut()
+                            .push(Rc::new(ConsolidateMrsP::new(row.unwrap())));
                         self.col = Err(msg);
-
-                        // Shove our only suspect into next!
-                        next.push(Rc::new(ConsolidateMrsP {
-                            r: src.0,
-                            src: src.1,
-                            _t: PhantomData,
-                        }));
-                        // bail here!
-                        return Err(msg);
+                        return false;
                     }
-                    Ok(r) => {
-                        // if we got here, then we didn't get an error
-                        let (add, done) =
-                            order.check_position(&r, pos, self.checker.borrow().get_cmp());
-                        let r = Rc::new(r);
-
-                        if add {
-                            results.push(Rc::clone(&r));
-                            next.push(r);
-                            if done {
-                                if let Err(e) =
-                                    self.process_results(pos, col, iter, &results, &*next)
-                                {
+                    Ok(row) => {
+                        let cmp = checker.get_cmp();
+                        let rc = Rc::new(row);
+                        let clone = Rc::clone(&rc);
+                        self.rows.borrow_mut().push(rc);
+                        let r = clone.as_ref();
+                        if reset {
+                            if order.is_beyond(r, last, cmp) {
+                                let clone =
+                                    iter.factory.new_range(cmp.cp_tpl_ref(r.to_tuple_ref()));
+                                if let Err(e) = iter.update_column(col, clone) {
                                     self.col = Err(e);
-                                    return Err(e);
+                                    return false;
                                 }
-                                return Ok(results);
+                                return true;
                             }
-                        } else if done {
-                            next.push(r);
-                            // we are beyond the current intersection!
-                            if let Err(e) = self.process_results(pos, col, iter, &results, &*next) {
+                        } else if order.is_before(r, last, cmp) {
+                            let clone = iter.factory.new_range(cmp.cp_tpl_ref(r.to_tuple_ref()));
+                            if let Err(e) = iter.update_column(col, clone) {
                                 self.col = Err(e);
-                                return Err(e);
+                                return false;
                             }
-                            return Ok(results);
+                            return true;
+                        } else {
+                            let (overlap, done) = order.check_position(r, last, cmp);
+                            if overlap || done {
+                                let clone =
+                                    iter.factory.new_range(cmp.cp_tpl_ref(r.to_tuple_ref()));
+                                if let Err(e) = iter.update_column(col, clone) {
+                                    self.col = Err(e);
+                                    return false;
+                                }
+                                return true;
+                            }
                         }
                     }
                 }
             } else {
-                // No more results!
-
-                if let Err(e) = self.process_results(pos, col, iter, &results, &*next) {
-                    self.col = Err(e);
-                    return Err(e);
-                }
-                return Ok(results);
+                return false;
             }
         }
     }
 
-    fn process_results<V, Q: GetBeginEnd<T>, X: GetBeginEndOption<T, Q>>(
+    pub fn filter_column<Q: GetBeginEnd<T>>(
         &self,
-        pos: &Q,
-        col: usize,
-        iter: &mut OverlapIter<T, V, C, Q, X>,
-        results: &Vec<Rc<ConsolidateMrsP<T, R, S>>>,
-        rows: &Vec<Rc<ConsolidateMrsP<T, R, S>>>,
-    ) -> Result<(), &'static str>
-    where
-        C: IncDecCpCmp<T, V>,
-    {
-        let checker = &*self.checker.borrow();
-        let t = checker.get_cmp();
-        let order = &checker.order;
-        if let Some(r) = results.last() {
-            let last = r.as_ref();
+        next: &Q,
+    ) -> Result<Vec<Rc<ConsolidateMrsP<T, R, S>>>, &'static str> {
+        if let Err(e) = &self.col {
+            return Err(e);
+        }
+        let mut results = Vec::new();
+        let checker = self.checker.borrow();
 
-            if order.is_beyond(last, pos, t) {
-                if let Some(r) = iter.copy_range(last) {
-                    if let Err(e) = iter.update_column(col, r, order) {
-                        return Err(e);
-                    }
-                } else {
-                    return Err("iterator failed to copy range");
-                }
-            } else if let Some(r) = rows.last()
-                && order.is_beyond(r.as_ref(), pos, t)
-            {
-                if let Some(r) = iter.copy_range(r.as_ref()) {
-                    if let Err(e) = iter.update_column(col, r, order) {
-                        return Err(e);
-                    }
-                } else {
-                    return Err("iterator failed to copy range");
-                }
-            }
-        } else if let Some(r) = rows.last()
-            && order.is_beyond(r.as_ref(), pos, t)
-        {
-            if let Some(r) = iter.copy_range(r.as_ref()) {
-                if let Err(e) = iter.update_column(col, r, order) {
-                    return Err(e);
-                }
-            } else {
-                return Err("iterator failed to copy range");
+        let cmp = checker.get_cmp();
+        let order = checker.get_order();
+        let rows = self.rows.replace(Vec::new());
+        for row in rows {
+            let (overlap, done) = order.check_position(row.as_ref(), next, cmp);
+            if overlap {
+                results.push(Rc::clone(&row));
+                self.rows.borrow_mut().push(row);
+            } else if done {
+                self.rows.borrow_mut().push(row);
             }
         }
-        return Ok(());
+        return Ok(results);
     }
+
     pub fn in_err(&self) -> bool {
         return self.col.is_err();
     }

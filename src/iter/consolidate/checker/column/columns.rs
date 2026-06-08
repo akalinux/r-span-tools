@@ -139,6 +139,7 @@ impl<
             order: self.order,
             iter: RefCell::new(self.isec.into_inner().into_iter()),
             cols: self.columns.into_inner(),
+            needs_init: true,
         };
     }
 }
@@ -154,6 +155,7 @@ pub struct ColumnsIter<
     iter: RefCell<OverlapIter<T, V, C, RangeInclusive<T>, RiFactory<T>>>,
     cols: Vec<Column<T, R, S, F, I, C>>,
     order: ConsolidationOrder,
+    needs_init: bool,
 }
 
 impl<
@@ -172,21 +174,75 @@ impl<
     );
 
     fn next(&mut self) -> Option<Self::Item> {
-        let next;
-        let iter = &mut *self.iter.borrow_mut();
-        match &self.order {
-            ConsolidationOrder::Forward => next = iter.next(),
-            ConsolidationOrder::Reverse => next = iter.next_back(),
-        }
-        if let Some(r) = next {
-            let mut cols = Vec::new();
-
-            for col in &mut self.cols {
-                let result = col.update_column(&r, iter);
-                cols.push(result);
+        if self.needs_init {
+            let next;
+            // if we got here.. then the instance requires being initalized.
+            self.needs_init = false;
+            match &self.order {
+                ConsolidationOrder::Forward => next = self.iter.borrow_mut().next(),
+                ConsolidationOrder::Reverse => next = self.iter.borrow_mut().next_back(),
             }
-            return Some((r, cols));
+            if next.is_none() {
+                return None;
+            }
+
+            let filter = next.unwrap();
+            let mut cols = Vec::new();
+            for col in &mut self.cols {
+                cols.push(col.filter_column(&filter))
+            }
+            return Some((filter, cols));
         }
-        return None;
+        let next;
+        let last;
+        {
+            let iter = &*self.iter.borrow();
+            match &self.order {
+                ConsolidationOrder::Forward => (next, last) = iter.ln(),
+                ConsolidationOrder::Reverse => (next, last) = iter.lb(),
+            }
+        }
+        let mut redo = false;
+        let n;
+
+        {
+            let iter = &mut *self.iter.borrow_mut();
+            if let Some(r) = &next {
+                for col in &mut self.cols {
+                    if col.update_column(r, iter, false) {
+                        redo = true;
+                    }
+                }
+            } else if let Some(r) = &last {
+                redo = true;
+                for col in &mut self.cols {
+                    col.update_column(r, iter, true);
+                }
+            } else {
+                return None;
+            }
+            if redo {
+                match &self.order {
+                    ConsolidationOrder::Forward => n = iter.recompute_next(),
+                    ConsolidationOrder::Reverse => n = iter.recompute_back(),
+                }
+            } else {
+                match &self.order {
+                    ConsolidationOrder::Forward => n = iter.next(),
+                    ConsolidationOrder::Reverse => n = iter.next_back(),
+                }
+            }
+        }
+
+        let mut cols = Vec::new();
+        if next.is_none() {
+            return None;
+        }
+        let filter = n.unwrap();
+        for col in &mut self.cols {
+            cols.push(col.filter_column(&filter))
+        }
+
+        return Some((filter, cols));
     }
 }

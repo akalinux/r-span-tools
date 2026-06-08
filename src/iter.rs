@@ -1,6 +1,6 @@
 use crate::{
-    AnyIncDecCpCmp, ConsolidationOrder, DefaultValues, GetBeginEnd, GetBeginEndOption, IncDecCpCmp,
-    MrsP, NumberIncDecCpCmp, RangeRelation, RiFactory, first_range_begin_end, last_range_begin_end,
+    AnyIncDecCpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, IncDecCpCmp, MrsP,
+    NumberIncDecCpCmp, RangeRelation, RiFactory, first_range_begin_end, last_range_begin_end,
     next_range_begin_end, previous_range_begin_end, range_bounds_to_values, range_relation,
 };
 
@@ -29,6 +29,18 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
     pub fn new(src: Vec<R>, step: V, cmp: C, factory: F) -> Self {
         let next = factory.factory(first_range_begin_end(&src, &cmp));
         let back = factory.factory(last_range_begin_end(&src, &cmp));
+        /*
+        let last_next;
+        match &next {
+            Some(n) => last_next = Some(factory.new_range(cmp.cp_tpl_ref(n.to_tuple_ref()))),
+            _ => last_next = None,
+        }
+        let last_back;
+        match &back {
+            Some(b) => last_back = Some(factory.new_range(cmp.cp_tpl_ref(b.to_tuple_ref()))),
+            _ => last_back = None,
+        }
+        */
         Self {
             src,
             step,
@@ -50,31 +62,29 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
         return self.factory.factory(Some((a, z)));
     }
 
-    /// Returns a ref to the last next and next, each wrapped in an Option.
-    pub fn nexts(&self) -> (Option<&R>, Option<&R>) {
+    pub fn ln(&self) -> (Option<R>, Option<R>) {
         let a;
         let b;
-        match &self.last_back {
-            Some(next) => a = Some(next),
+        match &self.next {
+            Some(n) => a = self.copy_range(n),
             _ => a = None,
         }
-        match &self.next {
-            Some(next) => b = Some(next),
+        match &self.last_next {
+            Some(n) => b = self.copy_range(n),
             _ => b = None,
         }
 
         return (a, b);
     }
-    /// Returns a ref to the last back and back, each wrapped in an Option.
-    pub fn backs(&self) -> (Option<&R>, Option<&R>) {
+    pub fn lb(&self) -> (Option<R>, Option<R>) {
         let a;
         let b;
-        match &self.last_back {
-            Some(back) => a = Some(back),
+        match &self.back {
+            Some(n) => a = self.copy_range(n),
             _ => a = None,
         }
-        match &self.back {
-            Some(back) => b = Some(back),
+        match &self.last_back {
+            Some(n) => b = self.copy_range(n),
             _ => b = None,
         }
 
@@ -86,6 +96,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
         self.back = self
             .factory
             .factory(last_range_begin_end(&self.src, &self.cmp));
+
         let last_next = mem::replace(&mut self.last_next, None);
         match last_next {
             Some(x) => self.next = self.try_next(&Some(x)),
@@ -111,76 +122,15 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
 
     /// Updates the internal column to the new [GetBeginEnd] instance.
     /// Returns [Result::Err]f the range is invalid or if the index point does not exist.
-    pub fn update_column(
-        &mut self,
-        idx: usize,
-        range: R,
-        order: &ConsolidationOrder,
-    ) -> Result<(), &'static str> {
-        let t = &self.cmp;
+    pub fn update_column(&mut self, idx: usize, range: R) -> Result<(), &'static str> {
         if let Some(col) = self.src.get_mut(idx) {
             if self.cmp.is_invalid_set(range.get_begin(), range.get_end()) {
                 return Err("Invalid Range");
             }
             *col = range;
-        } else {
-            return Err("No such Column");
+            return Ok(());
         }
-        let col = &self.src[idx];
-        // I suppose we are rewinding time here??
-        match order {
-            ConsolidationOrder::Forward => {
-                self.last_back = None;
-                if let Some(back) = &self.back {
-                    if order.is_beyond(col, back, t) {
-                        self.back = self.copy_range(col)
-                    }
-                } else {
-                    self.back = self.copy_range(col);
-                }
-
-                if let Some(next) = &self.next {
-                    if order.is_before(col, next, t) {
-                        println!("trying column rewind");
-                        self.next = self.try_next(&self.last_next);
-                    } else {
-                        println!("no need to rewind")
-                    }
-                } else {
-                    if let Some(next) = self.try_next(&self.last_next) {
-                        self.next = Some(next);
-                    }
-                }
-            }
-            ConsolidationOrder::Reverse => {
-                self.last_next = None;
-                if let Some(next) = &self.next {
-                    if order.is_beyond(col, next, t) {
-                        self.next = self.copy_range(col);
-                    }
-                } else {
-                    self.next = self.copy_range(col)
-                }
-
-                if self.back.is_none() {
-                    if let Some(back) = self.try_next_back(&self.last_back) {
-                        self.last_back = None;
-                        self.back = Some(back);
-                    }
-                }
-
-                if let Some(back) = &self.back {
-                    if order.is_before(col, back, t) {
-                        self.back = self.try_next_back(&self.last_back);
-                    }
-                } else {
-                    if let Some(back) = self.try_next_back(&self.last_back) {
-                        self.back = Some(back);
-                    }
-                }
-            }
-        }
-        return Ok(());
+        return Err("No such Column");
     }
 
     pub fn try_next(&self, src: &Option<R>) -> Option<R> {
