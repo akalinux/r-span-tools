@@ -27,8 +27,8 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
 {
     /// Creates a new [OverlapIter] from the slice of R.
     pub fn new(src: Vec<R>, step: V, cmp: C, factory: F) -> Self {
-        let next = factory.factory(first_range_begin_end(&src, &cmp));
-        let back = factory.factory(last_range_begin_end(&src, &cmp));
+        let next = factory.factory(first_range_begin_end(&src, &step, &cmp));
+        let back = factory.factory(last_range_begin_end(&src, &step, &cmp));
 
         Self {
             src,
@@ -89,7 +89,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
         self.last_back = None;
         self.back = self
             .factory
-            .factory(last_range_begin_end(&self.src, &self.cmp));
+            .factory(last_range_begin_end(&self.src, &self.step, &self.cmp));
 
         let last_next = mem::replace(&mut self.last_next, None);
         match last_next {
@@ -106,7 +106,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
         self.last_next = None;
         self.next = self
             .factory
-            .factory(first_range_begin_end(&self.src, &self.cmp));
+            .factory(first_range_begin_end(&self.src, &self.step, &self.cmp));
         let last_back = mem::replace(&mut self.last_back, None);
         match last_back {
             Some(x) => self.back = self.try_next_back(&Some(x)),
@@ -153,15 +153,16 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
                                         _t: PhantomData,
                                     },
                                 ],
+                                &self.step,
                                 &self.cmp,
                             ));
                         }
                     }
                     RangeRelation::Before(_) => {
                         if let Some(begin) = self.cmp.inc(n.get_end(), &self.step) {
-                            next = self
-                                .factory
-                                .factory(next_range_begin_end(&begin, &self.src, &self.cmp));
+                            next = self.factory.factory(next_range_begin_end(
+                                &begin, &self.src, &self.step, &self.cmp,
+                            ));
                         }
                     }
                     _ => return None,
@@ -193,15 +194,16 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
                                     _t: PhantomData,
                                 },
                             ],
+                            &self.step,
                             &self.cmp,
                         ));
                     }
                 }
                 RangeRelation::After(_) => {
                     if let Some(end) = self.cmp.dec(b.get_begin(), &self.step) {
-                        back = self
-                            .factory
-                            .factory(previous_range_begin_end(&end, &self.src, &self.cmp));
+                        back = self.factory.factory(previous_range_begin_end(
+                            &end, &self.src, &self.step, &self.cmp,
+                        ));
                     }
                 }
                 _ => return None,

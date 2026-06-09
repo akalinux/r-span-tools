@@ -5,6 +5,7 @@ use std::ops::RangeInclusive;
 use common_range_tools::{
     AnyIncDecCpCmp, Column, Columns, Consolidate, ConsolidateChecker, ConsolidationOrder,
     GetBeginEnd, Intersector, Mrs, MrsFactory, NumberIncDecCpCmp, RangeRelation, RiFactory,
+    first_range_begin_end,
 };
 
 use crate::iter_tests::mrs_set;
@@ -804,7 +805,16 @@ fn test_redo_next_overlaps() {
 fn from_tests() {
     let src = [0..=2, 1..=5];
     let res = [0..=0, 1..=2, 3..=5];
-    for (i, r) in Intersector::num_from(&src).enumerate() {
-        assert_eq!(r, res[i]);
+    let first = first_range_begin_end(&src, &1, &NumberIncDecCpCmp::defaults()).unwrap();
+
+    assert_eq!(first, (0, 0));
+
+    let mut isec = Intersector::num_defaults();
+    for r in src {
+        let res = isec.add_range(&r);
+        let (_, range) = res.unwrap();
+        assert_eq!(r.to_tuple_ref(), range.to_tuple_ref());
     }
+    let mut iter = isec.into_iter();
+    assert_eq!(iter.ln().0.unwrap().to_tuple_ref(), (&0, &0));
 }

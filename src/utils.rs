@@ -229,10 +229,11 @@ fn contains<T, R: GetBeginEnd<T>, C: CpCmp<T>>(check: &R, value: &T, t: &C) -> b
     return t.contains(check.get_begin(), check.get_end(), value);
 }
 
-pub fn next_smallest_range<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
+pub fn next_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     begin: &T,
     end: &T,
     src: &[R],
+    step: &V,
     t: &C,
 ) -> (T, T) {
     let mut target = end;
@@ -251,13 +252,128 @@ pub fn next_smallest_range<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
         }
     }
 
-    return (t.cp(begin), t.cp(target));
+    return retool_begin((t.cp(begin), t.cp(target)), src, step, t);
 }
 
-pub fn previous_smallest_range<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
+pub fn retool_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    res: (T, T),
+    src: &[R],
+    step: &V,
+    t: &C,
+) -> (T, T) {
+    let (begin, end) = res;
+
+    let next;
+    if let Some(n) = t.dec(&end, step)
+        && t.eq(&begin, &n)
+        && !t.is_invalid_set(&begin, &n)
+    {
+        next = n;
+    } else {
+        return (begin, end);
+    }
+
+    let mut matches = false;
+    let mut driver = &end;
+    let mut exact: usize = 0;
+
+    for r in src {
+        let (c, d) = r.to_tuple_ref();
+        if t.overlap(&begin, &end, c, d) {
+            exact += 1;
+        }
+        if t.overlap(&begin, &next, c, d) {
+            if matches {
+                return (begin, end);
+            }
+            driver = d;
+            matches = true;
+        }
+    }
+    if matches {
+        if exact == 1 {
+            return (begin, end);
+        }
+        return (begin, next);
+    }
+    if t.eq(driver, &end) || t.is_invalid_set(&begin, driver) {
+        return (begin, end);
+    }
+    matches = false;
+    for r in src {
+        let (c, d) = r.to_tuple_ref();
+        if t.overlap(&begin, driver, c, d) {
+            if matches {
+                return (begin, t.cp(driver));
+            }
+            matches = true;
+        }
+    }
+    return (begin, next);
+}
+
+pub fn retool_begin<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    res: (T, T),
+    src: &[R],
+    step: &V,
+    t: &C,
+) -> (T, T) {
+    let (begin, end) = res;
+
+    let next;
+    if let Some(n) = t.inc(&begin, step)
+        && !t.is_invalid_set(&n, &end)
+    {
+        next = n;
+    } else {
+        return (begin, end);
+    }
+
+    let mut matches = false;
+    let mut driver = &begin;
+    let mut exact: usize = 0;
+    for r in src {
+        let (c, d) = r.to_tuple_ref();
+        if t.overlap(&begin, &end, c, d) {
+            exact += 1;
+        }
+        if t.overlap(&next, &end, c, d) {
+            if matches {
+                return (begin, end);
+            }
+            driver = c;
+            matches = true;
+        }
+    }
+    if matches {
+        if exact == 1 {
+            return (begin, end);
+        }
+        return (next, end);
+    }
+    if t.eq(driver, &begin) || t.is_invalid_set(driver, &end) {
+        return (begin, end);
+    }
+    matches = false;
+    for r in src {
+        let (c, d) = r.to_tuple_ref();
+        if t.overlap(driver, &end, c, d) {
+            if matches {
+                return (t.cp(driver), end);
+            }
+            matches = true;
+        }
+    }
+
+    println!("  final next capture");
+    return (next, end);
+}
+
+pub fn previous_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     begin: &T,
     end: &T,
     src: &[R],
+    step: &V,
     t: &C,
 ) -> (T, T) {
     let mut target = begin;
@@ -276,7 +392,7 @@ pub fn previous_smallest_range<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
         }
     }
 
-    return (t.cp(target), t.cp(end));
+    return retool_end((t.cp(target), t.cp(end)), src, step, t);
 }
 
 pub(crate) fn min_max<'r, T, R: GetBeginEnd<T>, C: CpCmp<T>>(
@@ -313,24 +429,29 @@ pub(crate) fn min_max<'r, T, R: GetBeginEnd<T>, C: CpCmp<T>>(
 }
 
 /// Looks for the first most range, if found returns an Option<(T,T)>.
-pub fn first_range_begin_end<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
+pub fn first_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     src: &[R],
+    step: &V,
     t: &C,
 ) -> Option<(T, T)> {
     let check = min_max(src, t);
 
     if let Some((begin, end)) = check {
-        return Some(next_smallest_range(begin, end, src, t));
+        return Some(next_smallest_range(begin, end, src, step, t));
     }
 
     return None;
 }
 
 /// Looks for the last most range, if found returns an Option<(T,T)>.
-pub fn last_range_begin_end<T, C: CpCmp<T>, R: GetBeginEnd<T>>(src: &[R], t: &C) -> Option<(T, T)> {
+pub fn last_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    src: &[R],
+    step: &V,
+    t: &C,
+) -> Option<(T, T)> {
     let check = min_max(src, t);
     if let Some((begin, end)) = check {
-        return Some(previous_smallest_range(begin, end, src, t));
+        return Some(previous_smallest_range(begin, end, src, step, t));
     }
 
     return None;
@@ -339,9 +460,10 @@ pub fn last_range_begin_end<T, C: CpCmp<T>, R: GetBeginEnd<T>>(src: &[R], t: &C)
 /// Searches for the next smallest range valid range of (T,T) overlaps with begin.
 /// If no range overlaps with end, it finds the next smallest range after begin.
 /// Returns None when no matches were found.
-pub fn next_range_begin_end<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
+pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     begin: &T,
     src: &[R],
+    step: &V,
     t: &C,
 ) -> Option<(T, T)> {
     let mut target: Option<&T> = None;
@@ -374,9 +496,9 @@ pub fn next_range_begin_end<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
         }
     }
     if let Some(end) = target {
-        return Some(next_smallest_range(begin, end, src, t));
+        return Some(next_smallest_range(begin, end, src, step, t));
     } else if let Some((begin, end)) = alt {
-        return Some(next_smallest_range(begin, end, src, t));
+        return Some(next_smallest_range(begin, end, src, step, t));
     }
     return None;
 }
@@ -384,9 +506,10 @@ pub fn next_range_begin_end<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
 /// Searches for the previous smallest range valid range of (T,T) overlaps with end.
 /// If no range overlaps with end, it finds the previous smallest range before begin.
 /// Returns None when no matches were found.
-pub fn previous_range_begin_end<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
+pub fn previous_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     end: &T,
     src: &[R],
+    step: &V,
     t: &C,
 ) -> Option<(T, T)> {
     let mut target: Option<&T> = None;
@@ -427,9 +550,9 @@ pub fn previous_range_begin_end<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
         }
     }
     if let Some(begin) = target {
-        return Some(previous_smallest_range(begin, end, src, t));
+        return Some(previous_smallest_range(begin, end, src, step, t));
     } else if let Some((begin, end)) = alt {
-        return Some(previous_smallest_range(begin, end, src, t));
+        return Some(previous_smallest_range(begin, end, src, step, t));
     }
     return None;
 }
