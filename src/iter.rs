@@ -29,18 +29,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
     pub fn new(src: Vec<R>, step: V, cmp: C, factory: F) -> Self {
         let next = factory.factory(first_range_begin_end(&src, &cmp));
         let back = factory.factory(last_range_begin_end(&src, &cmp));
-        /*
-        let last_next;
-        match &next {
-            Some(n) => last_next = Some(factory.new_range(cmp.cp_tpl_ref(n.to_tuple_ref()))),
-            _ => last_next = None,
-        }
-        let last_back;
-        match &back {
-            Some(b) => last_back = Some(factory.new_range(cmp.cp_tpl_ref(b.to_tuple_ref()))),
-            _ => last_back = None,
-        }
-        */
+
         Self {
             src,
             step,
@@ -62,35 +51,40 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
         return self.factory.factory(Some((a, z)));
     }
 
-    pub fn ln(&self) -> (Option<R>, Option<R>) {
+    /// Returns a tuple of Option refs to the internal next and last_next ranges.
+    pub fn ln(&self) -> (Option<&R>, Option<&R>) {
         let a;
         let b;
         match &self.next {
-            Some(n) => a = self.copy_range(n),
+            Some(n) => a = Some(n),
             _ => a = None,
         }
         match &self.last_next {
-            Some(n) => b = self.copy_range(n),
+            Some(n) => b = Some(n),
             _ => b = None,
         }
 
         return (a, b);
     }
-    pub fn lb(&self) -> (Option<R>, Option<R>) {
+
+    /// Returns a tuple of Option refs to the internal back and last_back ranges.
+    pub fn lb(&self) -> (Option<&R>, Option<&R>) {
         let a;
         let b;
         match &self.back {
-            Some(n) => a = self.copy_range(n),
+            Some(n) => a = Some(n),
             _ => a = None,
         }
         match &self.last_back {
-            Some(n) => b = self.copy_range(n),
+            Some(n) => b = Some(n),
             _ => b = None,
         }
 
         return (a, b);
     }
 
+    /// After calling [OverlapIter::update_column], call this method in place of [OverlapIter::next] to return the properly updated next value.
+    /// Calling this method resets the curent state of [OverlapIter::next_back].
     pub fn recompute_next(&mut self) -> Option<R> {
         self.last_back = None;
         self.back = self
@@ -106,6 +100,8 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
         return self.next();
     }
 
+    /// After calling [OverlapIter::update_column], call this method in place of [OverlapIter::next_back] to return the properly updated back value.
+    /// Calling this method resets the curent state of [OverlapIter::next].
     pub fn recompute_back(&mut self) -> Option<R> {
         self.last_next = None;
         self.next = self
@@ -122,6 +118,10 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
 
     /// Updates the internal column to the new [GetBeginEnd] instance.
     /// Returns [Result::Err]f the range is invalid or if the index point does not exist.
+    ///
+    /// After calling this method the next call to  [OverlapIter::next] or [OverlapIter::next_back] will not function correctly.
+    /// First call the respective [OverlapIter::recompute_next] or [OverlapIter::recompute_back],
+    /// then proceed to call either [OverlapIter::next] or [OverlapIter::next_back] normally.
     pub fn update_column(&mut self, idx: usize, range: R) -> Result<(), &'static str> {
         if let Some(col) = self.src.get_mut(idx) {
             if self.cmp.is_invalid_set(range.get_begin(), range.get_end()) {
@@ -133,6 +133,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
         return Err("No such Column");
     }
 
+    /// Genrates a new next based on the src passed in.
     pub fn try_next(&self, src: &Option<R>) -> Option<R> {
         let mut next = None;
         if let Some(n) = src {
@@ -171,6 +172,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
         return next;
     }
 
+    /// Genrates a new back based on the src passed in.
     pub fn try_next_back(&self, src: &Option<R>) -> Option<R> {
         let mut back = None;
         if let Some(b) = src
@@ -213,6 +215,8 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> 
     for OverlapIter<T, V, C, R, F>
 {
     type Item = R;
+
+    /// This is part of a [DoubleEndedIterator] calls to [OverlapIter::next] impact calls to [OverlapIter::next_back].
     fn next(&mut self) -> Option<Self::Item> {
         let next = self.try_next(&self.next);
         if let Some(next) = &self.next {
@@ -225,6 +229,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> 
 impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> DoubleEndedIterator
     for OverlapIter<T, V, C, R, F>
 {
+    /// This is part of a [DoubleEndedIterator] calls to [OverlapIter::next_back] impact calls to [OverlapIter::next].
     fn next_back(&mut self) -> Option<Self::Item> {
         let back = self.try_next_back(&self.back);
         if let Some(back) = &self.back {
@@ -272,6 +277,7 @@ where
     T: PartialOrd + Copy + Add<V, Output = T> + Sub<V, Output = T>,
     V: Copy,
 {
+    /// Creates a new [Intersector] instance that works with any data type.
     pub fn any(
         step: V,
         rebound: V,
@@ -287,6 +293,20 @@ where
             _r: PhantomData,
         }
     }
+
+    pub fn any_from(
+        step: V,
+        rebound: V,
+        min: T,
+        max: T,
+        src: &[impl RangeBounds<T>],
+    ) -> OverlapIter<T, V, AnyIncDecCpCmp<T>, RangeInclusive<T>, RiFactory<T>> {
+        let mut i = Self::any(step, rebound, min, max);
+        for r in src {
+            i.add_range(r);
+        }
+        return i.into_iter();
+    }
 }
 
 impl<T> Intersector<T, T, NumberIncDecCpCmp<T>, RangeInclusive<T>, RiFactory<T>>
@@ -294,7 +314,7 @@ where
     T: PartialOrd + Copy + Add<T, Output = T> + Sub<T, Output = T>,
     NumberIncDecCpCmp<T>: DefaultValues<T, T>,
 {
-    /// Returns a new instance of [Intersector] configured to work with numbers.
+    /// Returns a new instance of [Intersector] configured to work with any primitive number type using the default values.
     pub fn num_defaults() -> Self {
         let cmp = NumberIncDecCpCmp::defaults();
         return Self {
@@ -317,6 +337,42 @@ where
             factory: RiFactory::new(),
             _r: PhantomData,
         };
+    }
+
+    /// Returns a new instance of [Intersector] configured to work with numbers.
+    /// The nteral step and rebound values are set to sr.
+    pub fn num_sr(sr: T) -> Self {
+        return Self {
+            list: Vec::new(),
+            step: sr,
+            rebound: sr,
+            cmp: NumberIncDecCpCmp::defaults(),
+            factory: RiFactory::new(),
+            _r: PhantomData,
+        };
+    }
+
+    /// Takes any list of range of numbers and converts them to an instance of [OverlapIter].
+    pub fn num_from(
+        src: &[impl RangeBounds<T>],
+    ) -> OverlapIter<T, T, NumberIncDecCpCmp<T>, RangeInclusive<T>, RiFactory<T>> {
+        let mut i = Self::num_defaults();
+        for r in src {
+            i.add_range(r);
+        }
+        return i.into_iter();
+    }
+
+    /// Takes any list of range of numbers and converts them to an instance of [OverlapIter], with the step and rebound value set to sr.
+    pub fn num_sr_from(
+        sr: T,
+        src: &[impl RangeBounds<T>],
+    ) -> OverlapIter<T, T, NumberIncDecCpCmp<T>, RangeInclusive<T>, RiFactory<T>> {
+        let mut i = Self::num_sr(sr);
+        for r in src {
+            i.add_range(r);
+        }
+        return i.into_iter();
     }
 }
 
@@ -418,6 +474,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> 
 
     type IntoIter = OverlapIter<T, V, C, R, F>;
 
+    /// Converts the current instance of [Intersector] into an instance of [OverlapIter].
     fn into_iter(self) -> Self::IntoIter {
         return OverlapIter::new(self.list, self.step, self.cmp, self.factory);
     }

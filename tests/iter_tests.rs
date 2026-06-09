@@ -497,8 +497,7 @@ fn column_tests_positive() {
     assert_eq!(row[0].src()[0].1.to_tuple_ref(), (&1, &2));
     assert_eq!(row[0].src()[1].1.to_tuple_ref(), (&1, &1));
     assert!(iter.next().is_none());
-    pos = iter.ln().1.unwrap();
-    assert_eq!(pos.to_tuple_ref(), (&1, &2));
+    assert_eq!(iter.ln().1.unwrap().to_tuple_ref(), (&1, &2));
 
     assert!(col.update_column(&pos, &mut iter, true));
     pos = iter.recompute_next().unwrap();
@@ -587,6 +586,10 @@ fn check_position_reverse() {
     );
 }
 
+#[test]
+fn constructor_num_sr_tests() {
+    Intersector::num_sr(1);
+}
 #[test]
 fn consoldaite_with_gap() {
     for (ia, ib, a, b) in [
@@ -795,4 +798,13 @@ fn test_redo_next_overlaps() {
     assert!(next.is_some());
     assert_eq!(next.unwrap().to_tuple(), (3, 3));
     assert!(iter.next().is_none());
+}
+
+#[test]
+fn from_tests() {
+    let src = [0..=2, 1..=5];
+    let res = [0..=0, 1..=2, 3..=5];
+    for (i, r) in Intersector::num_from(&src).enumerate() {
+        assert_eq!(r, res[i]);
+    }
 }

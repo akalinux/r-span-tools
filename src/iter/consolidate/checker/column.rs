@@ -148,11 +148,10 @@ impl<
     }
 
     pub fn get_column(&self) -> Result<usize, &'static str> {
-        match self.col {
-            Err(e) => Err(e),
-            Ok(idx) => Ok(idx),
-        }
+        let col = self.col?;
+        return Ok(col);
     }
+
     /// Unwraps the current object state into a tuple.  
     /// The resulting values from the returned tuple can be used to crate a new instance of [Column] with via the [Column::builder].
     pub fn to_inner(

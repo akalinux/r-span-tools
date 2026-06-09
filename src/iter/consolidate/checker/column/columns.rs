@@ -1,5 +1,6 @@
 use std::{
     cell::RefCell,
+    mem,
     ops::{Add, RangeInclusive, Sub},
     rc::Rc,
 };
@@ -35,6 +36,12 @@ where
         let cmp = NumberIncDecCpCmp::new(min, max);
         let factory = RiFactory::new();
         return Self::new(order, cmp, factory, step, rebound);
+    }
+
+    pub fn num_sr(sr: T) -> Self {
+        let cmp = NumberIncDecCpCmp::defaults();
+        let factory = RiFactory::new();
+        return Self::new(ConsolidationOrder::Forward, cmp, factory, sr, sr);
     }
 
     pub fn num_defaults() -> Self {
@@ -80,6 +87,7 @@ impl<
     F: GetBeginEndOption<T, R> + Copy + Clone,
 > Columns<T, V, I, R, S, C, F>
 {
+    /// Creates a new instance of the [Columns] factory which can converted into an [Iterator] of [ColumnsIter].
     pub fn new(order: ConsolidationOrder, cmp: C, factory: F, step: V, rebound: V) -> Self {
         return Self {
             isec: RefCell::new(Intersector::new(
@@ -96,6 +104,9 @@ impl<
         };
     }
 
+    /// Tries to add the column to the set of columns.
+    ///  - Ok([usize]) is the id of the column
+    ///  - Err([Column]) is the column that failed to be added.
     pub fn add_column(&self, iter: I) -> Result<usize, Column<T, R, S, F, I, C>> {
         let con = Consolidate::new(iter, self.cmp, self.factory);
         let checker = ConsolidateChecker::new(self.order, con);
@@ -134,13 +145,14 @@ impl<
 
     type IntoIter = ColumnsIter<T, V, I, R, S, C, F>;
 
+    /// Converts [Columns] into an instance of [ColumnsIter].
     fn into_iter(self) -> Self::IntoIter {
-        return ColumnsIter {
-            order: self.order,
-            iter: RefCell::new(self.isec.into_inner().into_iter()),
-            cols: self.columns.into_inner(),
-            needs_init: true,
-        };
+        return ColumnsIter::new(
+            self.isec.into_inner().into_iter(),
+            self.columns.into_inner(),
+            self.order,
+            true,
+        );
     }
 }
 pub struct ColumnsIter<
@@ -156,6 +168,65 @@ pub struct ColumnsIter<
     cols: Vec<Column<T, R, S, F, I, C>>,
     order: ConsolidationOrder,
     needs_init: bool,
+}
+impl<
+    T,
+    V,
+    I: Iterator<Item = S>,
+    R: GetBeginEnd<T>,
+    S: GetBeginEnd<T>,
+    C: IncDecCpCmp<T, V>,
+    F: GetBeginEndOption<T, R> + Copy + Clone,
+> ColumnsIter<T, V, I, R, S, C, F>
+{
+    /// Constructs a new instance of [ColumnsIter].
+    pub fn new(
+        iter: OverlapIter<T, V, C, RangeInclusive<T>, RiFactory<T>>,
+        cols: Vec<Column<T, R, S, F, I, C>>,
+        order: ConsolidationOrder,
+        needs_init: bool,
+    ) -> Self {
+        Self {
+            iter: RefCell::new(iter),
+            cols,
+            order,
+            needs_init,
+        }
+    }
+
+    /// Converts self to a tuple, whos contents can be used to construct a new instance of [Columns].
+    pub fn into_inner(
+        self,
+    ) -> (
+        OverlapIter<T, V, C, RangeInclusive<T>, RiFactory<T>>,
+        Vec<Column<T, R, S, F, I, C>>,
+        ConsolidationOrder,
+        bool,
+    ) {
+        return (
+            self.iter.into_inner(),
+            self.cols,
+            self.order,
+            self.needs_init,
+        );
+    }
+
+    // Internal method used to prevent an additional clone of internal iterator range states.
+    fn next_last<'r>(&self) -> (Option<&'r RangeInclusive<T>>, Option<&'r RangeInclusive<T>>) {
+        let iter = &*self.iter.borrow();
+        let (last, next);
+        match &self.order {
+            ConsolidationOrder::Forward => (next, last) = iter.ln(),
+            ConsolidationOrder::Reverse => (next, last) = iter.lb(),
+        }
+
+        return unsafe {
+            mem::transmute::<
+                (Option<&'_ RangeInclusive<T>>, Option<&'_ RangeInclusive<T>>),
+                (Option<&'r RangeInclusive<T>>, Option<&'r RangeInclusive<T>>),
+            >((next, last))
+        };
+    }
 }
 
 impl<
@@ -193,27 +264,20 @@ impl<
             }
             return Some((filter, cols));
         }
-        let next;
-        let last;
-        {
-            let iter = &*self.iter.borrow();
-            match &self.order {
-                ConsolidationOrder::Forward => (next, last) = iter.ln(),
-                ConsolidationOrder::Reverse => (next, last) = iter.lb(),
-            }
-        }
+
+        let (next, last) = self.next_last();
         let mut redo = false;
         let n;
 
         {
             let iter = &mut *self.iter.borrow_mut();
-            if let Some(r) = &next {
+            if let Some(r) = next {
                 for col in &mut self.cols {
                     if col.update_column(r, iter, false) {
                         redo = true;
                     }
                 }
-            } else if let Some(r) = &last {
+            } else if let Some(r) = last {
                 redo = true;
                 for col in &mut self.cols {
                     col.update_column(r, iter, true);
