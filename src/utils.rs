@@ -235,7 +235,7 @@ pub fn next_smallest_range<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
     src: &[R],
     t: &C,
 ) -> (T, T) {
-    let mut target: Option<&T> = None;
+    let mut target = end;
 
     for r in src {
         let (start, finish) = r.to_tuple_ref();
@@ -246,20 +246,12 @@ pub fn next_smallest_range<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
         if t.lt(begin, start) {
             min = start;
         }
-        match target {
-            Some(cmp) => {
-                if t.lt(min, cmp) {
-                    target = Some(min)
-                }
-            }
-            None => target = Some(min),
+        if t.lt(min, target) {
+            target = min
         }
     }
 
-    match target {
-        Some(end) => (t.cp(begin), t.cp(end)),
-        None => (t.cp(begin), t.cp(end)),
-    }
+    return (t.cp(begin), t.cp(target));
 }
 
 pub fn previous_smallest_range<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
