@@ -733,6 +733,28 @@ fn sticky_columns_test() {
     for (i, row) in cols.into_iter().enumerate() {
         assert_eq!(row.0.to_tuple_ref(), (&i, &i));
     }
+    let cols = Columns::num_sr(1);
+    assert!(cols.add_column(vec![Mrs::new(0, 3)].into_iter()).is_ok());
+
+    assert!(
+        cols.add_column(
+            vec![
+                Mrs::new(0, 0),
+                Mrs::new(1, 1),
+                Mrs::new(2, 2),
+                Mrs::new(3, 3),
+            ]
+            .into_iter()
+        )
+        .is_ok()
+    );
+    for (i, row) in cols.into_iter().enumerate() {
+        assert_eq!(row.0.to_tuple_ref(), (&i, &i));
+    }
+    let cols = Columns::num_sr(1);
+    assert!(cols.add_column(vec![Mrs::new(0, 3)].into_iter()).is_ok());
+    // code coverage!
+    cols.into_iter().into_inner();
 }
 
 #[test]
@@ -802,6 +824,12 @@ fn test_redo_next_overlaps() {
 fn from_tests() {
     let cmp = [0..=0, 1..=2, 3..=5];
     for (i, r) in Intersector::num_from(&[0..=2, 1..=5]).enumerate() {
+        assert_eq!(r.to_tuple_ref(), cmp[i].to_tuple_ref());
+    }
+    for (i, r) in Intersector::num_sr_from(1, &[0..=2, 1..=5]).enumerate() {
+        assert_eq!(r.to_tuple_ref(), cmp[i].to_tuple_ref());
+    }
+    for (i, r) in Intersector::any_from(1, 1, 0, 5, &[0..=2, 1..=5]).enumerate() {
         assert_eq!(r.to_tuple_ref(), cmp[i].to_tuple_ref());
     }
     let cmp = [5..=5, 1..=4, 0..=0];
