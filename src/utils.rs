@@ -229,11 +229,10 @@ fn contains<T, R: GetBeginEnd<T>, C: CpCmp<T>>(check: &R, value: &T, t: &C) -> b
     return t.contains(check.get_begin(), check.get_end(), value);
 }
 
-pub fn next_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+pub fn reduce_next<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
     begin: &T,
     end: &T,
     src: &[R],
-    step: &V,
     t: &C,
 ) -> (T, T) {
     let mut target = end;
@@ -251,8 +250,17 @@ pub fn next_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
             target = min
         }
     }
+    return (t.cp(begin), t.cp(target));
+}
 
-    return retool_begin((t.cp(begin), t.cp(target)), src, step, t);
+pub fn next_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
+    begin: &T,
+    end: &T,
+    src: &[R],
+    step: &V,
+    t: &C,
+) -> (T, T) {
+    return retool_end(reduce_next(begin, end, src, t), src, step, t);
 }
 
 pub fn retool_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
@@ -365,7 +373,6 @@ pub fn retool_begin<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
         }
     }
 
-    println!("  final next capture");
     return (next, end);
 }
 
@@ -374,6 +381,15 @@ pub fn previous_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     end: &T,
     src: &[R],
     step: &V,
+    t: &C,
+) -> (T, T) {
+    return retool_begin(reduce_back(begin, end, src, t), src, step, t);
+}
+
+pub fn reduce_back<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
+    begin: &T,
+    end: &T,
+    src: &[R],
     t: &C,
 ) -> (T, T) {
     let mut target = begin;
@@ -392,10 +408,10 @@ pub fn previous_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
         }
     }
 
-    return retool_end((t.cp(target), t.cp(end)), src, step, t);
+    return (t.cp(target), t.cp(end));
 }
 
-pub(crate) fn min_max<'r, T, R: GetBeginEnd<T>, C: CpCmp<T>>(
+pub fn min_max<'r, T, R: GetBeginEnd<T>, C: CpCmp<T>>(
     src: &'r [R],
     t: &C,
 ) -> Option<(&'r T, &'r T)> {
@@ -434,9 +450,7 @@ pub fn first_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     step: &V,
     t: &C,
 ) -> Option<(T, T)> {
-    let check = min_max(src, t);
-
-    if let Some((begin, end)) = check {
+    if let Some((begin, end)) = min_max(src, t) {
         return Some(next_smallest_range(begin, end, src, step, t));
     }
 

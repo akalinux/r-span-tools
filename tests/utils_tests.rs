@@ -2,9 +2,9 @@
 
 use common_range_tools::{
     GetBeginEnd, Mrs, MrsFactory, RangeRelation, builder::NumberIncDecCpCmp, consolidate,
-    first_range_begin_end, grow, last_range_begin_end, next_range_begin_end, next_smallest_range,
-    previous_range_begin_end, previous_smallest_range, range_bounds_to_values, range_relation,
-    retool_begin, retool_end, sort_forward, sort_reverse,
+    first_range_begin_end, grow, last_range_begin_end, min_max, next_range_begin_end,
+    next_smallest_range, previous_range_begin_end, previous_smallest_range, range_bounds_to_values,
+    range_relation, reduce_next, retool_begin, retool_end, sort_forward, sort_reverse,
 };
 
 #[test]
@@ -134,14 +134,14 @@ fn mrs_set_a() -> Vec<Mrs<i32>> {
 
 fn checkset_a_reversed() -> Vec<(i32, i32)> {
     return vec![
-        (19, 21),
-        (15, 18),
+        (20, 21),
+        (15, 19),
         (13, 14),
         (8, 11),
-        (5, 6),
-        (4, 4),
-        (2, 3),
-        (1, 1),
+        (6, 6),
+        (4, 5),
+        (3, 3),
+        (1, 2),
         (0, 0),
     ];
 }
@@ -190,7 +190,7 @@ fn previous_smallest_range_test() {
 
     let (begin, end) = previous_smallest_range(&0, &22, &src, &1, &t);
 
-    assert_eq!((begin, end), (19, 22))
+    assert_eq!((begin, end), (20, 22))
 }
 
 #[test]
@@ -211,27 +211,30 @@ fn previous_range_begin_end_tests() {
 #[test]
 fn next_smallest_range_test() {
     let t = NumberIncDecCpCmp::defaults();
-    let mut src = mrs_set_a();
 
-    let (mut begin, mut end) = next_smallest_range(&0, &22, &src, &1, &t);
-    assert_eq!((begin, end), (0, 1));
-
-    (begin, end) = next_smallest_range(&0, &1, &src, &1, &t);
-    assert_eq!((begin, end), (0, 1));
-
-    src = vec![Mrs::new(5, 7), Mrs::new(4, 7)];
+    let src = vec![Mrs::new(5, 7), Mrs::new(4, 7)];
     let mut valid = Vec::new();
     for s in src.as_slice() {
         valid.push(s);
     }
 
-    (begin, end) = next_smallest_range(&4, &7, &src, &1, &t);
-    assert_eq!((begin, end), (4, 5));
+    let (mut begin, mut end) = next_smallest_range(&4, &7, &src, &1, &t);
+    assert_eq!((begin, end), (4, 4));
+
+    (begin, end) = next_smallest_range(&5, &7, &src, &1, &t);
+    assert_eq!((begin, end), (5, 7));
 
     (begin, end) = next_smallest_range(&1, &5, &[0..=1, 1..=5], &1, &t);
     assert_eq!((begin, end), (1, 1));
-    (begin, end) = next_smallest_range(&0, &5, &[0..=2, 1..=5], &1, &t);
+
+    let src = [0..=2, 1..=5];
+    let (start, finish) = min_max(&src, &t).unwrap();
+    assert_eq!((start, finish), (&0, &5));
+    (begin, end) = reduce_next(start, finish, &src, &t);
+    assert_eq!((begin, end), (0, 1));
+    (begin, end) = retool_end((begin, end), &src, &1, &t);
     assert_eq!((begin, end), (0, 0));
+    assert_eq!(first_range_begin_end(&src, &1, &t).unwrap(), (0, 0));
 }
 
 pub(crate) fn mrs_set() -> Vec<Mrs<i32>> {

@@ -5,7 +5,6 @@ use std::ops::RangeInclusive;
 use common_range_tools::{
     AnyIncDecCpCmp, Column, Columns, Consolidate, ConsolidateChecker, ConsolidationOrder,
     GetBeginEnd, Intersector, Mrs, MrsFactory, NumberIncDecCpCmp, RangeRelation, RiFactory,
-    first_range_begin_end,
 };
 
 use crate::iter_tests::mrs_set;
@@ -21,8 +20,8 @@ mod iter_tests {
 
     fn checkset() -> [(i32, i32); 9] {
         return [
-            (0, 1),   // 0
-            (2, 2),   // 1
+            (0, 0),   // 0
+            (1, 2),   // 1
             (3, 3),   // 2
             (4, 5),   // 3
             (6, 6),   // 4
@@ -33,16 +32,30 @@ mod iter_tests {
         ];
     }
 
+    pub(crate) fn mrs_set() -> Vec<RangeInclusive<i32>> {
+        return vec![
+            RangeInclusive::new(0, 3),
+            RangeInclusive::new(1, 2),
+            RangeInclusive::new(4, 5),
+            RangeInclusive::new(4, 6),
+            // gap 1 is 7-7
+            RangeInclusive::new(8, 11),
+            // gap 2 is 12-12
+            RangeInclusive::new(13, 22),
+            RangeInclusive::new(15, 19),
+        ];
+    }
+
     fn checkset_rev() -> [(i32, i32); 9] {
         return [
-            (19, 22),
-            (15, 18),
+            (20, 22),
+            (15, 19),
             (13, 14),
             (8, 11),
-            (5, 6),
-            (4, 4),
-            (2, 3),
-            (1, 1),
+            (6, 6),
+            (4, 5),
+            (3, 3),
+            (1, 2),
             (0, 0),
         ];
     }
@@ -95,20 +108,6 @@ mod iter_tests {
     #[derive(Clone, Copy, Debug, PartialEq)]
     struct Point {
         x: i32,
-    }
-
-    pub(crate) fn mrs_set() -> Vec<RangeInclusive<i32>> {
-        return vec![
-            RangeInclusive::new(0, 3),
-            RangeInclusive::new(1, 2),
-            RangeInclusive::new(4, 5),
-            RangeInclusive::new(4, 6),
-            // gap 1 is 7-7
-            RangeInclusive::new(8, 11),
-            // gap 2 is 12-12
-            RangeInclusive::new(13, 22),
-            RangeInclusive::new(15, 19),
-        ];
     }
 
     #[test]
@@ -405,7 +404,7 @@ fn colums_forward_num_defaults() {
     let mut iter = cols.into_iter();
 
     let (mut range, mut src) = iter.next().unwrap();
-    assert_eq!(range.to_tuple(), (1, 2));
+    assert_eq!(range.to_tuple(), (1, 1));
     assert_eq!(src.len(), 2);
     match &src[0] {
         Ok(rows) => {
@@ -424,31 +423,25 @@ fn colums_forward_num_defaults() {
 
     match &src[1] {
         Ok(rows) => {
-            assert_eq!(rows.len(), 1);
-            let con = rows[0].as_ref();
-            assert_eq!(con.to_tuple_ref(), (&2, &3));
-            let src = con.src();
-            assert_eq!(src.len(), 2);
-            assert_eq!(src[0].0, 0);
-            assert_eq!(src[1].0, 1);
-            assert_eq!(src[0].1.to_tuple_ref(), (&2, &3));
-            assert_eq!(src[1].1.to_tuple_ref(), (&2, &2));
+            assert_eq!(rows.len(), 0);
         }
         Err(msg) => panic!("Did not expect error, got: {}", msg),
     }
     (range, src) = iter.next().unwrap();
-    assert_eq!(range.to_tuple(), (3, 3));
+    assert_eq!(range.to_tuple(), (2, 2));
     assert_eq!(src.len(), 2);
 
     match &src[0] {
         Ok(rows) => {
             let con = rows[0].as_ref();
-            assert_eq!(con.to_tuple_ref(), (&3, &3));
+            assert_eq!(con.to_tuple_ref(), (&1, &2));
             assert_eq!(rows.len(), 1);
             let src = con.src();
-            assert_eq!(src.len(), 1);
-            assert_eq!(src[0].0, 2);
-            assert_eq!(src[0].1.to_tuple_ref(), (&3, &3));
+            assert_eq!(src.len(), 2);
+            assert_eq!(src[0].0, 0);
+            assert_eq!(src[0].1.to_tuple_ref(), (&1, &2));
+            assert_eq!(src[1].0, 1);
+            assert_eq!(src[1].1.to_tuple_ref(), (&1, &1));
         }
         Err(msg) => panic!("Did not expect error, got: {}", msg),
     }
@@ -467,6 +460,9 @@ fn colums_forward_num_defaults() {
         }
         Err(msg) => panic!("Did not expect error, got: {}", msg),
     }
+    (range, src) = iter.next().unwrap();
+    assert_eq!(range.to_tuple(), (3, 3));
+    assert_eq!(src.len(), 2);
     assert!(iter.next().is_none());
 }
 
@@ -793,28 +789,23 @@ fn test_redo_next_overlaps() {
     let mut iter = isec.into_iter();
     let mut next = iter.next();
     assert!(next.is_some());
-    assert_eq!(next.unwrap().to_tuple(), (1, 2));
+    assert_eq!(next.unwrap().to_tuple(), (1, 1));
     assert!(iter.update_column(1, 2..=3).is_ok());
     next = iter.recompute_next();
     assert!(next.is_some());
-    assert_eq!(next.unwrap().to_tuple(), (3, 3));
+    assert_eq!(next.unwrap().to_tuple(), (2, 3));
+
     assert!(iter.next().is_none());
 }
 
 #[test]
 fn from_tests() {
-    let src = [0..=2, 1..=5];
-    let res = [0..=0, 1..=2, 3..=5];
-    let first = first_range_begin_end(&src, &1, &NumberIncDecCpCmp::defaults()).unwrap();
-
-    assert_eq!(first, (0, 0));
-
-    let mut isec = Intersector::num_defaults();
-    for r in src {
-        let res = isec.add_range(&r);
-        let (_, range) = res.unwrap();
-        assert_eq!(r.to_tuple_ref(), range.to_tuple_ref());
+    let cmp = [0..=0, 1..=2, 3..=5];
+    for (i, r) in Intersector::num_from(&[0..=2, 1..=5]).enumerate() {
+        assert_eq!(r.to_tuple_ref(), cmp[i].to_tuple_ref());
     }
-    let mut iter = isec.into_iter();
-    assert_eq!(iter.ln().0.unwrap().to_tuple_ref(), (&0, &0));
+    let cmp = [5..=5, 1..=4, 0..=0];
+    for (i, r) in Intersector::num_from(&[0..=4, 1..=5]).rev().enumerate() {
+        assert_eq!(r.to_tuple_ref(), cmp[i].to_tuple_ref());
+    }
 }
