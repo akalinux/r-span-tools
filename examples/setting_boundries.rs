@@ -15,9 +15,12 @@ fn main() {
     let min_to_end = ..=7;
     isec.add_range(&min_to_end);
 
-    println!("//! |Start|End|");
-    println!("//! |-----|---|");
     for i in isec.into_iter() {
-        println!("//! |{:^14}|{:^14}|", i.start(), i.end());
+        println!("  Common Range {:^3}->{:^3}", i.start(), i.end());
     }
+    // The output will be:
+    //  Common Range  0 -> 0
+    //  Common Range  1 -> 3
+    //  Common Range  4 -> 5
+    //  Common Range  6 -> 7
 }

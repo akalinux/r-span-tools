@@ -9,15 +9,12 @@ use crate::{GetBeginEnd, Mrs};
 /// The **Number Implementation** of [IncDecCpCmp].  
 ///
 /// Acts as the general proxy layer for safly working with primitive number types inside [crate].
-///
 /// Note: unlike [AnyIncDecCpCmp], the self.inc(a,b) and self.dec(a,b) are checked.
 ///
-/// The following types implemented for [NumberIncDecCpCmp]
-///
-///  - Unsigned Int: u8, u16, u32, u64, u128, usize
-///  - Signed Int: i8, i16, i32, i64, i128, isize);
-///  - Float: f32, f64
-
+/// The following types are implemented for [NumberIncDecCpCmp]
+///  - [u8], [u16], [u32], [u64], [u128], [usize]
+///  - [i8], [i16], [i32], [i64], [i128], [isize]
+///  - [f32], [f64]
 #[derive(Clone, Copy, Debug)]
 pub struct NumberIncDecCpCmp<T>
 where

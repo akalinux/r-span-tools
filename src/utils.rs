@@ -1,14 +1,17 @@
+//! The [crate::utils] module represents the static methods that drive most of the overlap and consolidation intenrals.
+//! The static methods are exposed for general use and testing.
+
 use crate::{CpCmp, GetBeginEnd, GetBeginEndOption, builder::IncDecCpCmp};
 use std::{cmp::Ordering, mem, ops::RangeBounds};
 
-/// This enum is used to represent positional relationships in 3 states
-///  - before a range
-///  - overlap with a range
-///  - after a range
+/// This enum is used to represent positional relationships between 2 ranges.
+///  - before a range: [RangeRelation::Before]
+///  - overlap with a range: [RangeRelation::Overlap]
+///  - after a range: [RangeRelation::Overlap]
 ///
 /// The additional states, represent the initialization of the set.
-///  - empty or no data
-///  - last or final
+///  - empty or no data: [RangeRelation::Invalid]
+///  - last or final: [RangeRelation::Last]
 pub enum RangeRelation<T> {
     /// Range a is before range b
     Before(T),
@@ -263,6 +266,7 @@ pub fn next_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     return retool_end(reduce_next(begin, end, src, t), src, step, t);
 }
 
+/// Computes the final value from a result of [crate::reduce_next].
 pub fn retool_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     res: (T, T),
     src: &[R],
@@ -320,6 +324,7 @@ pub fn retool_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     return (begin, next);
 }
 
+/// Computes the final value from a result of [crate::reduce_back].
 pub fn retool_begin<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     res: (T, T),
     src: &[R],
@@ -376,6 +381,7 @@ pub fn retool_begin<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     return (next, end);
 }
 
+/// Given the current begin and end, returns the smallest next range from src.
 pub fn previous_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     begin: &T,
     end: &T,
@@ -386,6 +392,7 @@ pub fn previous_smallest_range<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     return retool_begin(reduce_back(begin, end, src, t), src, step, t);
 }
 
+/// Given the current begin and end, returns the smallest back range from src.
 pub fn reduce_back<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
     begin: &T,
     end: &T,
@@ -411,6 +418,7 @@ pub fn reduce_back<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
     return (t.cp(target), t.cp(end));
 }
 
+/// Returns an [Option] wrapped tuple representing the smallest begin and largest end values found in src.
 pub fn min_max<'r, T, R: GetBeginEnd<T>, C: CpCmp<T>>(
     src: &'r [R],
     t: &C,
@@ -571,6 +579,7 @@ pub fn previous_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     return None;
 }
 
+/// Given 2 instances of [GetBeginEnd] it returns a range that contains both.
 pub fn grow<
     T,
     Q: GetBeginEnd<T>,
@@ -599,6 +608,7 @@ pub fn grow<
     return f.new_range((a, z));
 }
 
+/// This function is the stateless implementation of [crate::Consolidate].
 pub fn consolidate<
     T,
     R: GetBeginEnd<T>,

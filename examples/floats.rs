@@ -1,4 +1,4 @@
-use common_range_tools::{IncDecCpCmp, NumberIncDecCpCmp};
+use common_range_tools::{IncDecCpCmp, Intersector, NumberIncDecCpCmp};
 
 fn main() {
     let l = NumberIncDecCpCmp::defaults();
@@ -17,4 +17,16 @@ fn main() {
     assert_eq!(l.dec(&f32::INFINITY, &f32::INFINITY), None);
     assert_eq!(l.dec(&1.0, &f32::INFINITY), Some(f32::NEG_INFINITY));
     assert_eq!(l.dec(&1.0, &f32::NEG_INFINITY), None);
+
+    // This sets the step and rebound value to 0.1
+    for r in Intersector::num_sr_from(0.1, &[1.0..=3.1, 2.5..=4.1, 1.9..=7.64]) {
+        print!("Common Range: {}->{}\n", r.start(), r.end());
+    }
+
+    // The resulting output will be:
+    //  Common Range: 1->1.9
+    //  Common Range: 2->2.5
+    //  Common Range: 2.6->3.1
+    //  Common Range: 3.2->4.1
+    //  Common Range: 4.199999999999999->7.64
 }

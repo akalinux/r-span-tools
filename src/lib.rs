@@ -2,32 +2,27 @@
 //! The **common-range-tools** crate, is a library that, can be used to find all common intersections for ranges of generic types.  
 //! It interoperates with the built in range types for rust via the [std::ops::RangeBounds] trait.  When working with primitive
 //! numbers, the increment and decrementing of values are always checked, preventing overflows and underflows.
+//! Support for all primitive number types in rust is implemented via the [NumberIncDecCpCmp] object.
 //!
-//! ## Numbers
-//! The **common-range-tools** crate, implements support for all primitive number types in rust via the [NumberIncDecCpCmp] object type.
+//! ## Example
+//! This is the most basic using the default values from [NumberIncDecCpCmp].  The [OverlapIter] is a [DoubleEndedIterator] and can be reversed.
+#![doc = "```rust\n"]
+#![doc = include_str!("../examples/example.rs")]
+#![doc = "\n```"]
 //!
-//! ## Default Number Example
+//!
+//! ## Any Range Example
 //! This example converts [std::ops::RangeBounds] instances to [std::ops::RangeInclusive].
 //! The bounds to the left or right of .. represent the ($ty::MIN)..($ty::MAX), defined by the [NumberIncDecCpCmp] object.
-//! The min and max numbers can be changed, but this example, uses the defaults.
+//! The min and max numbers can be changed, but this example uses the defaults.
 #![doc = "```rust\n"]
 #![doc = include_str!("../examples/tldr.rs")]
 #![doc = "\n```"]
-//! So using the default values we for [i32::MIN] and [i32::MAX], we end up with the following data range intersections.
-//! |Start|End|
-//! |-----|---|
-//! | -2147483648  |      1       |
-//! |      2       |      3       |
-//! |      4       |      5       |
-//! |      6       |      6       |
-//! |      7       |      7       |
-//! |      8       |  2147483647  |
-//!
 //!
 //! ## Numeric Boundries
 //! In truth the defaults are useful but in most cases the min and max are something we will want to set.
 //! In this example we set the following:
-//! | field | what it does|
+//! | Field | What it does|
 //! |------|----|
 //! | step | sets the value used to progress between the begin or end of a range |
 //! | rebound | sets the value used to redefine a range fom an [std::ops::Bound::Excluded] |
@@ -36,14 +31,6 @@
 #![doc = "```rust\n"]
 #![doc = include_str!("../examples/setting_boundries.rs")]
 #![doc = "\n```"]
-//! The resulting table now has 0 as our min, and 8 as our max.
-//! |Start|End|
-//! |-----|---|
-//! |      0       |      1       |
-//! |      2       |      3       |
-//! |      4       |      5       |
-//! |      6       |      7       |
-//! |      8       |      8       |
 //!
 //! ## Working with Floats
 //! When working with floaing points, its nessesary to understand how floats are handled by the internals.
@@ -60,31 +47,49 @@
 #![doc = include_str!("../examples/systemtime.rs")]
 #![doc = "\n```"]
 //! ## Beyond Generics
-//! In some cases the ranges do not implement: [PartialOrd], [std::ops::Add], [std::ops::Sub], [Copy], [Clone] or do so in a way
+//! In some cases the range values do not implement: [PartialOrd], [std::ops::Add], [std::ops::Sub], [Copy], [Clone] or do so in a way
 //! that is incompatable with the required data model.  The internals of [OverlapIter] use a proxy layer which can be customized to meet most requirements.
 //! This example shows how to work with ragnes of custom data strcutres.
 #![doc = "```rust\n"]
 #![doc = include_str!("../examples/beyond_any.rs")]
 #![doc = "\n```"]
 //!
-//! ## Asynchronous Consolidation
-//! The [Consolidate] object can be used to consolidate duplicate and overlapping ranges asyncronously via an [Iterator] of ranges.
+//! ## Internal Range Trait
+//! Rust has no single trait representing rages aside from [std::ops::RangeBounds], which can require recomputing the begin and or end
+//! values of a range on each evaluation.  To work around this the internals of this crate use a common range type of [GetBeginEnd].
+//! There is also a factory trait for creating instances called [GetBeginEndOption].  This example shows how to create and use both the
+//! factory: [GetBeginEndOption] and the range: [GetBeginEnd].  As a note the [GetBeginEnd] trait is implemnted for [std::ops::RangeInclusive].
+#![doc = "```rust\n"]
+#![doc = include_str!("../examples/getbeginend.rs")]
+#![doc = "\n```"]
+//!
+//! ## Consolidation of ranges
+//! The [Consolidate] object can be used to consolidate duplicate and overlapping ranges via an [Iterator] of ranges.
 //! It is recommended to convert an instance of [Consolidate] into an instance of [ConsolidateChecker] instance to verify the integrity of the data returned by the [Iterator].
 //!
-//!
 //! The ranges returned by the [Iterator] must be in [ConsolidationOrder].
 //!  - for [ConsolidationOrder::Forward] see [crate::sort_forward]
 //!  - for [ConsolidationOrder::Reverse] see [crate::sort_reverse]
 //!
-//! ## Intersections of Async Consolidation Itertors
+//! ## Intersections of Consolidation Itertors
 //! The [Columns] object is a factory can be used to construct an [Iterator] that can step through multiple [Iterator] instances of ranges that can contain duplicate
-//! and overlapping ranges that intersect with one another.  This allows for a progressive iteration of columns and rows in both a vertical and horizontal context.  Each [Column] added to [Columns] is wrapped in an instance of [ConsolidateChecker] to ensure that the asynchronous consolidation is occuring in the
-//! expected [ConsolidationOrder].
+//! and overlapping ranges that intersect with one another.  This allows for a progressive iteration of columns and rows in both a vertical and horizontal context.  Each [Column] added to [Columns] is wrapped in an instance of [ConsolidateChecker] to ensure that the consolidation is occuring in the expected [ConsolidationOrder].
 //!
 //! The ranges returned by the [Iterator] must be in [ConsolidationOrder].
 //!  - for [ConsolidationOrder::Forward] see [crate::sort_forward]
 //!  - for [ConsolidationOrder::Reverse] see [crate::sort_reverse]
 //!
+//! # Motivation
+//! In truth nothing else on crates.io provides the following functionality:
+//! - A range intersection library that handles columns of [Iterator] ranges and progress through those ranges correctly.   
+//! - An intersection library that could be quickly extended to work with any data structure.  
+//! - An intersection library that can support any range type via a a common trait.
+//! - A reversable intersection iterator.
+//!
+//! Other implementations:
+//!   - [range-ext](https://docs.rs/range-ext/0.3.0/range_ext/index.html)
+//!   - [range-overlap](https://docs.rs/range-overlap/latest/range_overlap/)
+//!   - [rangetools](https://crates.io/crates/rangetools)
 use std::marker::PhantomData;
 use std::ops::{Bound, RangeBounds, RangeInclusive};
 

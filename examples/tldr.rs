@@ -17,9 +17,14 @@ fn main() {
     let min_to_max = ..;
     isec.add_range(&min_to_max);
 
-    println!("//! |Start|End|");
-    println!("//! |-----|---|");
     for i in isec.into_iter() {
-        println!("//! |{:^14}|{:^14}|", i.start(), i.end());
+        println!("Common Range: {:^14}->{:^14}", i.start(), i.end());
     }
+
+    // The Output will be:
+    //  Common Range:  -2147483648  ->      1
+    //  Common Range:       2       ->      3
+    //  Common Range:       4       ->      5
+    //  Common Range:       6       ->      7
+    //  Common Range:       8       ->  2147483647
 }
