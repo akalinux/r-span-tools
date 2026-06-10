@@ -8,8 +8,11 @@ use std::marker::PhantomData;
 use std::mem;
 use std::ops::RangeInclusive;
 use std::ops::{Add, RangeBounds, Sub};
+
+/// Core of the consolidation code.
 pub mod consolidate;
 
+/// The core [Iterator]+[DoubleEndedIterator] for finding range intersections.
 pub struct OverlapIter<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> {
     src: Vec<R>,
     step: V,
@@ -117,7 +120,7 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
     }
 
     /// Updates the internal column to the new [GetBeginEnd] instance.
-    /// Returns [Result::Err]f the range is invalid or if the index point does not exist.
+    /// Returns [Result::Err] if the range is invalid or if the index point does not exist.
     ///
     /// After calling this method the next call to  [OverlapIter::next] or [OverlapIter::next_back] will not function correctly.
     /// First call the respective [OverlapIter::recompute_next] or [OverlapIter::recompute_back],

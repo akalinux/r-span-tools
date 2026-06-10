@@ -6,6 +6,7 @@ use crate::{
     Intersector, OverlapIter,
 };
 
+/// Represents a column in an instance of [OverlapIter] in which the [Column] itself is an [Iterator].
 pub struct Column<
     T,
     R: GetBeginEnd<T>,

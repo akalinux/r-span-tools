@@ -11,6 +11,7 @@ use crate::{
     NumberIncDecCpCmp, OverlapIter, RiFactory,
 };
 
+/// A factory interface for adding [Iterator] instances as [GetBeginEnd] instances for intersectional evaluation via an [OverlapIter].
 pub struct Columns<
     T,
     V,
@@ -155,6 +156,8 @@ impl<
         );
     }
 }
+
+/// Acts as an [Iterator] over [Column] instances finding the intersections via an internal [OverlapIter].
 pub struct ColumnsIter<
     T,
     V,

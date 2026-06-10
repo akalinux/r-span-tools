@@ -72,6 +72,11 @@ impl ConsolidationOrder {
         }
     }
 
+    /// Checks the positional value of a against b.
+    ///
+    /// The tuple returned represents the following
+    ///  - 0: when true a overlaps with b
+    ///  - 1: when true a is after b.
     pub fn check_position<T>(
         &self,
         a: &impl GetBeginEnd<T>,
@@ -111,6 +116,8 @@ impl ConsolidationOrder {
             Self::Reverse => t.lt(a.get_begin(), b.get_begin()),
         }
     }
+
+    /// Checks if a begins or ends before b relative to the current order.
     pub fn is_before<T>(
         &self,
         a: &impl GetBeginEnd<T>,
@@ -124,6 +131,7 @@ impl ConsolidationOrder {
     }
 }
 
+/// Consolidates duplicate and overlapping ranges.
 pub struct Consolidate<
     T,
     R: GetBeginEnd<T>,
@@ -174,6 +182,7 @@ impl<
     C: CpCmp<T>,
 > Consolidate<T, R, S, F, I, C>
 {
+    /// Converts the current instance to [ConsolidateChecker] instance.
     pub fn to_consolidate_checker(
         self,
         order: ConsolidationOrder,
@@ -236,6 +245,10 @@ impl<
 > Iterator for Consolidate<T, R, S, F, I, C>
 {
     type Item = RangeRelation<(R, Vec<(usize, S)>)>;
+
+    /// The [RangeRelation] returnd represnets relative position to the next set of data.  
+    /// -- The R [GetBeginEnd] instance represnets the overlapping range.
+    /// -- The [Vec] of ([usize],[GetBeginEnd]), the usize represents the [Iterator] position and the [GetBeginEnd] is the raw range.
     fn next(&mut self) -> Option<Self::Item> {
         let next;
         (self.offset, next) = consolidate(

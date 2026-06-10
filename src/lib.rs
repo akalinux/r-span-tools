@@ -60,12 +60,31 @@
 #![doc = include_str!("../examples/systemtime.rs")]
 #![doc = "\n```"]
 //! ## Beyond Generics
-//! In some cases the ranges do not implement: [PartialOrd], [std::ops::Add], [std::ops::Sub], [Copy], [Clone] and [AnyIncDecCpCmp], or do so in a way
-//! that is incompatable with the required data mode.  The internals of [crate] use a proxy layer which can be customized to meet most requirements.
+//! In some cases the ranges do not implement: [PartialOrd], [std::ops::Add], [std::ops::Sub], [Copy], [Clone] or do so in a way
+//! that is incompatable with the required data model.  The internals of [OverlapIter] use a proxy layer which can be customized to meet most requirements.
 //! This example shows how to work with ragnes of custom data strcutres.
 #![doc = "```rust\n"]
 #![doc = include_str!("../examples/beyond_any.rs")]
 #![doc = "\n```"]
+//!
+//! ## Asynchronous Consolidation
+//! The [Consolidate] object can be used to consolidate duplicate and overlapping ranges asyncronously via an [Iterator] of ranges.
+//! It is recommended to convert an instance of [Consolidate] into an instance of [ConsolidateChecker] instance to verify the integrity of the data returned by the [Iterator].
+//!
+//!
+//! The ranges returned by the [Iterator] must be in [ConsolidationOrder].
+//!  - for [ConsolidationOrder::Forward] see [crate::sort_forward]
+//!  - for [ConsolidationOrder::Reverse] see [crate::sort_reverse]
+//!
+//! ## Intersections of Async Consolidation Itertors
+//! The [Columns] object is a factory can be used to construct an [Iterator] that can step through multiple [Iterator] instances of ranges that can contain duplicate
+//! and overlapping ranges that intersect with one another.  This allows for a progressive iteration of columns and rows in both a vertical and horizontal context.  Each [Column] added to [Columns] is wrapped in an instance of [ConsolidateChecker] to ensure that the asynchronous consolidation is occuring in the
+//! expected [ConsolidationOrder].
+//!
+//! The ranges returned by the [Iterator] must be in [ConsolidationOrder].
+//!  - for [ConsolidationOrder::Forward] see [crate::sort_forward]
+//!  - for [ConsolidationOrder::Reverse] see [crate::sort_reverse]
+//!
 use std::marker::PhantomData;
 use std::ops::{Bound, RangeBounds, RangeInclusive};
 
