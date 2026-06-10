@@ -87,7 +87,7 @@
 //!  - for [ConsolidationOrder::Reverse] see [crate::sort_reverse]
 //!
 //! # Motivation
-//! In truth nothing else on crates.io provides the following functionality:
+//! In truth there doesn't seem to be a library on crates.io provides the following functionality:
 //! - A range intersection library that handles columns of [Iterator] ranges and progress through those ranges correctly.   
 //! - An intersection library that could be quickly extended to work with any data structure.  
 //! - An intersection library that can support any range type via a a common trait.
