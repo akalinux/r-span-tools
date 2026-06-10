@@ -3,18 +3,20 @@ use common_range_tools::Intersector;
 
 fn main() {
     let mut isec = Intersector::num_defaults();
-    let range = 1..4;
+    let range: std::ops::Range<i32> = 1..4;
     isec.add_range(&range);
-    let range_inclusive = 3..=5;
+
+    let range_inclusive: std::ops::RangeInclusive<i32> = 3..=5;
     isec.add_range(&range_inclusive);
-    let min_to_end = ..=7;
+
+    let min_to_end: std::ops::RangeToInclusive<i32> = ..=7;
     isec.add_range(&min_to_end);
-    let begin_to_max = 7..;
+
+    let begin_to_max: std::ops::RangeFrom<i32> = 7..;
     isec.add_range(&begin_to_max);
 
-    // Note 7.. and ..7 include our min and max all ready.. so this is a bit redundant
-    // but works non the less.
-    let min_to_max = ..;
+    // Note 7.. and ..7 include our min and max all ready!
+    let min_to_max: std::ops::RangeFull = ..;
     isec.add_range(&min_to_max);
 
     for i in isec.into_iter() {

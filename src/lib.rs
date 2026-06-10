@@ -1,11 +1,17 @@
 //! # Overview
 //! The **common-range-tools** crate, is a library that, can be used to find all common intersections for ranges of generic types.  
 //! It interoperates with the built in range types for rust via the [std::ops::RangeBounds] trait.  When working with primitive
-//! numbers, the increment and decrementing of values are always checked, preventing overflows and underflows.
+//! numbers, the increment and decrementing of values are checked (see [working with floats](#working-with-floats), for the exception).
 //! Support for all primitive number types in rust is implemented via the [NumberIncDecCpCmp] object.
 //!
+//! For dealing with ranges beyond just intersections of
+//! numbers see: [Generic Data Types](#generic-data-types).  For working with custom data structures see: [Beyond Generics](#beyond-generics).
+//! For working with custom Ranges and range factories see: [Internal Range Trait](#internal-range-trait).
+//! For consolidating duplicate and overlapping ranges see [Consolidation of ranges](#consolidation-of-ranges).
+//! For finding intersections between muliple consolidated [Iterator] data sets see: [Intersections of Consolidation Itertors](#intersections-of-consolidation-itertors).
+//!
 //! ## Example
-//! This is the most basic using the default values from [NumberIncDecCpCmp].  The [OverlapIter] is a [DoubleEndedIterator] and can be reversed.
+//! This is the most basic example, using the default values from [NumberIncDecCpCmp].  The [OverlapIter] is a [DoubleEndedIterator] and can be reversed.
 #![doc = "```rust\n"]
 #![doc = include_str!("../examples/example.rs")]
 #![doc = "\n```"]
@@ -42,13 +48,14 @@
 //!
 //! ## Generic Data types
 //! The [AnyIncDecCpCmp] object supports working with any data type provided it implements: [PartialOrd], [std::ops::Add], [std::ops::Sub], [Copy], and [Clone].
-//! In truth the value used by step and rebound do not have to be the same type, a good example of this is [std::time::Duration] and [std::time::SystemTime].
+//! In truth the value used by step and rebound do not have to be the same type as the value used by the range.
+//! A practical example of why this is useful is [std::time::Duration] and [std::time::SystemTime].
 #![doc = "```rust\n"]
 #![doc = include_str!("../examples/systemtime.rs")]
 #![doc = "\n```"]
 //! ## Beyond Generics
 //! In some cases the range values do not implement: [PartialOrd], [std::ops::Add], [std::ops::Sub], [Copy], [Clone] or do so in a way
-//! that is incompatable with the required data model.  The internals of [OverlapIter] use a proxy layer which can be customized to meet most requirements.
+//! that is incompatable with the required data structure used as a value for the range.  The internals of [OverlapIter] use a proxy layer which can be customized to meet most requirements.
 //! This example shows how to work with ragnes of custom data strcutres.
 #![doc = "```rust\n"]
 #![doc = include_str!("../examples/beyond_any.rs")]
@@ -84,7 +91,7 @@
 //! - A range intersection library that handles columns of [Iterator] ranges and progress through those ranges correctly.   
 //! - An intersection library that could be quickly extended to work with any data structure.  
 //! - An intersection library that can support any range type via a a common trait.
-//! - A reversable intersection iterator.
+//! - A reversable range intersection iterator.
 //!
 //! Other implementations:
 //!   - [range-ext](https://docs.rs/range-ext/0.3.0/range_ext/index.html)
