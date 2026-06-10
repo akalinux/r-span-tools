@@ -39,8 +39,8 @@
 #![doc = "\n```"]
 //!
 //! ## Working with Floats
-//! When working with floaing points, its nessesary to understand how floats are handled by the internals.
-//! Floating point numbers are in a word **imprecise**; The internals cannot check them for over or underflow;
+//! When working with floaing points, its nessesary to understand how floats are handled by the [NumberIncDecCpCmp].
+//! Floating point numbers are in a word *imprecise*; The internals of [NumberIncDecCpCmp] cannot check them for over or underflow;
 //! The internals of [NumberIncDecCpCmp] simply makes sure that the values properly increment and decrement.
 #![doc = "```rust\n"]
 #![doc = include_str!("../examples/floats.rs")]
