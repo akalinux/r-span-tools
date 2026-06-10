@@ -56,7 +56,7 @@
 //!
 //! ## Internal Range Trait
 //! Rust has no single trait representing rages aside from [std::ops::RangeBounds], which can require recomputing the begin and or end
-//! values of a range on each evaluation.  To work around this the internals of this crate use a common range type of [GetBeginEnd].
+//! values of a range on each evaluation.  To work around this the internals of this crate use a common trait range type of [GetBeginEnd].
 //! There is also a factory trait for creating instances called [GetBeginEndOption].  This example shows how to create and use both the
 //! factory: [GetBeginEndOption] and the range: [GetBeginEnd].  As a note the [GetBeginEnd] trait is implemnted for [std::ops::RangeInclusive].
 #![doc = "```rust\n"]
