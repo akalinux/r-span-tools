@@ -150,7 +150,7 @@ where
     }
 }
 
-/// *Decrement, Copy, Compare Values**
+/// **Copy and Compare Values**
 ///
 /// For an implementation examples and details see: [IncDecCpCmp].
 pub trait CpCmp<T> {
@@ -301,7 +301,7 @@ pub trait DefaultValues<T, V>: IncDecCpCmp<T, V> {
     /// Returns the default value use for progressing a begin or end value of a range.
     fn default_step(&self) -> V;
 
-    /// Returns the value used to adjust a start or end value in the context of [std::ops::range::Bound::Excluded].
+    /// Returns the value used to adjust a start or end value in the context of [std::ops::Bound].
     fn default_rebound(&self) -> V;
 
     /// Returns the default minimum value.
@@ -431,16 +431,19 @@ impl_inc_dec_cp_cmp_trait_u!(u8, u16, u32, u64, u128, usize);
 impl_inc_dec_cp_cmp_trait_i!(i8, i16, i32, i64, i128, isize);
 impl_inc_dec_cp_cmp_trait_f!(f32, f64);
 
+/// This trait represents how ranges factories are to be implemented.
 pub trait GetBeginEndOption<T, R: GetBeginEnd<T>> {
     fn factory(&self, opt: Option<(T, T)>) -> Option<R>;
     fn new_range(&self, src: (T, T)) -> R;
 }
 
+/// This is the factory implemntation of [GetBeginEndOption] for [Mrs].
 #[derive(Copy, Clone)]
 pub struct MrsFactory<T> {
     _t: PhantomData<T>,
 }
 
+/// This is the factory implementation of [GetBeginEndOption] for [std::ops::RangeInclusive].
 #[derive(Copy, Clone)]
 pub struct RiFactory<T> {
     _t: PhantomData<T>,
