@@ -418,7 +418,7 @@ fn colums_forward_num_defaults() {
 
     let mut iter = cols.into_iter();
 
-    let (mut range, mut src) = iter.next().unwrap();
+    let (mut range, _, mut src) = iter.next().unwrap();
     assert_eq!(range.to_tuple(), (1, 1));
     assert_eq!(src.len(), 2);
     match &src[0] {
@@ -442,7 +442,7 @@ fn colums_forward_num_defaults() {
         }
         Err(msg) => panic!("Did not expect error, got: {}", msg),
     }
-    (range, src) = iter.next().unwrap();
+    (range, _, src) = iter.next().unwrap();
     assert_eq!(range.to_tuple(), (2, 2));
     assert_eq!(src.len(), 2);
 
@@ -475,7 +475,7 @@ fn colums_forward_num_defaults() {
         }
         Err(msg) => panic!("Did not expect error, got: {}", msg),
     }
-    (range, src) = iter.next().unwrap();
+    (range, _, src) = iter.next().unwrap();
     assert_eq!(range.to_tuple(), (3, 3));
     assert_eq!(src.len(), 2);
     assert!(iter.next().is_none());
@@ -623,7 +623,7 @@ fn consoldaite_with_gap() {
         assert!(cols.add_column(ib).is_ok());
         let mut iter = cols.into_iter();
 
-        let (mut range, mut cols) = iter.next().unwrap();
+        let (mut range, _, mut cols) = iter.next().unwrap();
         assert_eq!(range.to_tuple(), (1, 2));
         assert_eq!(cols.len(), 2);
         if let Ok(col) = &cols[a] {
@@ -634,7 +634,7 @@ fn consoldaite_with_gap() {
             assert_eq!(col[0].as_ref().to_tuple_ref(), (&1, &2));
         }
 
-        (range, cols) = iter.next().unwrap();
+        (range, _, cols) = iter.next().unwrap();
         assert_eq!(range.to_tuple(), (3, 4));
         if let Ok(col) = &cols[a] {
             assert_eq!(col.len(), 1);
@@ -644,7 +644,7 @@ fn consoldaite_with_gap() {
             assert_eq!(col.len(), 0);
         }
 
-        (range, cols) = iter.next().unwrap();
+        (range, _, cols) = iter.next().unwrap();
         assert_eq!(range.to_tuple(), (5, 6));
         if let Ok(col) = &cols[a] {
             assert_eq!(col.len(), 1);
@@ -654,7 +654,7 @@ fn consoldaite_with_gap() {
             assert_eq!(col.len(), 0);
         }
 
-        (range, cols) = iter.next().unwrap();
+        (range, _, cols) = iter.next().unwrap();
         assert_eq!(range.to_tuple(), (7, 8));
         if let Ok(col) = &cols[a] {
             assert_eq!(col.len(), 0);
@@ -688,7 +688,7 @@ fn num_defaults_columns_rev() {
         assert!(cols.add_column(ib).is_ok());
         let mut iter = cols.into_iter();
 
-        let (mut range, mut cols) = iter.next().unwrap();
+        let (mut range, _, mut cols) = iter.next().unwrap();
         assert_eq!(range.to_tuple(), (7, 8));
         assert_eq!(cols.len(), 2);
         if let Ok(col) = &cols[a] {
@@ -698,7 +698,7 @@ fn num_defaults_columns_rev() {
             assert_eq!(col.len(), 1);
             assert_eq!(col[0].as_ref().to_tuple_ref(), (&7, &8));
         }
-        (range, cols) = iter.next().unwrap();
+        (range, _, cols) = iter.next().unwrap();
         assert_eq!(range.to_tuple(), (5, 6));
         if let Ok(col) = &cols[a] {
             assert_eq!(col.len(), 1);
@@ -707,7 +707,7 @@ fn num_defaults_columns_rev() {
         if let Ok(col) = &cols[b] {
             assert_eq!(col.len(), 0);
         }
-        (range, cols) = iter.next().unwrap();
+        (range, _, cols) = iter.next().unwrap();
         assert_eq!(range.to_tuple(), (3, 4));
         if let Ok(col) = &cols[a] {
             assert_eq!(col.len(), 1);
@@ -716,7 +716,7 @@ fn num_defaults_columns_rev() {
         if let Ok(col) = &cols[b] {
             assert_eq!(col.len(), 0);
         }
-        (range, cols) = iter.next().unwrap();
+        (range, _, cols) = iter.next().unwrap();
         assert_eq!(range.to_tuple(), (1, 2));
         if let Ok(col) = &cols[a] {
             assert_eq!(col.len(), 0);
@@ -892,12 +892,16 @@ fn columns_negative_test_out_of_order() {
     assert_eq!(row.0, 0..=5);
 
     row = iter.next().unwrap();
+    assert!(row.1.is_ok());
     assert_eq!(row.0, 6..=6);
     row = iter.next().unwrap();
+    assert!(row.1.is_err());
     assert_eq!(row.0, 7..=7);
-    assert!(row.1[0].is_err());
+    assert!(row.2[0].is_err());
+    assert!(row.1.is_err());
     assert_eq!(iter.get_column(0).unwrap().get_rows()[0].src().len(), 2);
     row = iter.next().unwrap();
-    assert!(row.1[0].is_ok());
+    assert!(row.2[0].is_ok());
+    assert!(row.1.is_ok());
     assert_eq!(row.0, 8..=9);
 }

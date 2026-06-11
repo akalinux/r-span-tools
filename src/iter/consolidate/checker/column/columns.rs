@@ -141,6 +141,7 @@ impl<
 {
     type Item = (
         RangeInclusive<T>,
+        Result<(), &'static str>,
         Vec<Result<Vec<Rc<ConsolidateMrsP<T, R, S>>>, &'static str>>,
     );
 
@@ -255,6 +256,7 @@ impl<
 {
     type Item = (
         RangeInclusive<T>,
+        Result<(), &'static str>,
         Vec<Result<Vec<Rc<ConsolidateMrsP<T, R, S>>>, &'static str>>,
     );
 
@@ -273,10 +275,14 @@ impl<
 
             let filter = next.unwrap();
             let mut cols = Vec::new();
+            let mut err = Ok(());
             for col in &mut self.cols {
-                cols.push(col.filter_column(&filter))
+                cols.push(col.filter_column(&filter));
+                if col.in_err() {
+                    err = Err("Problem in one ore more Columns")
+                }
             }
-            return Some((filter, cols));
+            return Some((filter, err, cols));
         }
 
         let (next, last) = self.next_last();
@@ -317,10 +323,14 @@ impl<
             return None;
         }
         let filter = n.unwrap();
+        let mut err = Ok(());
         for col in &mut self.cols {
-            cols.push(col.filter_column(&filter))
+            cols.push(col.filter_column(&filter));
+            if col.in_err() {
+                err = Err("Problem in one ore more Columns")
+            }
         }
 
-        return Some((filter, cols));
+        return Some((filter, err, cols));
     }
 }
