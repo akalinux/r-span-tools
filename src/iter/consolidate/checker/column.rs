@@ -65,6 +65,9 @@ impl<
             Ok(idx) => col = *idx,
             Err(_) => return false,
         }
+
+        // reset the column error state each time we process a column.
+        self.err = Ok(());
         let order;
         let cmp = self.get_cmp();
         {
@@ -129,15 +132,13 @@ impl<
     }
 
     pub fn filter_column<Q: GetBeginEnd<T>>(
-        &mut self,
+        &self,
         next: &Q,
     ) -> Result<Vec<Rc<ConsolidateMrsP<T, R, S>>>, &'static str> {
         if let Err(e) = &self.col {
             return Err(e);
-        } else if self.err.is_err() {
+        } else if let Err(e) = &self.err {
             // make sure we can progress on this column instances by clearing the error.
-            let e = unsafe { self.err.unwrap_err_unchecked() };
-            self.err = Ok(());
             return Err(e);
         }
         let mut results = Vec::new();
