@@ -112,8 +112,8 @@ fn checkset_a() -> Vec<(i32, i32)> {
         (4, 5),
         (6, 6),
         (8, 11),
-        (13, 15),
-        (16, 19),
+        (13, 14),
+        (15, 19),
         (20, 22),
     ];
 }
@@ -369,7 +369,7 @@ pub fn known_bad_mrs() -> Vec<Mrs<i32>> {
 }
 
 pub fn checked_bad() -> Vec<(i32, i32)> {
-    return vec![(i32::MIN, 1), (2, 2), (3, 4), (5, i32::MAX)];
+    return vec![(i32::MIN, 0), (1, 2), (3, 4), (5, i32::MAX)];
 }
 #[test]
 fn inf_bounds() {
@@ -377,7 +377,7 @@ fn inf_bounds() {
     let bad = known_bad_mrs();
     let good = checked_bad();
     assert_eq!(first_range_begin_end(&bad, &1, &t).unwrap(), good[0]);
-    assert_eq!(next_range_begin_end(&2, &bad, &1, &t).unwrap(), good[1]);
+    assert_eq!(next_range_begin_end(&1, &bad, &1, &t).unwrap(), good[1]);
     assert_eq!(next_range_begin_end(&3, &bad, &1, &t).unwrap(), good[2]);
     assert_eq!(next_range_begin_end(&5, &bad, &1, &t).unwrap(), good[3]);
     matches!(next_range_begin_end(&i32::MAX, &bad, &1, &t), None);

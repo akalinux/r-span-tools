@@ -18,16 +18,16 @@ mod iter_tests {
         NumberIncDecCpCmp, OverlapIter, RiFactory,
     };
 
-    fn checkset() -> [(i32, i32); 9] {
-        return [
+    fn checkset() -> Vec<(i32, i32)> {
+        return vec![
             (0, 0),   // 0
             (1, 2),   // 1
             (3, 3),   // 2
             (4, 5),   // 3
             (6, 6),   // 4
             (8, 11),  // 5
-            (13, 15), // 6
-            (16, 19), // 7
+            (13, 14), // 6
+            (15, 19), // 7
             (20, 22), // 8
         ];
     }
@@ -247,8 +247,8 @@ mod iter_tests {
         let list: Vec<Mrs<Point>> = Vec::new();
         let mut a = Intersector::new(list, Point { x: 1 }, Point { x: 1 }, t, MrsFactory::new());
 
-        a.add_range(&(..Point { x: 2 }));
-        a.add_range(&(Point { x: 1 }..Point { x: 3 }));
+        a.add_range(&(..=Point { x: 2 }));
+        a.add_range(&(Point { x: 1 }..=Point { x: 3 }));
         a.add_range(&(Point { x: 3 }..=Point { x: 4 }));
         a.add_range(&(Point { x: 3 }..));
         #[allow(unused_variables)]
@@ -256,15 +256,19 @@ mod iter_tests {
 
         assert_eq!(
             i.next().unwrap().to_tuple(),
-            (Point { x: i32::MIN }, Point { x: 1 })
+            (Point { x: i32::MIN }, Point { x: 0 })
         );
         assert_eq!(
             i.next().unwrap().to_tuple(),
-            (Point { x: 2 }, Point { x: 2 })
+            (Point { x: 1 }, Point { x: 2 })
         );
         assert_eq!(
             i.next().unwrap().to_tuple(),
-            (Point { x: 3 }, Point { x: 4 })
+            (Point { x: 3 }, Point { x: 3 })
+        );
+        assert_eq!(
+            i.next().unwrap().to_tuple(),
+            (Point { x: 4 }, Point { x: 4 })
         );
         assert_eq!(
             i.next().unwrap().to_tuple(),

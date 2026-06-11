@@ -168,9 +168,6 @@ pub fn range_bounds_to_values<T, V>(
     if let Some(begin) = cmp.rebound_start(range.start_bound(), rebound)
         && let Some(end) = cmp.rebound_end(range.end_bound(), rebound)
     {
-        if cmp.is_invalid_set(&begin, &end) {
-            return None;
-        }
         return Some((begin, end));
     } else {
         return None;
@@ -242,7 +239,7 @@ pub fn reduce_next<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
 
     for r in src {
         let (start, finish) = r.to_tuple_ref();
-        if t.is_invalid_set(start, finish) || !t.overlap(begin, end, start, finish) {
+        if !t.overlap(begin, end, start, finish) {
             continue;
         }
         let mut min = finish;
@@ -277,7 +274,6 @@ pub fn retool_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
 
     let next;
     if let Some(n) = t.dec(&end, step)
-        && t.eq(&begin, &n)
         && !t.is_invalid_set(&begin, &n)
     {
         next = n;
@@ -288,12 +284,13 @@ pub fn retool_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     let mut matches = false;
     let mut driver = &end;
     let mut exact: usize = 0;
-
     for r in src {
         let (c, d) = r.to_tuple_ref();
+
         if t.overlap(&begin, &end, c, d) {
             exact += 1;
         }
+
         if t.overlap(&begin, &next, c, d) {
             if matches {
                 return (begin, end);
@@ -403,7 +400,7 @@ pub fn reduce_back<T, C: CpCmp<T>, R: GetBeginEnd<T>>(
 
     for r in src {
         let (start, finish) = r.to_tuple_ref();
-        if t.is_invalid_set(start, finish) || !t.overlap(begin, end, start, finish) {
+        if !t.overlap(begin, end, start, finish) {
             continue;
         }
         let mut min = start;
@@ -426,9 +423,6 @@ pub fn min_max<'r, T, R: GetBeginEnd<T>, C: CpCmp<T>>(
     let mut check: Option<(&T, &T)> = None;
 
     for span in src {
-        if t.is_invalid_set(span.get_begin(), span.get_end()) {
-            continue;
-        }
         let (start, finish) = span.to_tuple_ref();
         match check {
             Some((begin, end)) => {
@@ -491,9 +485,6 @@ pub fn next_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     let mut target: Option<&T> = None;
     let mut alt: Option<(&T, &T)> = None;
     for check in src {
-        if t.is_invalid_set(check.get_begin(), check.get_end()) {
-            continue;
-        }
         let (start, finish) = check.to_tuple_ref();
         if contains(check, begin, t) {
             match target {
@@ -538,9 +529,6 @@ pub fn previous_range_begin_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
     let mut alt: Option<(&T, &T)> = None;
     let mut valid = Vec::new();
     for check in src {
-        if t.is_invalid_set(check.get_begin(), check.get_end()) {
-            continue;
-        }
         valid.push(check);
         let (start, finish) = check.to_tuple_ref();
         if contains(check, end, t) {
