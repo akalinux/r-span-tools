@@ -197,6 +197,17 @@ impl<
         }
     }
 
+    pub fn get_column<'a>(&self, idx: usize) -> Option<&'a Column<T, R, S, F, I, C>> {
+        let res = self.cols.get(idx);
+
+        return unsafe {
+            mem::transmute::<
+                Option<&'_ Column<T, R, S, F, I, C>>,
+                Option<&'a Column<T, R, S, F, I, C>>,
+            >(res)
+        };
+    }
+
     /// Converts self to a tuple, whos contents can be used to construct a new instance of [Columns].
     pub fn into_inner(
         self,
@@ -214,8 +225,8 @@ impl<
         );
     }
 
-    // Internal method used to prevent an additional clone of internal iterator range states.
-    fn next_last<'r>(&self) -> (Option<&'r RangeInclusive<T>>, Option<&'r RangeInclusive<T>>) {
+    /// Returns the state of the next,last position relative to the direction.
+    pub fn next_last<'r>(&self) -> (Option<&'r RangeInclusive<T>>, Option<&'r RangeInclusive<T>>) {
         let iter = &*self.iter.borrow();
         let (last, next);
         match &self.order {
@@ -302,7 +313,7 @@ impl<
         }
 
         let mut cols = Vec::new();
-        if next.is_none() {
+        if n.is_none() {
             return None;
         }
         let filter = n.unwrap();

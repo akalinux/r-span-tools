@@ -309,6 +309,21 @@ fn consolidation_order_tests() {
 
     assert!(ConsolidationOrder::Reverse.is_beyond(&Mrs::new(0, 2), &Mrs::new(1, 1), &t));
     assert!(!ConsolidationOrder::Reverse.is_beyond(&Mrs::new(0, 2), &Mrs::new(0, 3), &t));
+
+    for rel in [ConsolidationOrder::Forward, ConsolidationOrder::Reverse].into_iter() {
+        assert!(rel.check_direction(&RangeRelation::Invalid(())).is_err());
+    }
+
+    assert!(
+        ConsolidationOrder::Reverse
+            .check_direction(&RangeRelation::After(()))
+            .is_ok()
+    );
+    assert!(
+        ConsolidationOrder::Forward
+            .check_direction(&RangeRelation::After(()))
+            .is_err()
+    );
 }
 
 #[test]
@@ -836,4 +851,53 @@ fn from_tests() {
     for (i, r) in Intersector::num_from(&[0..=4, 1..=5]).rev().enumerate() {
         assert_eq!(r.to_tuple_ref(), cmp[i].to_tuple_ref());
     }
+}
+
+#[test]
+fn consolidate_error_tests() {
+    let mut checker = ConsolidateChecker::new(
+        ConsolidationOrder::Forward,
+        Consolidate::num_defaults([0..=3, 2..=5, 6..=6, 7..=7, 1..=1].into_iter()),
+    );
+    let mut next = checker.next().unwrap();
+    assert!(next.is_ok());
+    let mut row = unsafe { next.unwrap_unchecked() };
+    assert_eq!(row.to_tuple_ref(), (&0, &5));
+    next = checker.next().unwrap();
+    assert!(next.is_ok());
+    row = unsafe { next.unwrap_unchecked() };
+    assert_eq!(row.to_tuple_ref(), (&6, &6));
+
+    next = checker.next().unwrap();
+
+    assert!(next.is_err());
+
+    (_, row) = unsafe { next.unwrap_err_unchecked() };
+    assert_eq!(row.to_tuple_ref(), (&1, &7));
+    assert_eq!(row.src().len(), 2);
+    assert_eq!(row.src()[0], (3, 7..=7));
+    assert_eq!(row.src()[1], (4, 1..=1));
+    assert!(checker.next().is_none());
+}
+
+#[test]
+fn columns_negative_test_out_of_order() {
+    let cols = Columns::num_defaults();
+    assert!(
+        cols.add_column(vec![0..=3, 2..=5, 6..=6, 7..=7, 1..=1, 8..=9].into_iter())
+            .is_ok()
+    );
+    let mut iter = cols.into_iter();
+    let mut row = iter.next().unwrap();
+    assert_eq!(row.0, 0..=5);
+
+    row = iter.next().unwrap();
+    assert_eq!(row.0, 6..=6);
+    row = iter.next().unwrap();
+    assert_eq!(row.0, 7..=7);
+    assert!(row.1[0].is_err());
+    assert_eq!(iter.get_column(0).unwrap().get_rows()[0].src().len(), 2);
+    row = iter.next().unwrap();
+    assert!(row.1[0].is_ok());
+    assert_eq!(row.0, 8..=9);
 }

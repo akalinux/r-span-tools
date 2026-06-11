@@ -354,6 +354,9 @@ fn relations_test() {
     ); // a is after b
 
     matches!(RangeRelation::Invalid(()).invalid(), ());
+
+    // missing arm test?
+    assert!(RangeRelation::Invalid(()).is_invalid());
 }
 
 pub fn known_bad_mrs() -> Vec<Mrs<i32>> {

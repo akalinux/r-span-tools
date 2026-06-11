@@ -1,9 +1,7 @@
 use crate::{
-    Consolidate, ConsolidateMrsP, ConsolidationOrder, CpCmp, GetBeginEnd, GetBeginEndOption,
-    RangeRelation,
+    Consolidate, ConsolidateMrsP, ConsolidationOrder, CpCmp, GetBeginEnd, GetBeginEndOption, grow,
 };
 pub mod column;
-use std::marker::PhantomData;
 
 pub struct ConsolidateChecker<
     T,
@@ -49,26 +47,25 @@ impl<
     C: CpCmp<T>,
 > Iterator for ConsolidateChecker<T, R, S, F, I, C>
 {
-    type Item =
-        Result<ConsolidateMrsP<T, R, S>, (&'static str, RangeRelation<(R, Vec<(usize, S)>)>)>;
+    type Item = Result<ConsolidateMrsP<T, R, S>, (&'static str, ConsolidateMrsP<T, R, S>)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(r) = self.iter.next() {
-            if r.is_invalid() {
-                return Some(Err(("Invalid Range Found in iterator", r)));
-            } else {
-                match self.order.check_direction(&r) {
-                    Ok(()) => {
-                        let src = r.unwrap();
-                        return Some(Ok(ConsolidateMrsP {
-                            r: src.0,
-                            src: src.1,
-                            _t: PhantomData,
-                        }));
-                    }
-                    Err(msg) => {
-                        return Some(Err((msg, r)));
-                    }
+            match self.order.check_direction(&r) {
+                Ok(()) => {
+                    return Some(Ok(ConsolidateMrsP::new(r.unwrap())));
+                }
+                Err(msg) => {
+                    // it is not possible to get here.. without a next from the consolidation iterator.
+                    let n = self.iter.next().unwrap();
+                    // get our root cause
+                    let cmp = self.iter.get_cmp();
+                    let f = self.iter.get_factory();
+                    let (first, mut dst) = r.unwrap();
+                    let (second, mut src) = n.unwrap();
+                    let r = grow(&first, &second, cmp, f);
+                    dst.append(&mut src);
+                    return Some(Err((msg, ConsolidateMrsP::new((r, dst)))));
                 }
             }
         }

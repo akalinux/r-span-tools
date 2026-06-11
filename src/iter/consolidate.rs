@@ -2,6 +2,7 @@ pub mod checker;
 
 use std::{
     marker::PhantomData,
+    mem,
     ops::{Add, RangeInclusive, Sub},
 };
 
@@ -142,6 +143,7 @@ pub struct Consolidate<
 > {
     iter: I,
     last: Option<(R, Vec<(usize, S)>)>,
+    next: Option<RangeRelation<(R, Vec<(usize, S)>)>>,
     cmp: C,
     facotry: F,
     offset: usize,
@@ -156,13 +158,16 @@ impl<
     C: CpCmp<T>,
 > Consolidate<T, R, S, F, I, C>
 {
-    pub fn new(iter: I, cmp: C, factory: F) -> Self {
+    pub fn new(mut iter: I, cmp: C, factory: F) -> Self {
+        let mut last = None;
+        let (offset, next) = consolidate(&mut last, &mut iter, &cmp, &factory, 0);
         return Self {
             iter,
-            last: None,
+            last,
+            next,
             cmp: cmp,
             facotry: factory,
-            offset: 0,
+            offset,
             _p: PhantomData,
         };
     }
@@ -170,6 +175,11 @@ impl<
     /// Returns a ref to the internal [CpCmp] instance.
     pub fn get_cmp(&self) -> &C {
         return &self.cmp;
+    }
+
+    /// Returns the internal factory interface ref.
+    pub fn get_factory(&self) -> &F {
+        return &self.facotry;
     }
 }
 
@@ -250,6 +260,9 @@ impl<
     /// -- The R [GetBeginEnd] instance represnets the overlapping range.
     /// -- The [Vec] of ([usize],[GetBeginEnd]), the usize represents the [Iterator] position and the [GetBeginEnd] is the raw range.
     fn next(&mut self) -> Option<Self::Item> {
+        if self.next.is_none() {
+            return None;
+        }
         let next;
         (self.offset, next) = consolidate(
             &mut self.last,
@@ -259,6 +272,6 @@ impl<
             self.offset,
         );
 
-        return next;
+        return mem::replace(&mut self.next, next);
     }
 }

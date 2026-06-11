@@ -1,4 +1,4 @@
-use std::{cell::RefCell, marker::PhantomData, rc::Rc};
+use std::{cell::RefCell, mem, rc::Rc};
 pub mod columns;
 
 use crate::{
@@ -18,6 +18,7 @@ pub struct Column<
     col: Result<usize, &'static str>,
     checker: RefCell<ConsolidateChecker<T, R, S, F, I, C>>,
     rows: RefCell<Vec<Rc<ConsolidateMrsP<T, R, S>>>>,
+    err: Result<(), &'static str>,
 }
 
 impl<
@@ -29,6 +30,27 @@ impl<
     C: CpCmp<T>,
 > Column<T, R, S, F, I, C>
 {
+    fn update_iter<V, Q: GetBeginEnd<T>, X: GetBeginEndOption<T, Q>>(
+        &mut self,
+        iter: &mut OverlapIter<T, V, C, Q, X>,
+        idx: usize,
+        col: Q,
+    ) -> bool
+    where
+        C: IncDecCpCmp<T, V>,
+    {
+        if let Err(e) = iter.update_column(idx, col) {
+            self.err = Err(e);
+            return false;
+        }
+        return true;
+    }
+
+    fn get_cmp<'r>(&self) -> &'r C {
+        let checker = &*self.checker.borrow();
+        return unsafe { mem::transmute(checker.get_cmp()) };
+    }
+
     pub fn update_column<V, Q: GetBeginEnd<T>, X: GetBeginEndOption<T, Q>>(
         &mut self,
         last: &Q,
@@ -44,10 +66,10 @@ impl<
             Err(_) => return false,
         }
         let order;
+        let cmp = self.get_cmp();
         {
             let checker = self.checker.borrow();
             order = checker.get_order();
-            let cmp = checker.get_cmp();
             if let Some(row) = self.rows.borrow().last() {
                 if reset {
                     if order.is_beyond(row.as_ref(), last, cmp) {
@@ -65,19 +87,17 @@ impl<
         }
 
         loop {
-            let checker = &mut *self.checker.borrow_mut();
-            if let Some(next) = checker.next() {
+            let nc = self.checker.borrow_mut().next();
+            if let Some(next) = nc {
                 match next {
                     Err((msg, row)) => {
                         self.rows.borrow_mut().clear();
-                        self.rows
-                            .borrow_mut()
-                            .push(Rc::new(ConsolidateMrsP::new(row.unwrap())));
-                        self.col = Err(msg);
-                        return false;
+                        let clone = iter.factory.new_range(cmp.cp_tpl_ref(row.to_tuple_ref()));
+                        self.rows.borrow_mut().push(Rc::new(row));
+                        self.err = Err(msg);
+                        return self.update_iter(iter, col, clone);
                     }
                     Ok(row) => {
-                        let cmp = checker.get_cmp();
                         let rc = Rc::new(row);
                         let clone = Rc::clone(&rc);
                         self.rows.borrow_mut().push(rc);
@@ -86,29 +106,18 @@ impl<
                             if order.is_beyond(r, last, cmp) {
                                 let clone =
                                     iter.factory.new_range(cmp.cp_tpl_ref(r.to_tuple_ref()));
-                                if let Err(e) = iter.update_column(col, clone) {
-                                    self.col = Err(e);
-                                    return false;
-                                }
-                                return true;
+                                return self.update_iter(iter, col, clone);
                             }
                         } else if order.is_before(r, last, cmp) {
                             let clone = iter.factory.new_range(cmp.cp_tpl_ref(r.to_tuple_ref()));
-                            if let Err(e) = iter.update_column(col, clone) {
-                                self.col = Err(e);
-                                return false;
-                            }
-                            return true;
+                            return self.update_iter(iter, col, clone);
                         } else {
                             let (overlap, done) = order.check_position(r, last, cmp);
                             if overlap || done {
                                 let clone =
                                     iter.factory.new_range(cmp.cp_tpl_ref(r.to_tuple_ref()));
-                                if let Err(e) = iter.update_column(col, clone) {
-                                    self.col = Err(e);
-                                    return false;
-                                }
-                                return true;
+
+                                return self.update_iter(iter, col, clone);
                             }
                         }
                     }
@@ -120,10 +129,15 @@ impl<
     }
 
     pub fn filter_column<Q: GetBeginEnd<T>>(
-        &self,
+        &mut self,
         next: &Q,
     ) -> Result<Vec<Rc<ConsolidateMrsP<T, R, S>>>, &'static str> {
         if let Err(e) = &self.col {
+            return Err(e);
+        } else if self.err.is_err() {
+            // make sure we can progress on this column instances by clearing the error.
+            let e = unsafe { self.err.unwrap_err_unchecked() };
+            self.err = Ok(());
             return Err(e);
         }
         let mut results = Vec::new();
@@ -145,12 +159,22 @@ impl<
     }
 
     pub fn in_err(&self) -> bool {
-        return self.col.is_err();
+        return self.col.is_err() || self.err.is_err();
     }
 
     pub fn get_column(&self) -> Result<usize, &'static str> {
         let col = self.col?;
         return Ok(col);
+    }
+
+    pub fn get_rows<'a>(&self) -> &'a Vec<Rc<ConsolidateMrsP<T, R, S>>> {
+        let res = &*self.rows.borrow();
+        return unsafe {
+            mem::transmute::<
+                &'_ Vec<Rc<ConsolidateMrsP<T, R, S>>>,
+                &'a Vec<Rc<ConsolidateMrsP<T, R, S>>>,
+            >(res)
+        };
     }
 
     /// Unwraps the current object state into a tuple.  
@@ -192,14 +216,9 @@ impl<
                         }
                     }
                 }
-                Err((e, d)) => {
+                Err((e, r)) => {
                     col = Err(e);
-                    let (r, src) = d.unwrap();
-                    rows.push(Rc::new(ConsolidateMrsP {
-                        r,
-                        src,
-                        _t: PhantomData,
-                    }));
+                    rows.push(Rc::new(r));
                     return Err(Self::builder((col, checker, rows)));
                 }
             }
@@ -217,6 +236,7 @@ impl<
         ),
     ) -> Self {
         return Self {
+            err: Ok(()),
             col: inner.0,
             checker: RefCell::new(inner.1),
             rows: RefCell::new(inner.2),
