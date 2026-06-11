@@ -272,53 +272,48 @@ pub fn retool_end<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
 ) -> (T, T) {
     let (begin, end) = res;
 
-    let next;
-    if let Some(n) = t.dec(&end, step)
-        && !t.is_invalid_set(&begin, &n)
-    {
-        next = n;
-    } else {
-        return (begin, end);
-    }
-
-    let mut matches = false;
+    let mut shrank = None;
     let mut driver = &end;
     let mut exact: usize = 0;
+    let mut min_end = None;
     for r in src {
         let (c, d) = r.to_tuple_ref();
 
         if t.overlap(&begin, &end, c, d) {
+            if t.lt(&begin, c)
+                && let Some(n) = t.dec(&c, step)
+                && !t.is_invalid_set(&begin, &n)
+            {
+                match &shrank {
+                    Some(cmp) => {
+                        if t.lt(&n, cmp) {
+                            shrank = Some(n);
+                        }
+                    }
+                    None => shrank = Some(n),
+                }
+                continue;
+            }
             exact += 1;
-        }
-
-        if t.overlap(&begin, &next, c, d) {
-            if matches {
-                return (begin, end);
-            }
             driver = d;
-            matches = true;
-        }
-    }
-    if matches {
-        if exact == 1 {
-            return (begin, end);
-        }
-        return (begin, next);
-    }
-    if t.eq(driver, &end) || t.is_invalid_set(&begin, driver) {
-        return (begin, end);
-    }
-    matches = false;
-    for r in src {
-        let (c, d) = r.to_tuple_ref();
-        if t.overlap(&begin, driver, c, d) {
-            if matches {
-                return (begin, t.cp(driver));
+            match min_end {
+                Some(n) => {
+                    if t.lt(d, n) {
+                        min_end = Some(d);
+                    }
+                }
+                None => min_end = Some(d),
             }
-            matches = true;
         }
     }
-    return (begin, next);
+    if shrank.is_some() {
+        return (begin, shrank.unwrap());
+    } else if exact == 1 {
+        return (begin, t.cp(driver));
+    } else if let Some(n) = min_end {
+        return (begin, t.cp(n));
+    }
+    return (begin, end);
 }
 
 /// Computes the final value from a result of [crate::reduce_back].
@@ -330,52 +325,48 @@ pub fn retool_begin<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>>(
 ) -> (T, T) {
     let (begin, end) = res;
 
-    let next;
-    if let Some(n) = t.inc(&begin, step)
-        && !t.is_invalid_set(&n, &end)
-    {
-        next = n;
-    } else {
-        return (begin, end);
-    }
-
-    let mut matches = false;
+    let mut shrank = None;
     let mut driver = &begin;
     let mut exact: usize = 0;
+    let mut max_begin = None;
     for r in src {
         let (c, d) = r.to_tuple_ref();
-        if t.overlap(&begin, &end, c, d) {
-            exact += 1;
-        }
-        if t.overlap(&next, &end, c, d) {
-            if matches {
-                return (begin, end);
-            }
-            driver = c;
-            matches = true;
-        }
-    }
-    if matches {
-        if exact == 1 {
-            return (begin, end);
-        }
-        return (next, end);
-    }
-    if t.eq(driver, &begin) || t.is_invalid_set(driver, &end) {
-        return (begin, end);
-    }
-    matches = false;
-    for r in src {
-        let (c, d) = r.to_tuple_ref();
-        if t.overlap(driver, &end, c, d) {
-            if matches {
-                return (t.cp(driver), end);
-            }
-            matches = true;
-        }
-    }
 
-    return (next, end);
+        if t.overlap(&begin, &end, c, d) {
+            if t.lt(d, &end)
+                && let Some(n) = t.inc(&d, step)
+                && !t.is_invalid_set(&n, &end)
+            {
+                match &shrank {
+                    Some(cmp) => {
+                        if t.lt(cmp, &n) {
+                            shrank = Some(n);
+                        }
+                    }
+                    None => shrank = Some(n),
+                }
+                continue;
+            }
+            exact += 1;
+            driver = c;
+            match max_begin {
+                Some(n) => {
+                    if t.lt(n, c) {
+                        max_begin = Some(c);
+                    }
+                }
+                None => max_begin = Some(c),
+            }
+        }
+    }
+    if shrank.is_some() {
+        return (shrank.unwrap(), end);
+    } else if exact == 1 {
+        return (t.cp(driver), end);
+    } else if let Some(n) = max_begin {
+        return (t.cp(n), end);
+    }
+    return (begin, end);
 }
 
 /// Given the current begin and end, returns the smallest next range from src.

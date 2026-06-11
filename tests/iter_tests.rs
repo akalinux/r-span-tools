@@ -909,3 +909,72 @@ fn columns_negative_test_out_of_order() {
     assert!(row.1.is_ok());
     assert_eq!(row.0, 8..=9);
 }
+
+#[test]
+fn from_examples() {
+    let mut isec = Intersector::num(
+        1, // step
+        1, // rebound
+        0, // min
+        8, // max
+    );
+    let range: std::ops::Range<i32> = 1..4;
+    assert!(isec.add_range(&range).is_some());
+
+    let range_inclusive: std::ops::RangeInclusive<i32> = 3..=5;
+    assert!(isec.add_range(&range_inclusive).is_some());
+
+    let min_to_end: std::ops::RangeToInclusive<i32> = ..=7;
+    assert!(isec.add_range(&min_to_end).is_some());
+
+    let min_max: std::ops::RangeFull = ..;
+    assert!(isec.add_range(&min_max).is_some());
+    println!("First:");
+    let mut iter = isec.into_iter();
+
+    println!("Second:");
+    assert_eq!(iter.next().unwrap().to_tuple_ref(), (&0, &0));
+
+    println!("Third:");
+    assert_eq!(iter.next().unwrap().to_tuple_ref(), (&1, &2));
+
+    println!("Fourth:");
+    assert_eq!(iter.next().unwrap().to_tuple_ref(), (&3, &3));
+    assert_eq!(iter.next().unwrap().to_tuple_ref(), (&4, &5));
+    assert_eq!(iter.next().unwrap().to_tuple_ref(), (&6, &7));
+    assert_eq!(iter.next().unwrap().to_tuple_ref(), (&8, &8));
+}
+
+#[test]
+fn reverse_iter_complex_test() {
+    let mut isec = Intersector::num(
+        1, // step
+        1, // rebound
+        0, // min
+        8, // max
+    );
+    let range: std::ops::Range<i32> = 1..4;
+    assert!(isec.add_range(&range).is_some());
+
+    let range_inclusive: std::ops::RangeInclusive<i32> = 3..=5;
+    assert!(isec.add_range(&range_inclusive).is_some());
+
+    let min_to_end: std::ops::RangeToInclusive<i32> = ..=7;
+    assert!(isec.add_range(&min_to_end).is_some());
+
+    let min_max: std::ops::RangeFull = ..;
+    assert!(isec.add_range(&min_max).is_some());
+    println!("First:");
+    let mut iter = isec.into_iter().rev();
+    println!("Second:");
+    assert_eq!(iter.next().unwrap().to_tuple_ref(), (&8, &8));
+
+    println!("Third:");
+    assert_eq!(iter.next().unwrap().to_tuple_ref(), (&6, &7));
+
+    println!("Fourth:");
+    assert_eq!(iter.next().unwrap().to_tuple_ref(), (&4, &5));
+    assert_eq!(iter.next().unwrap().to_tuple_ref(), (&3, &3));
+    assert_eq!(iter.next().unwrap().to_tuple_ref(), (&1, &2));
+    assert_eq!(iter.next().unwrap().to_tuple_ref(), (&0, &0));
+}

@@ -517,7 +517,7 @@ fn retool_end_tests() {
     //let res = [0..=0, 1..=2, 3..=5];
     let t = NumberIncDecCpCmp::defaults();
     assert_eq!(retool_end((0, 1), &src, &1, &t), (0, 0));
-    assert_eq!(retool_end((1, 5), &src, &1, &t), (1, 5));
+    assert_eq!(retool_end((1, 5), &src, &1, &t), (1, 1));
     src = [0..=2, 1..=5];
     assert_eq!(retool_end((0, 1), &src, &1, &t), (0, 0));
     assert_eq!(retool_end((1, 2), &src, &1, &t), (1, 2));
@@ -532,7 +532,7 @@ fn retool_begin_tests() {
     let mut src = [0..=4, 4..=5];
     let t = NumberIncDecCpCmp::defaults();
     assert_eq!(retool_begin((4, 5), &src, &1, &t), (5, 5));
-    assert_eq!(retool_begin((0, 4), &src, &1, &t), (0, 4));
+    assert_eq!(retool_begin((0, 4), &src, &1, &t), (4, 4));
     src = [0..=4, 1..=5];
     assert_eq!(retool_begin((4, 5), &src, &1, &t), (5, 5));
     assert_eq!(retool_begin((1, 4), &src, &1, &t), (1, 4));
