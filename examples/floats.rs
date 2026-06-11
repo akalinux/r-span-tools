@@ -24,9 +24,9 @@ fn main() {
     }
 
     // The resulting output will be:
-    //  Common Range: 1->1.9
-    //  Common Range: 2->2.5
-    //  Common Range: 2.6->3.1
+    //  Common Range: 1->>1.7999999999999998
+    //  Common Range: 1.9->2.4
+    //  Common Range: 2.5->3.1
     //  Common Range: 3.2->4.1
     //  Common Range: 4.199999999999999->7.64
 }
