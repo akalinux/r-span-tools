@@ -25,6 +25,7 @@
 //! ## Numeric Boundries
 //! When working with boundries it is useful to be able to control how ranges are interpeted.  The defaults provided by [NumberIncDecCpCmp] are useful
 //! but do not cover all casees.  The internals of this [crate] allow for setting various options to control how both ranges and intersections are computed.
+//!
 //! In this example we set the following:
 //! | Field | What it does|
 //! |------|----|
