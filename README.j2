@@ -14,8 +14,8 @@
 		{%- elif repository_host == "gitlab.com"   %} [![Source Code Repository](https://img.shields.io/badge/Code-On%20GitLab-blue?logo=GitLab)]({{ repository }})
 		{%- elif repository_host == "codeberg.org" %} [![Source Code Repository](https://img.shields.io/badge/Code-On%20Codeberg-blue?logo=Codeberg)]({{ repository }})
 		{%- elif repository_host %} [![Source Code Repository](https://img.shields.io/badge/Code-On%20{{ repository_host | replace("-", "--") | urlencode }}-blue)]({{ repository }})
-		{%- endif %}[![Rust Unit Tests](https://github.com/akalinux/r-span-tools/actions/workflows/test.yaml/badge.svg)](https://github.com/akalinux/r-span-tools/actions/workflows/test.yaml)
-	{%- endif %}
+		{%- endif %}
+	{%- endif %}[![Rust Unit Tests](https://github.com/akalinux/r-span-tools/actions/workflows/test.yaml/badge.svg)](https://github.com/akalinux/r-span-tools/actions/workflows/test.yaml)
 	{%- if rust_version %} [![Rust Version: {{rust_version}}](https://img.shields.io/badge/rustc-{{ rust_version | urlencode }}-orange.svg)](https://github.com/rust-lang/rust/releases/tag/{{ rust_version | urlencode }})
 	{%- endif %}
 {%- endif %}
