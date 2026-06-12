@@ -1,4 +1,4 @@
-# common-range-tools ![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue) [![common-range-tools on crates.io](https://img.shields.io/crates/v/common-range-tools)](https://crates.io/crates/common-range-tools) [![common-range-tools on docs.rs](https://docs.rs/common-range-tools/badge.svg)](https://docs.rs/common-range-tools)
+# common-range-tools ![License: MIT](https://img.shields.io/badge/license-MIT-blue) [![common-range-tools on crates.io](https://img.shields.io/crates/v/common-range-tools)](https://crates.io/crates/common-range-tools) [![common-range-tools on docs.rs](https://docs.rs/common-range-tools/badge.svg)](https://docs.rs/common-range-tools)
 
 ## Overview
 
