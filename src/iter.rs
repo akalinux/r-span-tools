@@ -222,6 +222,8 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> 
     type Item = R;
 
     /// This is part of a [DoubleEndedIterator] calls to [OverlapIter::next] impact calls to [OverlapIter::next_back].
+    /// ## Big O Notation
+    /// Each call to self.next() is a time complexity of O(n*3)
     fn next(&mut self) -> Option<Self::Item> {
         let next = self.try_next(&self.next);
         if let Some(next) = &self.next {
@@ -235,6 +237,8 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> 
     for OverlapIter<T, V, C, R, F>
 {
     /// This is part of a [DoubleEndedIterator] calls to [OverlapIter::next_back] impact calls to [OverlapIter::next].
+    /// ## Big O Notation
+    /// Each call to self.next_back() is a time complexity of O(n*3)
     fn next_back(&mut self) -> Option<Self::Item> {
         let back = self.try_next_back(&self.back);
         if let Some(back) = &self.back {

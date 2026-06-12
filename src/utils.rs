@@ -1,7 +1,7 @@
 //! The [crate::utils] module represents the static methods that drive most of the overlap and consolidation intenrals.
 //! The static methods are exposed for general use and testing.
 
-use crate::{CpCmp, GetBeginEnd, GetBeginEndOption, builder::IncDecCpCmp};
+use crate::{CpCmp, GetBeginEnd, GetBeginEndOption, Mrs, builder::IncDecCpCmp};
 use std::{cmp::Ordering, mem, ops::RangeBounds};
 
 /// This enum is used to represent positional relationships between 2 ranges.
@@ -183,7 +183,16 @@ pub fn range_bounds_to_values<T, V>(
 /// - GetBeginEnd.get_begin() asc
 /// - GetBeginEnd.get_end() desc
 ///
-pub fn sort_forward<T, R: GetBeginEnd<T>, C: CpCmp<T>>(a: &R, b: &R, t: &C) -> Ordering {
+/// # Panics!
+/// If the [RangeBounds] cannot be converted to a computable range!
+pub fn sort_forward<T, V, R: RangeBounds<T>, S: RangeBounds<T>, C: IncDecCpCmp<T, V>>(
+    x: &R,
+    y: &S,
+    rebound: &V,
+    t: &C,
+) -> Ordering {
+    let a: Mrs<T> = (range_bounds_to_values(x, rebound, t)).unwrap().into();
+    let b: Mrs<T> = (range_bounds_to_values(y, rebound, t)).unwrap().into();
     if t.lt(b.get_begin(), a.get_begin()) {
         return Ordering::Greater;
     } else if t.lt(a.get_begin(), b.get_begin()) {
@@ -208,7 +217,16 @@ pub fn sort_forward<T, R: GetBeginEnd<T>, C: CpCmp<T>>(a: &R, b: &R, t: &C) -> O
 /// - GetBeginEnd.get_end() desc
 /// - GetBeginEnd.get_begin() asc
 ///
-pub fn sort_reverse<T, R: GetBeginEnd<T>, C: CpCmp<T>>(a: &R, b: &R, t: &C) -> Ordering {
+/// # Panics!
+/// If the [RangeBounds] cannot be converted to a computable range!
+pub fn sort_reverse<T, V, R: RangeBounds<T>, S: RangeBounds<T>, C: IncDecCpCmp<T, V>>(
+    x: &R,
+    y: &S,
+    rebound: &V,
+    t: &C,
+) -> Ordering {
+    let a: Mrs<T> = (range_bounds_to_values(x, rebound, t)).unwrap().into();
+    let b: Mrs<T> = (range_bounds_to_values(y, rebound, t)).unwrap().into();
     if t.lt(a.get_end(), b.get_end()) {
         return Ordering::Greater;
     } else if t.lt(b.get_end(), a.get_end()) {

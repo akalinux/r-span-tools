@@ -256,7 +256,7 @@ fn sort_more() {
     let mut set = mrs_set();
     set.push(Mrs::new(8, 11)); // force equal ctest
     let l = NumberIncDecCpCmp::defaults();
-    set.sort_by(|a, b| sort_forward(a, b, &l));
+    set.sort_by(|a, b| sort_forward(a, b, &1, &l));
     let expected = vec![
         Mrs::new(0, 3),
         Mrs::new(1, 2),
@@ -292,7 +292,7 @@ fn sort() {
         Mrs::new(15, 20),
         Mrs::new(8, 9),
     ];
-    check.sort_by(|a, b| sort_forward(a, b, &l));
+    check.sort_by(|a, b| sort_forward(a, b, &1, &l));
     for (i, good) in correct.iter().enumerate() {
         assert_eq!(check[i].to_tuple_ref(), good.to_tuple_ref());
     }
@@ -322,7 +322,7 @@ fn sort_reverse_test() {
         Mrs::new(16, 20),
         Mrs::new(8, 9),
     ];
-    check.sort_by(|a, b| sort_reverse(a, b, &l));
+    check.sort_by(|a, b| sort_reverse(a, b, &1, &l));
     for (i, good) in correct.iter().enumerate() {
         assert_eq!(check[i].to_tuple_ref(), good.to_tuple_ref());
     }

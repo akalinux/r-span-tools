@@ -8,7 +8,7 @@
 //! numbers see: [Generic Data Types](#generic-data-types).  For working with custom data structures see: [Beyond Generics](#beyond-generics).
 //! For working with custom Ranges and range factories see: [Internal Range Trait](#internal-range-trait).
 //! For consolidating duplicate and overlapping ranges see [Consolidation of ranges](#consolidation-of-ranges).
-//! For finding intersections between muliple consolidated [Iterator] data sets see: [Intersections of Consolidation Itertors](#intersections-of-consolidation-itertors).
+//! For finding intersections between muliple consolidated [Iterator] data sets see: [Intersections of Itertors](#intersections-of-itertors).
 //!
 //! ## Example
 //! This is the most basic example, using the default values from [NumberIncDecCpCmp].  The [OverlapIter] is a [DoubleEndedIterator] and can be reversed.
@@ -40,8 +40,8 @@
 //!
 //! ## Working with Floats
 //! When working with floaing points, its nessesary to understand how floats are handled by the [NumberIncDecCpCmp].
-//! Floating point numbers are in a word *imprecise*; The internals of [NumberIncDecCpCmp] cannot check them for over or underflow;
-//! The internals of [NumberIncDecCpCmp] simply makes sure that the values properly increment and decrement.
+//! Floating point numbers are in a word *imprecise*; The internals of [NumberIncDecCpCmp] does not check [f32] or [f64] for over or underflow;
+//! The internals of [NumberIncDecCpCmp] simply checks that the values properly increment and decrement.
 #![doc = "```rust\n"]
 #![doc = include_str!("../examples/floats.rs")]
 #![doc = "\n```"]
@@ -75,16 +75,23 @@
 //! It is recommended to convert an instance of [Consolidate] into an instance of [ConsolidateChecker] instance to verify the integrity of the data returned by the [Iterator].
 //!
 //! The ranges returned by the [Iterator] must be in [ConsolidationOrder].
-//!  - for [ConsolidationOrder::Forward] see [crate::sort_forward]
-//!  - for [ConsolidationOrder::Reverse] see [crate::sort_reverse]
+//!  - For [ConsolidationOrder::Forward] the expected order is: *start asc, end desc*. For more information See: [crate::sort_forward].
+//!  - For [ConsolidationOrder::Reverse] the expected order is: *end desc, start asc*. For more information see [crate::sort_reverse].
 //!
-//! ## Intersections of Consolidation Itertors
+//! This example demonstrates how to use [Consolidate] wrapped in an instance of [ConsolidateChecker] using the [ConsolidationOrder::Forward]:
+#![doc = "```rust\n"]
+#![doc = include_str!("../examples/overlaps.rs")]
+#![doc = "\n```"]
+//!
+//! ## Intersections of Itertors
 //! The [Columns] object is a factory can be used to construct an [Iterator] that can step through multiple [Iterator] instances of ranges that can contain duplicate
-//! and overlapping ranges that intersect with one another.  This allows for a progressive iteration of columns and rows in both a vertical and horizontal context.  Each [Column] added to [Columns] is wrapped in an instance of [ConsolidateChecker] to ensure that the consolidation is occuring in the expected [ConsolidationOrder].
+//! and overlapping ranges that intersect with one another.  Each [Column] added to [Columns] is wrapped in an instance of [ConsolidateChecker] to ensure that the consolidation is occuring in the expected [ConsolidationOrder].
+//! The ranges returned by the [Iterator] must be in [ConsolidationOrder], see: [Consolidation of ranges](#consolidation-of-ranges) for more information.
+//! This example demonstrates how to create a [ColumnsIter] from a [Columns] instance and walk the results.
 //!
-//! The ranges returned by the [Iterator] must be in [ConsolidationOrder].
-//!  - for [ConsolidationOrder::Forward] see [crate::sort_forward]
-//!  - for [ConsolidationOrder::Reverse] see [crate::sort_reverse]
+#![doc = "```rust\n"]
+#![doc = include_str!("../examples/columns.rs")]
+#![doc = "\n```"]
 //!
 //! # Motivation
 //! In truth there doesn't seem to be a library on crates.io provides the following functionality:
@@ -259,6 +266,12 @@ impl<T> From<RangeInclusive<T>> for Mrs<T> {
 impl<T> From<Mrs<T>> for (T, T) {
     fn from(value: Mrs<T>) -> Self {
         return value.to_tuple();
+    }
+}
+
+impl<T> From<(T, T)> for Mrs<T> {
+    fn from(value: (T, T)) -> Mrs<T> {
+        return Mrs::new(value.0, value.1);
     }
 }
 

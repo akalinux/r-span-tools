@@ -4,17 +4,67 @@
 
 The **common-range-tools** crate, is a library that, can be used to find all common intersections for ranges of generic types.  
 It interoperates with the built in range types for rust via the [std::ops::RangeBounds][__link0] trait.  When working with primitive
-numbers, the increment and decrementing of values are always checked, preventing overflows and underflows.
+numbers, the increment and decrementing of values are checked (see [working with floats](#working-with-floats), for the exception).
+Support for all primitive number types in rust is implemented via the [NumberIncDecCpCmp][__link1] object.
 
-### Numbers
+For dealing with ranges beyond just intersections of
+numbers see: [Generic Data Types](#generic-data-types).  For working with custom data structures see: [Beyond Generics](#beyond-generics).
+For working with custom Ranges and range factories see: [Internal Range Trait](#internal-range-trait).
+For consolidating duplicate and overlapping ranges see [Consolidation of ranges](#consolidation-of-ranges).
+For finding intersections between muliple consolidated [Iterator][__link2] data sets see: [Intersections of Itertors](#intersections-of-itertors).
 
-The **common-range-tools** crate, implements support for all primitive number types in rust via the [NumberIncDecCpCmp][__link1] object type.
+### Example
 
-### Default Number Example
+This is the most basic example, using the default values from [NumberIncDecCpCmp][__link3].  The [OverlapIter][__link4] is a [DoubleEndedIterator][__link5] and can be reversed.
 
-This example converts [std::ops::RangeBounds][__link2] instances to [std::ops::RangeInclusive][__link3].
-The bounds to the left or right of .. represent the ($ty::MIN)..($ty::MAX), defined by the [NumberIncDecCpCmp][__link4] object.
-The min and max numbers can be changed, but this example, uses the defaults.
+```rust
+
+use common_range_tools::Intersector;
+
+fn main() {
+    // RangeInclusive used to make this more readable.
+    let src = [1..=4, 0..=3, 3..=11, 10..=22];
+    // Forwards
+    println!("Forwards");
+    for r in Intersector::num_from(&src) {
+        println!("Common Range: {}->{}", r.start(), r.end());
+    }
+    // Output will be
+    //  Forwards
+    //  Common Range: 0->0
+    //  Common Range: 1->2
+    //  Common Range: 3->3
+    //  Common Range: 4->4
+    //  Common Range: 5->9
+    //  Common Range: 10->11
+    //  Common Range: 12->22
+
+    // add a small bumper to the output
+    print!("\n\n");
+    // Backwards
+    println!("Backwards");
+    for r in Intersector::num_from(&src).rev() {
+        println!("Common Range: {}->{}", r.start(), r.end());
+    }
+    // Outout will be
+    //  Backwards
+    //  Common Range: 12->22
+    //  Common Range: 10->11
+    //  Common Range: 5->9
+    //  Common Range: 4->4
+    //  Common Range: 3->3
+    //  Common Range: 1->2
+    //  Common Range: 0->0
+}
+
+
+```
+
+### Any Range Example
+
+This example converts [std::ops::RangeBounds][__link6] instances to [std::ops::RangeInclusive][__link7].
+The bounds to the left or right of .. represent the ($ty::MIN)..($ty::MAX), defined by the [NumberIncDecCpCmp][__link8] object.
+The min and max numbers can be changed, but this example uses the defaults.
 
 ```rust
 
@@ -23,50 +73,53 @@ use common_range_tools::Intersector;
 
 fn main() {
     let mut isec = Intersector::num_defaults();
-    let range = 1..4;
+
+    // 1 to 3
+    let range: std::ops::Range<i32> = 1..4;
     isec.add_range(&range);
-    let range_inclusive = 3..=5;
+
+    // 3 to 5
+    let range_inclusive: std::ops::RangeInclusive<i32> = 3..=5;
     isec.add_range(&range_inclusive);
-    let min_to_end = ..=7;
+
+    //  -2147483648 to 7
+    let min_to_end: std::ops::RangeToInclusive<i32> = ..=7;
     isec.add_range(&min_to_end);
-    let begin_to_max = 7..;
+
+    // 7 to 2147483647
+    let begin_to_max: std::ops::RangeFrom<i32> = 7..;
     isec.add_range(&begin_to_max);
 
-    // Note 7.. and ..7 include our min and max all ready.. so this is a bit redundant
-    // but works non the less.
-    let min_to_max = ..;
+    // Note 7.. and ..7 include our min and max all ready!
+    let min_to_max: std::ops::RangeFull = ..;
     isec.add_range(&min_to_max);
 
-    println!("//! |Start|End|");
-    println!("//! |-----|---|");
     for i in isec.into_iter() {
-        println!("//! |{:^14}|{:^14}|", i.start(), i.end());
+        println!("Common Range: {:^14}->{:^14}", i.start(), i.end());
     }
+
+    // The Output will be:
+    //  Common Range:  -2147483648  ->      0
+    //  Common Range:       1       ->      2
+    //  Common Range:       3       ->      3
+    //  Common Range:       4       ->      5
+    //  Common Range:       6       ->      6
+    //  Common Range:       7       ->      7
+    //  Common Range:       8       ->  2147483647
 }
 
 
 ```
-
-So using the default values we for [i32::MIN][__link5] and [i32::MAX][__link6], we end up with the following data range intersections.
-
-|Start|End|
-|-----|---|
-|-2147483648|1|
-|2|3|
-|4|5|
-|6|6|
-|7|7|
-|8|2147483647|
 
 ### Numeric Boundries
 
 In truth the defaults are useful but in most cases the min and max are something we will want to set.
 In this example we set the following:
 
-|field|what it does|
+|Field|What it does|
 |-----|------------|
 |step|sets the value used to progress between the begin or end of a range|
-|rebound|sets the value used to redefine a range fom an [std::ops::Bound::Excluded][__link7]|
+|rebound|sets the value used to redefine a range fom an [std::ops::Bound::Excluded][__link9]|
 |min|the minimum value for ranges in the context of: **..**|
 |max|the maximum vaue for ranges in the context of: **..**|
 
@@ -82,42 +135,50 @@ fn main() {
         0, // min
         8, // max
     );
-    let range = 1..4;
+    // 1 to 3
+    let range: std::ops::Range<i32> = 1..4;
     isec.add_range(&range);
-    let range_inclusive = 3..=5;
+
+    // 3 to 5
+    let range_inclusive: std::ops::RangeInclusive<i32> = 3..=5;
     isec.add_range(&range_inclusive);
-    let min_to_end = ..=7;
+
+    // 0 to 7
+    let min_to_end: std::ops::RangeToInclusive<i32> = ..=7;
     isec.add_range(&min_to_end);
 
-    println!("//! |Start|End|");
-    println!("//! |-----|---|");
+    // 7 to 8
+    let begin_to_max: std::ops::RangeFrom<i32> = 7..;
+    isec.add_range(&begin_to_max);
+
+    // Note 7.. and ..7 include our min and max all ready!
+    let min_to_max: std::ops::RangeFull = ..;
+    isec.add_range(&min_to_max);
     for i in isec.into_iter() {
-        println!("//! |{:^14}|{:^14}|", i.start(), i.end());
+        println!("  Common Range {:^3}->{:^3}", i.start(), i.end());
     }
+    // The output will be:
+    //  Common Range  0 -> 0
+    //  Common Range  1 -> 2
+    //  Common Range  3 -> 3
+    //  Common Range  4 -> 5
+    //  Common Range  6 -> 6
+    //  Common Range  7 -> 7
+    //  Common Range  8 -> 8
 }
 
 
 ```
 
-The resulting table now has 0 as our min, and 8 as our max.
-
-|Start|End|
-|-----|---|
-|0|1|
-|2|3|
-|4|5|
-|6|7|
-|8|8|
-
 ### Working with Floats
 
-When working with floaing points, its nessesary to understand how floats are handled by the internals.
-Floating point numbers are in a word **imprecise**; The internals cannot check them for over or underflow;
-The internals of [NumberIncDecCpCmp][__link8] simply makes sure that the values properly increment and decrement.
+When working with floaing points, its nessesary to understand how floats are handled by the [NumberIncDecCpCmp][__link10].
+Floating point numbers are in a word *imprecise*; The internals of [NumberIncDecCpCmp][__link11] does not check [f32][__link12] or [f64][__link13] for over or underflow;
+The internals of [NumberIncDecCpCmp][__link14] simply checks that the values properly increment and decrement.
 
 ```rust
 
-use common_range_tools::{IncDecCpCmp, NumberIncDecCpCmp};
+use common_range_tools::{IncDecCpCmp, Intersector, NumberIncDecCpCmp};
 
 fn main() {
     let l = NumberIncDecCpCmp::defaults();
@@ -136,6 +197,18 @@ fn main() {
     assert_eq!(l.dec(&f32::INFINITY, &f32::INFINITY), None);
     assert_eq!(l.dec(&1.0, &f32::INFINITY), Some(f32::NEG_INFINITY));
     assert_eq!(l.dec(&1.0, &f32::NEG_INFINITY), None);
+
+    // This sets the step and rebound value to 0.1
+    for r in Intersector::num_sr_from(0.1, &[1.0..=3.1, 2.5..=4.1, 1.9..=7.64]) {
+        print!("Common Range: {}->{}\n", r.start(), r.end());
+    }
+
+    // The resulting output will be:
+    //  Common Range: 1->1.7999999999999998
+    //  Common Range: 1.9->2.4
+    //  Common Range: 2.5->3.1
+    //  Common Range: 3.2->4.1
+    //  Common Range: 4.199999999999999->7.64
 }
 
 
@@ -143,8 +216,9 @@ fn main() {
 
 ### Generic Data types
 
-The [AnyIncDecCpCmp][__link9] object supports working with any data type provided it implements: [PartialOrd][__link10], [std::ops::Add][__link11], [std::ops::Sub][__link12], [Copy][__link13], and [Clone][__link14].
-In truth the value used by step and rebound do not have to be the same type, a good example of this is [std::time::Duration][__link15] and [std::time::SystemTime][__link16].
+The [AnyIncDecCpCmp][__link15] object supports working with any data type provided it implements: [PartialOrd][__link16], [std::ops::Add][__link17], [std::ops::Sub][__link18], [Copy][__link19], and [Clone][__link20].
+In truth the value used by step and rebound do not have to be the same type as the value used by the range.
+A practical example of why this is useful is [std::time::Duration][__link21] and [std::time::SystemTime][__link22].
 
 ```rust
 
@@ -179,8 +253,8 @@ fn main() {
 
 ### Beyond Generics
 
-In some cases the ranges do not implement: [PartialOrd][__link17], [std::ops::Add][__link18], [std::ops::Sub][__link19], [Copy][__link20], [Clone][__link21] and [AnyIncDecCpCmp][__link22], or do so in a way
-that is incompatable with the required data mode.  The internals of [crate][__link23] use a proxy layer which can be customized to meet most requirements.
+In some cases the range values do not implement: [PartialOrd][__link23], [std::ops::Add][__link24], [std::ops::Sub][__link25], [Copy][__link26], [Clone][__link27] or do so in a way
+that is incompatable with the required data structure used as a value for the range.  The internals of [OverlapIter][__link28] use a proxy layer which can be customized to meet most requirements.
 This example shows how to work with ragnes of custom data strcutres.
 
 ```rust
@@ -196,23 +270,22 @@ const MAX: Point = Point { p: 8 };
 struct CustomIncDecCpCmp {}
 
 impl CpCmp<Point> for CustomIncDecCpCmp {
+    // a way to copy or clone the current struct is required!
     fn cp(&self, v: &Point) -> Point {
         return v.clone();
     }
-
-    // The only compare operation that is required!
+    // All compare operations can be derived from either lt or gt.
+    // The only compare method that is required to be implemented
+    // for this trait is the lt operator.
     fn lt(&self, a: &Point, b: &Point) -> bool {
         a.p < b.p
     }
-
     fn min(&self) -> Point {
         return MIN;
     }
-
     fn max(&self) -> Point {
         return MAX;
     }
-
     fn min_ref(&self) -> &Point {
         &MIN
     }
@@ -248,6 +321,10 @@ fn main() {
         RiFactory::new(), // Factory used to construct new ranges
     );
 
+    // Note: an internal RangeInclusive instance is
+    // generated for every range that is successfully added.
+    // This means it is safe to drop the orginal range values
+    // after they are loaded into the Intersector instance.
     isec.add_range(&(..Point { p: 2 }));
     isec.add_range(&(Point { p: 1 }..Point { p: 3 }));
     isec.add_range(&(Point { p: 3 }..=Point { p: 4 }));
@@ -255,34 +332,400 @@ fn main() {
     for r in isec.into_iter() {
         println!("X: {:?}, Y: {:?}", r.start(), r.end());
     }
+    // Output will be:
+    //  X: Point { p: 0 }, Y: Point { p: 0 }
+    //  X: Point { p: 1 }, Y: Point { p: 1 }
+    //  X: Point { p: 2 }, Y: Point { p: 2 }
+    //  X: Point { p: 3 }, Y: Point { p: 4 }
+    //  X: Point { p: 5 }, Y: Point { p: 8 }
 }
 
 
 ```
 
+### Internal Range Trait
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbcoOgrLqONRcbeafyNPVeTlUba7Ca6_umWeIbTzkuMoz2pPRhZIOCbkFueUluY0RlY0NwQ21w9oJxTnVtYmVySW5jRGVjQ3BDbXD2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
+Rust has no single trait representing rages aside from [std::ops::RangeBounds][__link29], which can require recomputing the begin and or end
+values of a range on each evaluation.  To work around this the internals of this crate use a common trait range type of [GetBeginEnd][__link30].
+There is also a factory trait for creating instances called [GetBeginEndOption][__link31].  This example shows how to create and use both the
+factory: [GetBeginEndOption][__link32] and the range: [GetBeginEnd][__link33].  As a note the [GetBeginEnd][__link34] trait is implemnted for [std::ops::RangeInclusive][__link35].
+
+```rust
+
+use common_range_tools::{GetBeginEnd, GetBeginEndOption, NumberIncDecCpCmp, OverlapIter};
+
+struct MyFactory {}
+
+#[derive(Clone, Copy, Debug)]
+struct MyRange {
+    a: i32,
+    b: i32,
+}
+
+impl GetBeginEndOption<i32, MyRange> for MyFactory {
+    fn factory(&self, opt: Option<(i32, i32)>) -> Option<MyRange> {
+        match opt {
+            Some((a, b)) => Some(MyRange { a, b }),
+            None => None,
+        }
+    }
+
+    fn new_range(&self, src: (i32, i32)) -> MyRange {
+        return MyRange { a: src.0, b: src.1 };
+    }
+}
+impl GetBeginEnd<i32> for MyRange {
+    fn get_begin(&self) -> &i32 {
+        return &self.a;
+    }
+
+    fn get_end(&self) -> &i32 {
+        return &self.b;
+    }
+
+    fn to_tuple(self) -> (i32, i32) {
+        return (self.a, self.b);
+    }
+}
+
+fn main() {
+    for r in OverlapIter::new(
+        vec![
+            MyRange { a: 1, b: 4 },
+            MyRange { a: 3, b: 5 },
+            MyRange { a: 4, b: 6 },
+        ],
+        1,
+        NumberIncDecCpCmp::defaults(),
+        MyFactory {},
+    ) {
+        println!("{:?}", r);
+    }
+}
+
+
+```
+
+### Consolidation of ranges
+
+The [Consolidate][__link36] object can be used to consolidate duplicate and overlapping ranges via an [Iterator][__link37] of ranges.
+It is recommended to convert an instance of [Consolidate][__link38] into an instance of [ConsolidateChecker][__link39] instance to verify the integrity of the data returned by the [Iterator][__link40].
+
+The ranges returned by the [Iterator][__link41] must be in [ConsolidationOrder][__link42].
+
+* For [ConsolidationOrder::Forward][__link43] the expected order is: *start asc, end desc*. For more information See: [crate::sort_forward][__link44].
+* For [ConsolidationOrder::Reverse][__link45] the expected order is: *end desc, start asc*. For more information see [crate::sort_reverse][__link46].
+
+This example demonstrates how to use [Consolidate][__link47] wrapped in an instance of [ConsolidateChecker][__link48] using the [ConsolidationOrder::Forward][__link49]:
+
+```rust
+
+use common_range_tools::{Consolidate, ConsolidationOrder};
+
+fn main() {
+    for result in Consolidate::num_defaults(
+        [
+            1..=4,
+            3..=5,
+            10..=12,
+            10..=11,
+            13..=13,
+            // This will produce an error, because 13..=13 is "After" 1..=2.
+            1..=2,
+        ]
+        .into_iter(),
+    )
+    .to_consolidate_checker(ConsolidationOrder::Forward)
+    {
+        match result {
+            Ok(row) => {
+                // get our outer range and src rows.
+                let (outer, src) = row.as_src();
+                println!("Outer Range: {}->{}", outer.start(), outer.end());
+                for (id, original) in src {
+                    println!(
+                        "  Row: {}, Range: {}->{}",
+                        id,
+                        original.start(),
+                        original.end()
+                    );
+                }
+            }
+            Err((msg, row)) => {
+                let (outer, src) = row.as_src();
+                println!(
+                    "Error: {}, \n    Produced range: {}->{}",
+                    msg,
+                    outer.start(),
+                    outer.end()
+                );
+                for (id, original) in src {
+                    println!(
+                        "      Caused by: Row: {}, Range: {}->{}",
+                        id,
+                        original.start(),
+                        original.end()
+                    );
+                }
+            }
+        }
+    }
+}
+
+// Resulting Output will be:
+//  Outer Range: 1->5
+//    Row: 0, Range: 1->4
+//    Row: 1, Range: 3->5
+//  Outer Range: 10->12
+//    Row: 2, Range: 10->12
+//    Row: 3, Range: 10->11
+//  Error: Out of Forward Sequence, Expected: Before|Last|Overlap, got: After,
+//      Produced range: 1->13
+//        Caused by: Row: 4, Range: 13->13
+//        Caused by: Row: 5, Range: 1->2
+
+
+```
+
+### Intersections of Itertors
+
+The [Columns][__link50] object is a factory can be used to construct an [Iterator][__link51] that can step through multiple [Iterator][__link52] instances of ranges that can contain duplicate
+and overlapping ranges that intersect with one another.  Each [Column][__link53] added to [Columns][__link54] is wrapped in an instance of [ConsolidateChecker][__link55] to ensure that the consolidation is occuring in the expected [ConsolidationOrder][__link56].
+The ranges returned by the [Iterator][__link57] must be in [ConsolidationOrder][__link58], see: [Consolidation of ranges](#consolidation-of-ranges) for more information.
+This example demonstrates how to create a [ColumnsIter][__link59] from a [Columns][__link60] instance and walk the results.
+
+```rust
+
+use common_range_tools::{Columns, DefaultValues, GetBeginEnd, NumberIncDecCpCmp, sort_forward};
+
+fn main() {
+    // We create all of our column data unsorted
+    let mut col_a = vec![0..=11, 2..=3, 7..=9, 22..=33, 34..=39];
+    let mut col_b = vec![6..=9, 6..=9, 6..=7, 11..=22, 7..=11, 9..=9];
+    let mut col_c = vec![3..=4, 3..=9, 4..=6, 30..=41];
+
+    // ** Full Sort Example here! **
+    // We will use this to drive the internals of the sort function
+    let t = NumberIncDecCpCmp::defaults();
+    // Sort all of our rows and force them to exist in the correct order!
+    let sort_by = |a: &std::ops::RangeInclusive<i32>, b: &std::ops::RangeInclusive<i32>| {
+        sort_forward(a, b, &t.default_rebound(), &t)
+    };
+    col_a.sort_by(sort_by);
+    col_b.sort_by(sort_by);
+    col_c.sort_by(sort_by);
+    // ** End Full Sort Example **
+
+    // Create our Columns instance using number defaults.
+    let cols = Columns::num_defaults();
+
+    // give up if we fail to add a column!
+    assert!(cols.add_column(col_a.into_iter()).is_ok());
+    assert!(cols.add_column(col_b.into_iter()).is_ok());
+    assert!(cols.add_column(col_c.into_iter()).is_ok());
+
+    // Just pretty printing our text table border
+    println!(
+        "+---------+-----------+{:-<35}+{:-<61}+{:-<35}+",
+        "", "", ""
+    );
+
+    // Pretty preint our text table header
+    println!(
+        "| Overlap | State(id) |{:^35}|{:^61}|{:^35}|",
+        "Column(A)", "Column(B)", "Column(C)"
+    );
+    let mut iter = cols.into_iter();
+    let mut id = 0;
+    loop {
+        let next = iter.next();
+        if next.is_none() {
+            // print out the last text bumper.
+            println!(
+                "+---------+-----------+{:-<35}+{:-<61}+{:-<35}+",
+                "", "", ""
+            );
+            return;
+        }
+        let (overlap, res, columns) = next.unwrap();
+        // print a bumper text row.
+        println!(
+            "+---------+-----------+{:-<35}+{:-<61}+{:-<35}+",
+            "", "", ""
+        );
+
+        // Print out the common intersecting range!
+        print!("|  {:^2}->{:^2} |", overlap.get_begin(), overlap.get_end());
+        let mut stop = false;
+        if res.is_err() {
+            print!("   Err({})  |", id);
+            // We still want to access the column or columns that errored out before we stop
+            stop = true;
+        } else {
+            print!("   Ok({})   |", id);
+        }
+        for (column_id, col) in columns.iter().enumerate() {
+            let mut txt = Vec::new();
+            match col {
+                Ok(src) => {
+                    for row in src {
+                        // This range contains all of the ranges that were used to create it!
+                        let container = row.as_ref();
+                        txt.push(format!(
+                            "[{}->{}](",
+                            container.get_begin(),
+                            container.get_end()
+                        ));
+                        let mut r = Vec::new();
+
+                        // walk our raw source ranges that caused this larger range
+                        for (row_id, range) in container.src().iter() {
+                            r.push(format!("{}({}->{})", row_id, range.start(), range.end()));
+                        }
+                        txt.push(r.join(","));
+                        txt.push(String::from(")"));
+                    }
+                }
+                Err(msg) => {
+                    // Print out our error
+                    txt.push(String::from(*msg));
+
+                    // get our raw column and provide the actual erro and the original rows that caused it!
+                    let col = iter.get_column(column_id).unwrap();
+
+                    // This Vec contains the rows that caused the error!
+                    let rows = col.get_rows();
+                    for row in rows {
+                        for (row_id, range) in row.as_ref().src().iter() {
+                            txt.push(format!("({}){}->{}", row_id, range.start(), range.end()))
+                        }
+                    }
+                }
+            }
+            match column_id {
+                0 => print!("{:^35}|", txt.join("")),
+                1 => print!("{:^61}|", txt.join("")),
+                2 => print!("{:^35}|", txt.join("")),
+                _ => (),
+            }
+        }
+
+        println!();
+        if stop {
+            // stop here if we ran into an error processing an iterator.
+            break;
+        }
+        id += 1;
+    }
+}
+
+// The resulting output will be
+//  +---------+-----------+-----------------------------------+-------------------------------------------------------------+-----------------------------------+
+//  | Overlap | State(id) |             Column(A)             |                          Column(B)                          |             Column(C)             |
+//  +---------+-----------+-----------------------------------+-------------------------------------------------------------+-----------------------------------+
+//  |  0 ->2  |   Ok(0)   | [0->11](0(0->11),1(2->3),2(7->9)) |                                                             |                                   |
+//  +---------+-----------+-----------------------------------+-------------------------------------------------------------+-----------------------------------+
+//  |  3 ->5  |   Ok(1)   | [0->11](0(0->11),1(2->3),2(7->9)) |                                                             |  [3->9](0(3->9),1(3->4),2(4->6))  |
+//  +---------+-----------+-----------------------------------+-------------------------------------------------------------+-----------------------------------+
+//  |  6 ->9  |   Ok(2)   | [0->11](0(0->11),1(2->3),2(7->9)) | [6->22](0(6->9),1(6->9),2(6->7),3(7->11),4(9->9),5(11->22)) |  [3->9](0(3->9),1(3->4),2(4->6))  |
+//  +---------+-----------+-----------------------------------+-------------------------------------------------------------+-----------------------------------+
+//  |  10->11 |   Ok(3)   | [0->11](0(0->11),1(2->3),2(7->9)) | [6->22](0(6->9),1(6->9),2(6->7),3(7->11),4(9->9),5(11->22)) |                                   |
+//  +---------+-----------+-----------------------------------+-------------------------------------------------------------+-----------------------------------+
+//  |  12->21 |   Ok(4)   |                                   | [6->22](0(6->9),1(6->9),2(6->7),3(7->11),4(9->9),5(11->22)) |                                   |
+//  +---------+-----------+-----------------------------------+-------------------------------------------------------------+-----------------------------------+
+//  |  22->22 |   Ok(5)   |        [22->33](3(22->33))        | [6->22](0(6->9),1(6->9),2(6->7),3(7->11),4(9->9),5(11->22)) |                                   |
+//  +---------+-----------+-----------------------------------+-------------------------------------------------------------+-----------------------------------+
+//  |  23->29 |   Ok(6)   |        [22->33](3(22->33))        |                                                             |                                   |
+//  +---------+-----------+-----------------------------------+-------------------------------------------------------------+-----------------------------------+
+//  |  30->33 |   Ok(7)   |        [22->33](3(22->33))        |                                                             |        [30->41](3(30->41))        |
+//  +---------+-----------+-----------------------------------+-------------------------------------------------------------+-----------------------------------+
+//  |  34->39 |   Ok(8)   |        [34->39](4(34->39))        |                                                             |        [30->41](3(30->41))        |
+//  +---------+-----------+-----------------------------------+-------------------------------------------------------------+-----------------------------------+
+//  |  40->41 |   Ok(9)   |                                   |                                                             |        [30->41](3(30->41))        |
+//  +---------+-----------+-----------------------------------+-------------------------------------------------------------+-----------------------------------+
+
+
+```
+
+## Motivation
+
+In truth there doesn’t seem to be a library on crates.io provides the following functionality:
+
+* A range intersection library that handles columns of [Iterator][__link61] ranges and progress through those ranges correctly.
+* An intersection library that could be quickly extended to work with any data structure.
+* An intersection library that can support any range type via a a common trait.
+* A reversable range intersection iterator.
+
+Other implementations:
+
+* [range-ext][__link62]
+* [range-overlap][__link63]
+* [rangetools][__link64]
+
+
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQb2T7u9YDLXZ4bj77cXYm2M2EbLrC_oVruF3gbfuELstuDP8thZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
- [__link10]: https://doc.rust-lang.org/stable/std/cmp/trait.PartialOrd.html
- [__link11]: https://doc.rust-lang.org/stable/std/?search=ops::Add
- [__link12]: https://doc.rust-lang.org/stable/std/?search=ops::Sub
- [__link13]: https://doc.rust-lang.org/stable/std/marker/trait.Copy.html
- [__link14]: https://doc.rust-lang.org/stable/std/clone/trait.Clone.html
- [__link15]: https://doc.rust-lang.org/stable/std/?search=time::Duration
- [__link16]: https://doc.rust-lang.org/stable/std/?search=time::SystemTime
- [__link17]: https://doc.rust-lang.org/stable/std/cmp/trait.PartialOrd.html
- [__link18]: https://doc.rust-lang.org/stable/std/?search=ops::Add
- [__link19]: https://doc.rust-lang.org/stable/std/?search=ops::Sub
- [__link2]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
- [__link20]: https://doc.rust-lang.org/stable/std/marker/trait.Copy.html
- [__link21]: https://doc.rust-lang.org/stable/std/clone/trait.Clone.html
- [__link22]: https://crates.io/crates/AnyIncDecCpCmp
- [__link23]: https://crates.io/crates/common-range-tools/0.1.0
- [__link3]: https://doc.rust-lang.org/stable/std/?search=ops::RangeInclusive
- [__link4]: https://crates.io/crates/NumberIncDecCpCmp
- [__link5]: https://doc.rust-lang.org/stable/std/?search=i32::MIN
- [__link6]: https://doc.rust-lang.org/stable/std/?search=i32::MAX
- [__link7]: https://doc.rust-lang.org/stable/std/?search=ops::Bound::Excluded
+ [__link10]: https://crates.io/crates/NumberIncDecCpCmp
+ [__link11]: https://crates.io/crates/NumberIncDecCpCmp
+ [__link12]: https://doc.rust-lang.org/stable/std/primitive.f32.html
+ [__link13]: https://doc.rust-lang.org/stable/std/primitive.f64.html
+ [__link14]: https://crates.io/crates/NumberIncDecCpCmp
+ [__link15]: https://crates.io/crates/AnyIncDecCpCmp
+ [__link16]: https://doc.rust-lang.org/stable/std/cmp/trait.PartialOrd.html
+ [__link17]: https://doc.rust-lang.org/stable/std/?search=ops::Add
+ [__link18]: https://doc.rust-lang.org/stable/std/?search=ops::Sub
+ [__link19]: https://doc.rust-lang.org/stable/std/marker/trait.Copy.html
+ [__link2]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link20]: https://doc.rust-lang.org/stable/std/clone/trait.Clone.html
+ [__link21]: https://doc.rust-lang.org/stable/std/?search=time::Duration
+ [__link22]: https://doc.rust-lang.org/stable/std/?search=time::SystemTime
+ [__link23]: https://doc.rust-lang.org/stable/std/cmp/trait.PartialOrd.html
+ [__link24]: https://doc.rust-lang.org/stable/std/?search=ops::Add
+ [__link25]: https://doc.rust-lang.org/stable/std/?search=ops::Sub
+ [__link26]: https://doc.rust-lang.org/stable/std/marker/trait.Copy.html
+ [__link27]: https://doc.rust-lang.org/stable/std/clone/trait.Clone.html
+ [__link28]: https://crates.io/crates/OverlapIter
+ [__link29]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
+ [__link3]: https://crates.io/crates/NumberIncDecCpCmp
+ [__link30]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/trait.GetBeginEnd.html
+ [__link31]: https://crates.io/crates/GetBeginEndOption
+ [__link32]: https://crates.io/crates/GetBeginEndOption
+ [__link33]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/trait.GetBeginEnd.html
+ [__link34]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/trait.GetBeginEnd.html
+ [__link35]: https://doc.rust-lang.org/stable/std/?search=ops::RangeInclusive
+ [__link36]: https://crates.io/crates/Consolidate
+ [__link37]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link38]: https://crates.io/crates/Consolidate
+ [__link39]: https://crates.io/crates/ConsolidateChecker
+ [__link4]: https://crates.io/crates/OverlapIter
+ [__link40]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link41]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link42]: https://crates.io/crates/ConsolidationOrder
+ [__link43]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Forward
+ [__link44]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/?search=sort_forward
+ [__link45]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Reverse
+ [__link46]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/?search=sort_reverse
+ [__link47]: https://crates.io/crates/Consolidate
+ [__link48]: https://crates.io/crates/ConsolidateChecker
+ [__link49]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Forward
+ [__link5]: https://doc.rust-lang.org/stable/std/iter/trait.DoubleEndedIterator.html
+ [__link50]: https://crates.io/crates/Columns
+ [__link51]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link52]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link53]: https://crates.io/crates/Column
+ [__link54]: https://crates.io/crates/Columns
+ [__link55]: https://crates.io/crates/ConsolidateChecker
+ [__link56]: https://crates.io/crates/ConsolidationOrder
+ [__link57]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link58]: https://crates.io/crates/ConsolidationOrder
+ [__link59]: https://crates.io/crates/ColumnsIter
+ [__link6]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
+ [__link60]: https://crates.io/crates/Columns
+ [__link61]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link62]: https://docs.rs/range-ext/0.3.0/range_ext/index.html
+ [__link63]: https://docs.rs/range-overlap/latest/range_overlap/
+ [__link64]: https://crates.io/crates/rangetools
+ [__link7]: https://doc.rust-lang.org/stable/std/?search=ops::RangeInclusive
  [__link8]: https://crates.io/crates/NumberIncDecCpCmp
- [__link9]: https://crates.io/crates/AnyIncDecCpCmp
+ [__link9]: https://doc.rust-lang.org/stable/std/?search=ops::Bound::Excluded
