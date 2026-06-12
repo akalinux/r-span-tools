@@ -40,6 +40,9 @@ fn main() {
         "| Overlap | State(id) |{:^35}|{:^61}|{:^35}|",
         "Column(A)", "Column(B)", "Column(C)"
     );
+
+    // In order to access the iter.get_column(column_id) method, the iter instance must remain in scope.
+    // If access to the causal ranges is not required, then a standard for lopp iterator will work.
     let mut iter = cols.into_iter();
     let mut id = 0;
     loop {
@@ -92,6 +95,10 @@ fn main() {
                     }
                 }
                 Err(msg) => {
+                    // This code exists but does not execute in this example.
+                    // This code exists to show how to gain access to the ranges that
+                    // caused a given error.
+
                     // Print out our error
                     txt.push(String::from(*msg));
 
