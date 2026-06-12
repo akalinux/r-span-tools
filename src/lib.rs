@@ -30,7 +30,7 @@
 //! | Field | What it does|
 //! |------|----|
 //! | step | sets the value used to progress between the begin or end of a range |
-//! | rebound | sets the value used to redefine a range fom an [std::ops::Bound::Excluded] |
+//! | rebound | sets the value used to redefine a range value fom an instance of: [std::ops::Bound::Excluded] |
 //! | min |  the minimum value for ranges in the context of: **..** |
 //! | max | the maximum vaue for ranges in the context of: **..** |
 #![doc = "```rust\n"]
