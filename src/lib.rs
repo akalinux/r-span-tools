@@ -48,7 +48,8 @@
 //! ## Generic Data types
 //! The [AnyIncDecCpCmp] object supports working with any data type, provided it implements: [PartialOrd], [std::ops::Add], [std::ops::Sub], [Copy], and [Clone].
 //! When working with generics, the value used by step and rebound values do not have to be the same type as the values used by a range.
-//! A practical example of why this is useful is [std::time::Duration] and [std::time::SystemTime].
+//! A practical example of this is how [std::time::Duration] and [std::time::SystemTime] handle [std::ops::Add] and [std::ops::Sub].  
+//! This is an example that shows how to use [std::time::Duration] to provide the step and rebound values and [std::time::SystemTime] to operate as the range values:
 #![doc = "```rust\n"]
 #![doc = include_str!("../examples/systemtime.rs")]
 #![doc = "\n```"]
