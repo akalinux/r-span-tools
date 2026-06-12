@@ -8,7 +8,7 @@ For dealing with ranges beyond just intersections of
 numbers see: [Generic Data Types](#generic-data-types).  For working with custom data structures see: [Beyond Generics](#beyond-generics).
 For working with custom Ranges and range factories see: [Internal Range Trait](#internal-range-trait).
 For consolidating duplicate and overlapping ranges see [Consolidation of ranges](#consolidation-of-ranges).
-For finding intersections between muliple [Iterator][__link2] instances, see: [Intersections of Itertors](#intersections-of-multiple-itertors).
+For finding intersections between muliple [Iterator][__link2] instances, see: [Intersections of multiple Itertors](#intersections-of-multiple-itertors).
 
 ### Example
 
@@ -664,7 +664,7 @@ Other implementations:
 * [rangetools][__link70]
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQb7nNk48rnwDMbkan0mP3yjykbxub4zlt7bFwbw4p_ic0p5sVhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbBXeanKF2OzcbxShZ3HOD2H0bptuMjy_BT3Mbc_VHSz6vMhFhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
  [__link10]: https://crates.io/crates/common-range-tools/0.1.0

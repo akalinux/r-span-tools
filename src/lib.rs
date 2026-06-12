@@ -5,7 +5,7 @@
 //! numbers see: [Generic Data Types](#generic-data-types).  For working with custom data structures see: [Beyond Generics](#beyond-generics).
 //! For working with custom Ranges and range factories see: [Internal Range Trait](#internal-range-trait).
 //! For consolidating duplicate and overlapping ranges see [Consolidation of ranges](#consolidation-of-ranges).
-//! For finding intersections between muliple [Iterator] instances, see: [Intersections of Itertors](#intersections-of-multiple-itertors).
+//! For finding intersections between muliple [Iterator] instances, see: [Intersections of multiple Itertors](#intersections-of-multiple-itertors).
 //!
 //! ## Example
 //! This is the most basic example, using the default values from [NumberIncDecCpCmp].  The [OverlapIter] is a [DoubleEndedIterator] and can be reversed.
