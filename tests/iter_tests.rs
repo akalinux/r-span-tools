@@ -247,6 +247,7 @@ mod iter_tests {
     #[test]
     fn accumulate_struct() {
         let t = TestCmp {};
+        assert_eq!(t.cp_v(&Point { x: 2 }), Point { x: 2 });
         let list: Vec<Mrs<Point>> = Vec::new();
         let mut a = Intersector::new(list, Point { x: 1 }, Point { x: 1 }, t, MrsFactory::new());
 

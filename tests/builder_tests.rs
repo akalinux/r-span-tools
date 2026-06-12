@@ -19,6 +19,7 @@ mod builder_tests {
         t.set_min(0);
         assert!(t.is_invalid_set(&-1, &1));
         assert!(!t.is_invalid_set(&0, &1));
+        assert_eq!(t.cp_v(&1), 1);
     }
 
     #[test]
@@ -116,6 +117,7 @@ mod builder_tests {
         assert_eq!(l.dec(&f32::INFINITY, &f32::INFINITY), None);
         assert_eq!(l.dec(&1.0, &f32::INFINITY), Some(f32::NEG_INFINITY));
         assert_eq!(l.dec(&1.0, &f32::NEG_INFINITY), None);
+        assert_eq!(l.cp_v(&1.0), 1.0);
     }
 
     #[test]
