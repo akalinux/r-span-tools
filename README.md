@@ -110,13 +110,14 @@ fn main() {
 
 ### Numeric Boundries
 
-In truth the defaults are useful but in most cases the min and max are something we will want to set.
+When working with boundries it is useful to be able to control how ranges are interpeted.  The defaults provided by [NumberIncDecCpCmp][__link9] are useful
+but do not cover all casees.  The internals of this [crate][__link10] allow for setting various options to control how both ranges and intersections are computed.
 In this example we set the following:
 
 |Field|What it does|
 |-----|------------|
 |step|sets the value used to progress between the begin or end of a range|
-|rebound|sets the value used to redefine a range fom an [std::ops::Bound::Excluded][__link9]|
+|rebound|sets the value used to redefine a range fom an [std::ops::Bound::Excluded][__link11]|
 |min|the minimum value for ranges in the context of: **..**|
 |max|the maximum vaue for ranges in the context of: **..**|
 
@@ -169,9 +170,9 @@ fn main() {
 
 ### Working with Floats
 
-When working with floating points, its nessesary to understand how floats are handled by the [NumberIncDecCpCmp][__link10].
-Floating point numbers are in a word *imprecise*; The internals of [NumberIncDecCpCmp][__link11] does not check [f32][__link12] or [f64][__link13] for over or underflow;
-The internals of [NumberIncDecCpCmp][__link14] simply checks that the values properly increment and decrement.
+When working with floating points, its nessesary to understand how floats are handled by the [NumberIncDecCpCmp][__link12].
+Floating point numbers are in a word *imprecise*; The internals of [NumberIncDecCpCmp][__link13] does not check [f32][__link14] or [f64][__link15] for over or underflow;
+The internals of [NumberIncDecCpCmp][__link16] simply checks that the values properly increment and decrement.
 
 ```rust
 
@@ -213,9 +214,9 @@ fn main() {
 
 ### Generic Data types
 
-The [AnyIncDecCpCmp][__link15] object supports working with any data type provided it implements: [PartialOrd][__link16], [std::ops::Add][__link17], [std::ops::Sub][__link18], [Copy][__link19], and [Clone][__link20].
+The [AnyIncDecCpCmp][__link17] object supports working with any data type provided it implements: [PartialOrd][__link18], [std::ops::Add][__link19], [std::ops::Sub][__link20], [Copy][__link21], and [Clone][__link22].
 In truth the value used by step and rebound do not have to be the same type as the value used by the range.
-A practical example of why this is useful is [std::time::Duration][__link21] and [std::time::SystemTime][__link22].
+A practical example of why this is useful is [std::time::Duration][__link23] and [std::time::SystemTime][__link24].
 
 ```rust
 
@@ -250,8 +251,8 @@ fn main() {
 
 ### Beyond Generics
 
-In some cases the range values do not implement: [PartialOrd][__link23], [std::ops::Add][__link24], [std::ops::Sub][__link25], [Copy][__link26], [Clone][__link27] or do so in a way
-that is incompatable with the required data structure used as a value for the range.  The internals of [OverlapIter][__link28] use a proxy layer which can be customized to meet most requirements.
+In some cases the range values do not implement: [PartialOrd][__link25], [std::ops::Add][__link26], [std::ops::Sub][__link27], [Copy][__link28], [Clone][__link29] or do so in a way
+that is incompatable with the required data structure used as a value for the range.  The internals of [OverlapIter][__link30] use a proxy layer which can be customized to meet most requirements.
 This example shows how to work with ragnes of custom data strcutres.
 
 ```rust
@@ -342,10 +343,10 @@ fn main() {
 
 ### Internal Range Trait
 
-Rust has no single trait representing rages aside from [std::ops::RangeBounds][__link29], which can require recomputing the begin and or end
-values of a range on each evaluation.  To work around this the internals of this crate use a common trait range type of [GetBeginEnd][__link30].
-There is also a factory trait for creating instances called [GetBeginEndOption][__link31].  This example shows how to create and use both the
-factory: [GetBeginEndOption][__link32] and the range: [GetBeginEnd][__link33].  As a note the [GetBeginEnd][__link34] trait is implemnted for [std::ops::RangeInclusive][__link35].
+Rust has no single trait representing rages aside from [std::ops::RangeBounds][__link31], which can require recomputing the begin and or end
+values of a range on each evaluation.  To work around this the internals of this crate use a common trait range type of [GetBeginEnd][__link32].
+There is also a factory trait for creating instances called [GetBeginEndOption][__link33].  This example shows how to create and use both the
+factory: [GetBeginEndOption][__link34] and the range: [GetBeginEnd][__link35].  As a note the [GetBeginEnd][__link36] trait is implemnted for [std::ops::RangeInclusive][__link37].
 
 ```rust
 
@@ -405,15 +406,15 @@ fn main() {
 
 ### Consolidation of ranges
 
-The [Consolidate][__link36] object can be used to consolidate duplicate and overlapping ranges via an [Iterator][__link37] of ranges.
-It is recommended to convert an instance of [Consolidate][__link38] into an instance of [ConsolidateChecker][__link39] instance to verify the integrity of the data returned by the [Iterator][__link40].
+The [Consolidate][__link38] object can be used to consolidate duplicate and overlapping ranges via an [Iterator][__link39] of ranges.
+It is recommended to convert an instance of [Consolidate][__link40] into an instance of [ConsolidateChecker][__link41] instance to verify the integrity of the data returned by the [Iterator][__link42].
 
-The ranges returned by the [Iterator][__link41] must be in [ConsolidationOrder][__link42].
+The ranges returned by the [Iterator][__link43] must be in [ConsolidationOrder][__link44].
 
-* For [ConsolidationOrder::Forward][__link43] the expected order is: *start asc, end desc*. For more information See: [crate::sort_forward][__link44].
-* For [ConsolidationOrder::Reverse][__link45] the expected order is: *end desc, start asc*. For more information see [crate::sort_reverse][__link46].
+* For [ConsolidationOrder::Forward][__link45] the expected order is: *start asc, end desc*. For more information See: [crate::sort_forward][__link46].
+* For [ConsolidationOrder::Reverse][__link47] the expected order is: *end desc, start asc*. For more information see [crate::sort_reverse][__link48].
 
-This example demonstrates how to use [Consolidate][__link47] wrapped in an instance of [ConsolidateChecker][__link48] using the [ConsolidationOrder::Forward][__link49]:
+This example demonstrates how to use [Consolidate][__link49] wrapped in an instance of [ConsolidateChecker][__link50] using the [ConsolidationOrder::Forward][__link51]:
 
 ```rust
 
@@ -486,10 +487,10 @@ fn main() {
 
 ### Intersections of Itertors
 
-The [Columns][__link50] object is a factory can be used to construct an [Iterator][__link51] that can step through multiple [Iterator][__link52] instances of ranges that can contain duplicate
-and overlapping ranges that intersect with one another.  Each [Column][__link53] added to [Columns][__link54] is wrapped in an instance of [ConsolidateChecker][__link55] to ensure that the consolidation is occuring in the expected [ConsolidationOrder][__link56].
-The ranges returned by the [Iterator][__link57] must be in [ConsolidationOrder][__link58], see: [Consolidation of ranges](#consolidation-of-ranges) for more information.
-This example demonstrates how to create a [ColumnsIter][__link59] from a [Columns][__link60] instance and walk the results.
+The [Columns][__link52] object is a factory can be used to construct an [Iterator][__link53] that can step through multiple [Iterator][__link54] instances of ranges that can contain duplicate
+and overlapping ranges that intersect with one another.  Each [Column][__link55] added to [Columns][__link56] is wrapped in an instance of [ConsolidateChecker][__link57] to ensure that the consolidation is occuring in the expected [ConsolidationOrder][__link58].
+The ranges returned by the [Iterator][__link59] must be in [ConsolidationOrder][__link60], see: [Consolidation of ranges](#consolidation-of-ranges) for more information.
+This example demonstrates how to create a [ColumnsIter][__link61] from a [Columns][__link62] instance and walk the results.
 
 ```rust
 
@@ -648,81 +649,83 @@ fn main() {
 
 In truth there doesn’t seem to be a library on crates.io provides the following functionality:
 
-* A range intersection library that handles columns of [Iterator][__link61] ranges and progress through those ranges correctly.
+* A range intersection library that handles columns of [Iterator][__link63] ranges and progress through those ranges correctly.
 * An intersection library that could be quickly extended to work with any data structure.
 * An intersection library that can support any range type via a a common trait.
 * A reversable range intersection iterator.
 
 Other implementations:
 
-* [range-ext][__link62]
-* [range-overlap][__link63]
-* [rangetools][__link64]
+* [range-ext][__link64]
+* [range-overlap][__link65]
+* [rangetools][__link66]
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbcmlJfmP3MtkbgaL9PxQR7tcbnoObhkjMH4AbOKWcbnZvSothZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQb26CL2PDYzb0bKvd8FEsSVdUbshJsjwwmGLUbpggQxTNBOiBhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
- [__link10]: https://crates.io/crates/NumberIncDecCpCmp
- [__link11]: https://crates.io/crates/NumberIncDecCpCmp
- [__link12]: https://doc.rust-lang.org/stable/std/primitive.f32.html
- [__link13]: https://doc.rust-lang.org/stable/std/primitive.f64.html
- [__link14]: https://crates.io/crates/NumberIncDecCpCmp
- [__link15]: https://crates.io/crates/AnyIncDecCpCmp
- [__link16]: https://doc.rust-lang.org/stable/std/cmp/trait.PartialOrd.html
- [__link17]: https://doc.rust-lang.org/stable/std/?search=ops::Add
- [__link18]: https://doc.rust-lang.org/stable/std/?search=ops::Sub
- [__link19]: https://doc.rust-lang.org/stable/std/marker/trait.Copy.html
+ [__link10]: https://crates.io/crates/common-range-tools/0.1.0
+ [__link11]: https://doc.rust-lang.org/stable/std/?search=ops::Bound::Excluded
+ [__link12]: https://crates.io/crates/NumberIncDecCpCmp
+ [__link13]: https://crates.io/crates/NumberIncDecCpCmp
+ [__link14]: https://doc.rust-lang.org/stable/std/primitive.f32.html
+ [__link15]: https://doc.rust-lang.org/stable/std/primitive.f64.html
+ [__link16]: https://crates.io/crates/NumberIncDecCpCmp
+ [__link17]: https://crates.io/crates/AnyIncDecCpCmp
+ [__link18]: https://doc.rust-lang.org/stable/std/cmp/trait.PartialOrd.html
+ [__link19]: https://doc.rust-lang.org/stable/std/?search=ops::Add
  [__link2]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
- [__link20]: https://doc.rust-lang.org/stable/std/clone/trait.Clone.html
- [__link21]: https://doc.rust-lang.org/stable/std/?search=time::Duration
- [__link22]: https://doc.rust-lang.org/stable/std/?search=time::SystemTime
- [__link23]: https://doc.rust-lang.org/stable/std/cmp/trait.PartialOrd.html
- [__link24]: https://doc.rust-lang.org/stable/std/?search=ops::Add
- [__link25]: https://doc.rust-lang.org/stable/std/?search=ops::Sub
- [__link26]: https://doc.rust-lang.org/stable/std/marker/trait.Copy.html
- [__link27]: https://doc.rust-lang.org/stable/std/clone/trait.Clone.html
- [__link28]: https://crates.io/crates/OverlapIter
- [__link29]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
+ [__link20]: https://doc.rust-lang.org/stable/std/?search=ops::Sub
+ [__link21]: https://doc.rust-lang.org/stable/std/marker/trait.Copy.html
+ [__link22]: https://doc.rust-lang.org/stable/std/clone/trait.Clone.html
+ [__link23]: https://doc.rust-lang.org/stable/std/?search=time::Duration
+ [__link24]: https://doc.rust-lang.org/stable/std/?search=time::SystemTime
+ [__link25]: https://doc.rust-lang.org/stable/std/cmp/trait.PartialOrd.html
+ [__link26]: https://doc.rust-lang.org/stable/std/?search=ops::Add
+ [__link27]: https://doc.rust-lang.org/stable/std/?search=ops::Sub
+ [__link28]: https://doc.rust-lang.org/stable/std/marker/trait.Copy.html
+ [__link29]: https://doc.rust-lang.org/stable/std/clone/trait.Clone.html
  [__link3]: https://crates.io/crates/NumberIncDecCpCmp
- [__link30]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/trait.GetBeginEnd.html
- [__link31]: https://crates.io/crates/GetBeginEndOption
- [__link32]: https://crates.io/crates/GetBeginEndOption
- [__link33]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/trait.GetBeginEnd.html
- [__link34]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/trait.GetBeginEnd.html
- [__link35]: https://doc.rust-lang.org/stable/std/?search=ops::RangeInclusive
- [__link36]: https://crates.io/crates/Consolidate
- [__link37]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link30]: https://crates.io/crates/OverlapIter
+ [__link31]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
+ [__link32]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/trait.GetBeginEnd.html
+ [__link33]: https://crates.io/crates/GetBeginEndOption
+ [__link34]: https://crates.io/crates/GetBeginEndOption
+ [__link35]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/trait.GetBeginEnd.html
+ [__link36]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/trait.GetBeginEnd.html
+ [__link37]: https://doc.rust-lang.org/stable/std/?search=ops::RangeInclusive
  [__link38]: https://crates.io/crates/Consolidate
- [__link39]: https://crates.io/crates/ConsolidateChecker
+ [__link39]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
  [__link4]: https://crates.io/crates/OverlapIter
- [__link40]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
- [__link41]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
- [__link42]: https://crates.io/crates/ConsolidationOrder
- [__link43]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Forward
- [__link44]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/?search=sort_forward
- [__link45]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Reverse
- [__link46]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/?search=sort_reverse
- [__link47]: https://crates.io/crates/Consolidate
- [__link48]: https://crates.io/crates/ConsolidateChecker
- [__link49]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Forward
+ [__link40]: https://crates.io/crates/Consolidate
+ [__link41]: https://crates.io/crates/ConsolidateChecker
+ [__link42]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link43]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link44]: https://crates.io/crates/ConsolidationOrder
+ [__link45]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Forward
+ [__link46]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/?search=sort_forward
+ [__link47]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Reverse
+ [__link48]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/?search=sort_reverse
+ [__link49]: https://crates.io/crates/Consolidate
  [__link5]: https://doc.rust-lang.org/stable/std/iter/trait.DoubleEndedIterator.html
- [__link50]: https://crates.io/crates/Columns
- [__link51]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
- [__link52]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
- [__link53]: https://crates.io/crates/Column
- [__link54]: https://crates.io/crates/Columns
- [__link55]: https://crates.io/crates/ConsolidateChecker
- [__link56]: https://crates.io/crates/ConsolidationOrder
- [__link57]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link50]: https://crates.io/crates/ConsolidateChecker
+ [__link51]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Forward
+ [__link52]: https://crates.io/crates/Columns
+ [__link53]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link54]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link55]: https://crates.io/crates/Column
+ [__link56]: https://crates.io/crates/Columns
+ [__link57]: https://crates.io/crates/ConsolidateChecker
  [__link58]: https://crates.io/crates/ConsolidationOrder
- [__link59]: https://crates.io/crates/ColumnsIter
+ [__link59]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
  [__link6]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
- [__link60]: https://crates.io/crates/Columns
- [__link61]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
- [__link62]: https://docs.rs/range-ext/0.3.0/range_ext/index.html
- [__link63]: https://docs.rs/range-overlap/latest/range_overlap/
- [__link64]: https://crates.io/crates/rangetools
+ [__link60]: https://crates.io/crates/ConsolidationOrder
+ [__link61]: https://crates.io/crates/ColumnsIter
+ [__link62]: https://crates.io/crates/Columns
+ [__link63]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link64]: https://docs.rs/range-ext/0.3.0/range_ext/index.html
+ [__link65]: https://docs.rs/range-overlap/latest/range_overlap/
+ [__link66]: https://crates.io/crates/rangetools
  [__link7]: https://doc.rust-lang.org/stable/std/?search=ops::RangeInclusive
  [__link8]: https://crates.io/crates/NumberIncDecCpCmp
- [__link9]: https://doc.rust-lang.org/stable/std/?search=ops::Bound::Excluded
+ [__link9]: https://crates.io/crates/NumberIncDecCpCmp
