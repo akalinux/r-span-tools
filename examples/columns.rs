@@ -102,7 +102,7 @@ fn main() {
                     // Save our error for output
                     txt.push(String::from(*msg));
 
-                    // get our raw column and provide the actual erro and the original rows that caused it!
+                    // get our raw column and the original rows that caused the error!
                     let col = iter.get_column(column_id).unwrap();
 
                     // This Vec contains the rows that caused the error!

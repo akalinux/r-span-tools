@@ -602,7 +602,7 @@ fn main() {
                     // Save our error for output
                     txt.push(String::from(*msg));
 
-                    // get our raw column and provide the actual erro and the original rows that caused it!
+                    // get our raw column and the original rows that caused the error!
                     let col = iter.get_column(column_id).unwrap();
 
                     // This Vec contains the rows that caused the error!
@@ -676,7 +676,7 @@ Other implementations:
 * [rangetools][__link72]
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbOZ9qxRugLmobqf2VDHDC_N4b9tcS-vv2hFcb08K5eJzPzFNhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQb8wFfNFc8fdgbRMqZTmlOeuUbYDf1dsiLg_EbnDDdtv_-C61hZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
  [__link10]: https://crates.io/crates/common-range-tools/0.1.0
