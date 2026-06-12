@@ -95,7 +95,8 @@
 //!  - For [ConsolidationOrder::Forward] the expected order is: *start asc, end desc*. For more information see: [crate::sort_forward].
 //!  - For [ConsolidationOrder::Reverse] the expected order is: *end desc, start asc*. For more information see: [crate::sort_reverse].
 //!
-//! This example demonstrates how to create a [ColumnsIter] from a [Columns] instance and walk the results.
+//! This example demonstrates how to create a [ColumnsIter] from a [Columns] instance and walk the results.  This example also
+//! includes an example of how to use [crate::sort_forward].
 //!
 #![doc = "```rust\n"]
 #![doc = include_str!("../examples/columns.rs")]

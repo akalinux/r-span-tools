@@ -501,7 +501,8 @@ The ranges returned by each [Iterator][__link68] must be in same [ConsolidationO
 * For [ConsolidationOrder::Forward][__link71] the expected order is: *start asc, end desc*. For more information see: [crate::sort_forward][__link72].
 * For [ConsolidationOrder::Reverse][__link73] the expected order is: *end desc, start asc*. For more information see: [crate::sort_reverse][__link74].
 
-This example demonstrates how to create a [ColumnsIter][__link75] from a [Columns][__link76] instance and walk the results.
+This example demonstrates how to create a [ColumnsIter][__link75] from a [Columns][__link76] instance and walk the results.  This example also
+includes an example of how to use [crate::sort_forward][__link77].
 
 ```rust
 
@@ -678,19 +679,19 @@ fn main() {
 
 In truth there doesn’t seem to be a library on crates.io provides the following functionality:
 
-* A range intersection library that handles columns of [Iterator][__link77] ranges and progress through those ranges correctly.
+* A range intersection library that handles columns of [Iterator][__link78] ranges and progress through those ranges correctly.
 * An intersection library that could be quickly extended to work with any data structure.
 * An intersection library that can support any range type via a a common trait.
 * A reversable range intersection iterator.
 
 Other implementations:
 
-* [range-ext][__link78]
-* [range-overlap][__link79]
-* [rangetools][__link80]
+* [range-ext][__link79]
+* [range-overlap][__link80]
+* [rangetools][__link81]
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbdfYyZjih778bILJPlFmFMtcbbA25rjjdHWgbVhrdRdappN1hZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQb9VjYolhv0SgbmG7hf_FqnrYbnXriPCiNoaob2uYwAfBO_2thZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
  [__link10]: https://crates.io/crates/common-range-tools/0.1.0
@@ -766,9 +767,10 @@ Other implementations:
  [__link74]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/?search=sort_reverse
  [__link75]: https://crates.io/crates/ColumnsIter
  [__link76]: https://crates.io/crates/Columns
- [__link77]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
- [__link78]: https://docs.rs/range-ext/0.3.0/range_ext/index.html
- [__link79]: https://docs.rs/range-overlap/latest/range_overlap/
+ [__link77]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/?search=sort_forward
+ [__link78]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
+ [__link79]: https://docs.rs/range-ext/0.3.0/range_ext/index.html
  [__link8]: https://crates.io/crates/NumberIncDecCpCmp
- [__link80]: https://crates.io/crates/rangetools
+ [__link80]: https://docs.rs/range-overlap/latest/range_overlap/
+ [__link81]: https://crates.io/crates/rangetools
  [__link9]: https://crates.io/crates/NumberIncDecCpCmp
