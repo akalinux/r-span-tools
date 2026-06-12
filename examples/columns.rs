@@ -61,7 +61,7 @@ fn main() {
         let mut stop = false;
         if res.is_err() {
             print!("   Err({})  |", id);
-            // We still want to access the column or columns that errored out before we stop
+            // We still want to access the column or columns that error out before we stop
             stop = true;
         } else {
             print!("   Ok({})   |", id);

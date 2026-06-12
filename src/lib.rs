@@ -38,7 +38,7 @@
 #![doc = "\n```"]
 //!
 //! ## Working with Floats
-//! When working with floating points, its nessesary to understand how floats are handled by the [NumberIncDecCpCmp].
+//! When working with floating points, it's nessesary to understand how floats are handled by the [NumberIncDecCpCmp].
 //! Floating point numbers are in a word *imprecise*; The internals of [NumberIncDecCpCmp] does not check [f32] or [f64] for over or underflow;
 //! The internals of [NumberIncDecCpCmp] simply checks that the values properly increment and decrement.
 #![doc = "```rust\n"]
@@ -64,9 +64,10 @@
 //!
 //! ## Internal Range Trait
 //! Rust has no single trait representing rages aside from [std::ops::RangeBounds], which can require recomputing the begin and or end
-//! values of a range on each evaluation.  To work around this the internals of this crate use a common trait range type of [GetBeginEnd].
+//! values of a range on each evaluation.  To work around this the internals of this [crate] use a common trait range type of [GetBeginEnd].
 //! There is also a factory trait for creating instances called [GetBeginEndOption].  This example shows how to create and use both the
-//! factory: [GetBeginEndOption] and the range: [GetBeginEnd].  As a note the [GetBeginEnd] trait is implemnted for [std::ops::RangeInclusive].
+//! factory: [GetBeginEndOption] and the range: [GetBeginEnd].  As a note the [GetBeginEnd] trait is implemnted for [std::ops::RangeInclusive] for the
+//! internals of this [crate].
 #![doc = "```rust\n"]
 #![doc = include_str!("../examples/getbeginend.rs")]
 #![doc = "\n```"]
