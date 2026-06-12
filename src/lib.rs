@@ -80,7 +80,7 @@
 //!  - For [ConsolidationOrder::Forward] the expected order is: *start asc, end desc*. For more information See: [crate::sort_forward].
 //!  - For [ConsolidationOrder::Reverse] the expected order is: *end desc, start asc*. For more information see [crate::sort_reverse].
 //!
-//! This example demonstrates how to use [Consolidate] wrapped in an instance of [ConsolidateChecker] using the [ConsolidationOrder::Forward]:
+//! This example demonstrates how to use [Consolidate] wrapped in an instance of [ConsolidateChecker] using [ConsolidationOrder::Forward]:
 #![doc = "```rust\n"]
 #![doc = include_str!("../examples/overlaps.rs")]
 #![doc = "\n```"]

@@ -96,10 +96,10 @@ fn main() {
                 }
                 Err(msg) => {
                     // This code exists but does not execute in this example.
-                    // This code exists to show how to gain access to the ranges that
+                    // The Err code block, exists to demonstrate how to gain access to the ranges that
                     // caused a given error.
 
-                    // Print out our error
+                    // Save our error for output
                     txt.push(String::from(*msg));
 
                     // get our raw column and provide the actual erro and the original rows that caused it!
@@ -109,6 +109,7 @@ fn main() {
                     let rows = col.get_rows();
                     for row in rows {
                         for (row_id, range) in row.as_ref().src().iter() {
+                            // One ore more of these ranges caused the error!
                             txt.push(format!("({}){}->{}", row_id, range.start(), range.end()))
                         }
                     }
