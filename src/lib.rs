@@ -1,8 +1,5 @@
 //! # Overview
-//! The **common-range-tools** crate, is a library that, can be used to find all common intersections for ranges of generic types.  
-//! It interoperates with the built in range types for rust via the [std::ops::RangeBounds] trait.  When working with primitive
-//! numbers, the increment and decrementing of values are checked (see [working with floats](#working-with-floats), for the exception).
-//! Support for all primitive number types in rust is implemented via the [NumberIncDecCpCmp] object.
+//! The **common-range-tools** crate, is a library that, can be used to find all common intersections for ranges of generic types.  It interoperates with the built in range types for rust via the [std::ops::RangeBounds] trait.  When working with primitive numbers, the increment and decrementing of values are checked (see [working with floats](#working-with-floats), for the exception).  Support for all primitive number types in rust is implemented via the [NumberIncDecCpCmp] object.
 //!
 //! For dealing with ranges beyond just intersections of
 //! numbers see: [Generic Data Types](#generic-data-types).  For working with custom data structures see: [Beyond Generics](#beyond-generics).
