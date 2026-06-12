@@ -29,7 +29,7 @@
 //! In this example we set the following:
 //! | Field | What it does|
 //! |------|----|
-//! | step | sets the value used to progress between the begin or end of a range |
+//! | step | sets the value used to progress to the next begin or end value for a given range |
 //! | rebound | sets the value used to redefine a range value fom an instance of: [std::ops::Bound::Excluded] |
 //! | min |  the minimum value for ranges in the context of: **..** |
 //! | max | the maximum vaue for ranges in the context of: **..** |
