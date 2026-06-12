@@ -77,8 +77,8 @@
 //! It is recommended to convert an instance of [Consolidate] into an instance of [ConsolidateChecker] instance to verify the integrity of the data returned by the [Iterator].
 //!
 //! The ranges returned by the [Iterator] must be in [ConsolidationOrder].
-//!  - For [ConsolidationOrder::Forward] the expected order is: *start asc, end desc*. For more information See: [crate::sort_forward].
-//!  - For [ConsolidationOrder::Reverse] the expected order is: *end desc, start asc*. For more information see [crate::sort_reverse].
+//!  - For [ConsolidationOrder::Forward] the expected order is: *start asc, end desc*. For more information see: [crate::sort_forward].
+//!  - For [ConsolidationOrder::Reverse] the expected order is: *end desc, start asc*. For more information see: [crate::sort_reverse].
 //!
 //! This example demonstrates how to use [Consolidate] wrapped in an instance of [ConsolidateChecker] using [ConsolidationOrder::Forward]:
 #![doc = "```rust\n"]
@@ -89,6 +89,12 @@
 //! The [Columns] object is a factory can be used to construct an [Iterator] that steps through multiple [Iterator] instances of ranges that can contain duplicate
 //! and overlapping ranges that intersect with one another.  Each [Column] added to [Columns] is wrapped in an instance of [ConsolidateChecker] to ensure that the consolidation is occuring in the expected [ConsolidationOrder].
 //! The ranges returned by the [Iterator] must be in [ConsolidationOrder], see: [Consolidation of ranges](#consolidation-of-ranges) for more information.
+//! Finding the intersections from multiple [Iterator] instances is a complex process and is error prone if the data is not provided in the proper order.
+//!
+//! The ranges returned by each [Iterator] must be in same [ConsolidationOrder] as all other [Iterator] instances.
+//!  - For [ConsolidationOrder::Forward] the expected order is: *start asc, end desc*. For more information see: [crate::sort_forward].
+//!  - For [ConsolidationOrder::Reverse] the expected order is: *end desc, start asc*. For more information see: [crate::sort_reverse].
+//!
 //! This example demonstrates how to create a [ColumnsIter] from a [Columns] instance and walk the results.
 //!
 #![doc = "```rust\n"]
