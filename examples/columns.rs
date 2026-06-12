@@ -9,10 +9,13 @@ fn main() {
     // ** Full Sort Example here! **
     // We will use this to drive the internals of the sort function
     let t = NumberIncDecCpCmp::defaults();
-    // Sort all of our rows and force them to exist in the correct order!
+
+    // We create our sort function here
     let sort_by = |a: &std::ops::RangeInclusive<i32>, b: &std::ops::RangeInclusive<i32>| {
         sort_forward(a, b, &t.default_rebound(), &t)
     };
+
+    // Sort all of our rows and force them to exist in the correct order!
     col_a.sort_by(sort_by);
     col_b.sort_by(sort_by);
     col_c.sort_by(sort_by);
