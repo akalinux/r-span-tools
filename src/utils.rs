@@ -648,9 +648,16 @@ pub fn consolidate<
                     Excluded(s) => b = t.cp(s),
                     Unbounded => b = t.max(),
                 }
-                ar = (f.new_range((a, b)), vec![(offset, range)]);
+                match mem::replace(last, None) {
+                    Some((good, mut list)) => {
+                        let bad = f.new_range((a, b));
+                        let r = grow(&good, &bad, t, f);
+                        list.push((offset, range));
+                        ar = (r, list);
+                    }
+                    None => ar = (f.new_range((a, b)), vec![(offset, range)]),
+                }
                 offset += 1;
-                *last = None;
                 return (offset, Some(RangeRelation::Invalid(ar)));
             }
         }

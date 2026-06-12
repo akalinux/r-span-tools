@@ -206,8 +206,8 @@ impl<
     }
 }
 
-impl<T, I: Iterator<Item = RangeInclusive<T>>>
-    Consolidate<T, T, RangeInclusive<T>, RangeInclusive<T>, RiFactory<T>, I, NumberIncDecCpCmp<T>>
+impl<T, S: RangeBounds<T>, I: Iterator<Item = S>>
+    Consolidate<T, T, RangeInclusive<T>, S, RiFactory<T>, I, NumberIncDecCpCmp<T>>
 where
     NumberIncDecCpCmp<T>: DefaultValues<T, T>,
     T: Copy + Clone,
@@ -217,8 +217,8 @@ where
     }
 }
 
-impl<T, I: Iterator<Item = RangeInclusive<T>>>
-    Consolidate<T, T, RangeInclusive<T>, RangeInclusive<T>, RiFactory<T>, I, NumberIncDecCpCmp<T>>
+impl<T, S: RangeBounds<T>, I: Iterator<Item = S>>
+    Consolidate<T, T, RangeInclusive<T>, S, RiFactory<T>, I, NumberIncDecCpCmp<T>>
 where
     NumberIncDecCpCmp<T>: DefaultValues<T, T>,
     T: Copy + Clone,
