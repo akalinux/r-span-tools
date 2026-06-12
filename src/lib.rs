@@ -5,7 +5,7 @@
 //! numbers see: [Generic Data Types](#generic-data-types).  For working with custom data structures see: [Beyond Generics](#beyond-generics).
 //! For working with custom Ranges and range factories see: [Internal Range Trait](#internal-range-trait).
 //! For consolidating duplicate and overlapping ranges see [Consolidation of ranges](#consolidation-of-ranges).
-//! For finding intersections between muliple [Iterator] instances, see: [Intersections of Itertors](#intersections-of-itertors).
+//! For finding intersections between muliple [Iterator] instances, see: [Intersections of Itertors](#intersections-of-multiple-itertors).
 //!
 //! ## Example
 //! This is the most basic example, using the default values from [NumberIncDecCpCmp].  The [OverlapIter] is a [DoubleEndedIterator] and can be reversed.
@@ -84,7 +84,7 @@
 #![doc = include_str!("../examples/overlaps.rs")]
 #![doc = "\n```"]
 //!
-//! ## Intersections of Itertors
+//! ## Intersections of multiple Itertors
 //! The [Columns] object is a factory can be used to construct an [Iterator] that can step through multiple [Iterator] instances of ranges that can contain duplicate
 //! and overlapping ranges that intersect with one another.  Each [Column] added to [Columns] is wrapped in an instance of [ConsolidateChecker] to ensure that the consolidation is occuring in the expected [ConsolidationOrder].
 //! The ranges returned by the [Iterator] must be in [ConsolidationOrder], see: [Consolidation of ranges](#consolidation-of-ranges) for more information.

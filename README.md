@@ -8,7 +8,7 @@ For dealing with ranges beyond just intersections of
 numbers see: [Generic Data Types](#generic-data-types).  For working with custom data structures see: [Beyond Generics](#beyond-generics).
 For working with custom Ranges and range factories see: [Internal Range Trait](#internal-range-trait).
 For consolidating duplicate and overlapping ranges see [Consolidation of ranges](#consolidation-of-ranges).
-For finding intersections between muliple [Iterator][__link2] instances, see: [Intersections of Itertors](#intersections-of-itertors).
+For finding intersections between muliple [Iterator][__link2] instances, see: [Intersections of Itertors](#intersections-of-multiple-itertors).
 
 ### Example
 
@@ -488,7 +488,7 @@ fn main() {
 
 ```
 
-### Intersections of Itertors
+### Intersections of multiple Itertors
 
 The [Columns][__link56] object is a factory can be used to construct an [Iterator][__link57] that can step through multiple [Iterator][__link58] instances of ranges that can contain duplicate
 and overlapping ranges that intersect with one another.  Each [Column][__link59] added to [Columns][__link60] is wrapped in an instance of [ConsolidateChecker][__link61] to ensure that the consolidation is occuring in the expected [ConsolidationOrder][__link62].
@@ -664,7 +664,7 @@ Other implementations:
 * [rangetools][__link70]
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbBAblK0zUPzcb6Mwwo6r3xrkbMU6iTswsxGkbOs6A7o08AhZhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQb7nNk48rnwDMbkan0mP3yjykbxub4zlt7bFwbw4p_ic0p5sVhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
  [__link10]: https://crates.io/crates/common-range-tools/0.1.0
