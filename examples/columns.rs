@@ -108,7 +108,14 @@ fn main() {
                     // This Vec contains the rows that caused the error!
                     let rows = col.get_rows();
                     for row in rows {
-                        for (row_id, range) in row.as_ref().src().iter() {
+                        let result_range = row.as_ref();
+                        // The range that was generated from the raw ranges
+                        txt.push(format!(
+                            "Invalid Range: ({}->{})",
+                            result_range.get_begin(),
+                            result_range.get_end()
+                        ));
+                        for (row_id, range) in result_range.src().iter() {
                             // One ore more of these ranges caused the error!
                             txt.push(format!("({}){}->{}", row_id, range.start(), range.end()))
                         }
