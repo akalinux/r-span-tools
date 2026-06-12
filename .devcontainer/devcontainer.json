@@ -3,10 +3,14 @@
 {
 	"name": "Rust",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/rust:2-1-trixie",
+	//"image": "mcr.microsoft.com/devcontainers/rust:2-1-trixie",
+	"build": {
+        // Path is relative to the devcontainer.json file.
+        "dockerfile": "Dockerfile"
+    },
 
 	"mounts": [
-    	"source=${localEnv:HOME}${localEnv:USERPROFILE},target=/host-home-folder,type=bind,consistency=cached",
+		"source=${localEnv:HOME}${localEnv:USERPROFILE},target=/host-home-folder,type=bind,consistency=cached",
 	],
 	// Use 'mounts' to make the cargo cache persistent in a Docker Volume.
 	// "mounts": [
@@ -25,7 +29,7 @@
 
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// "postCreateCommand": "rustc --version",
-	"postCreateCommand": "if [ -e /host-home-folder/vscode_common/vscode.bash ];then /bin/bash /host-home-folder/vscode_common/vscode.bash;fi",
+	"postCreateCommand": "if [ -e /host-home-folder/vscode_common/vscode.bash ];then /bin/bash /host-home-folder/vscode_common/vscode.bash;fi;cargo install --locked cargo-vet;cargo install rustfilt;cargo install --locked cargo-doc2readme"
 
 	// Configure tool-specific properties.
 	// "customizations": {},
