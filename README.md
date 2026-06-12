@@ -1,5 +1,4 @@
-# common-range-tools ![License: MIT](https://img.shields.io/badge/license-MIT-blue) [![common-range-tools on crates.io](https://img.shields.io/crates/v/common-range-tools)](https://crates.io/crates/common-range-tools) [![common-range-tools on docs.rs](https://docs.rs/common-range-tools/badge.svg)](https://docs.rs/common-range-tools)
-[![Rust Unit Tests](https://github.com/akalinux/r-span-tools/actions/workflows/test.yaml/badge.svg)](https://github.com/akalinux/r-span-tools/actions/workflows/test.yaml)
+# common-range-tools ![License: MIT](https://img.shields.io/badge/license-MIT-blue) [![common-range-tools on crates.io](https://img.shields.io/crates/v/common-range-tools)](https://crates.io/crates/common-range-tools) [![common-range-tools on docs.rs](https://docs.rs/common-range-tools/badge.svg)](https://docs.rs/common-range-tools) [![Rust Unit Tests](https://github.com/akalinux/r-span-tools/actions/workflows/test.yaml/badge.svg)](https://github.com/akalinux/r-span-tools/actions/workflows/test.yaml)
 
 ## Overview
 
@@ -695,7 +694,7 @@ Other implementations:
 * [rangetools][__link81]
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbOnY3t7LTYGwbSlQYuPnYmWYbbGuGBuRTMo0bBN3dH2l3-ydhYvRhcoQbfJorAQVX_nMb3YwRdoD_v4sb-c9lzqOBTtwbXzIaTsDeorxhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbCE3c_NrEBr4bfU9krIQ4M7obtIv1tShSAvsb23AYoC0iJPFhYvRhcoQbfJorAQVX_nMb3YwRdoD_v4sb-c9lzqOBTtwbXzIaTsDeorxhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
  [__link10]: https://crates.io/crates/common-range-tools/0.1.0
