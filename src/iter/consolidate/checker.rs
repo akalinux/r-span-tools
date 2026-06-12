@@ -37,7 +37,7 @@ impl<
         return self.order;
     }
 
-    /// Returns the [CpCmp] instance from the internal iterator.
+    /// Returns the [IncDecCpCmp] instance from the internal iterator.
     pub fn get_cmp(&self) -> &C {
         return self.iter.get_cmp();
     }
