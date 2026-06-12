@@ -1,30 +1,35 @@
+use std::ops::RangeBounds;
+
 use crate::{
-    Consolidate, ConsolidateMrsP, ConsolidationOrder, CpCmp, GetBeginEnd, GetBeginEndOption, grow,
+    Consolidate, ConsolidateMrsP, ConsolidationOrder, GetBeginEnd, GetBeginEndOption, IncDecCpCmp,
+    grow,
 };
 pub mod column;
 
 pub struct ConsolidateChecker<
     T,
+    V,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     F: GetBeginEndOption<T, R>,
     I: Iterator<Item = S>,
-    C: CpCmp<T>,
+    C: IncDecCpCmp<T, V>,
 > {
     order: ConsolidationOrder,
-    iter: Consolidate<T, R, S, F, I, C>,
+    iter: Consolidate<T, V, R, S, F, I, C>,
 }
 
 impl<
     T,
+    V,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     F: GetBeginEndOption<T, R>,
     I: Iterator<Item = S>,
-    C: CpCmp<T>,
-> ConsolidateChecker<T, R, S, F, I, C>
+    C: IncDecCpCmp<T, V>,
+> ConsolidateChecker<T, V, R, S, F, I, C>
 {
-    pub fn new(order: ConsolidationOrder, iter: Consolidate<T, R, S, F, I, C>) -> Self {
+    pub fn new(order: ConsolidationOrder, iter: Consolidate<T, V, R, S, F, I, C>) -> Self {
         return Self { order, iter };
     }
     /// Returns the internal [ConsolidationOrder].
@@ -40,12 +45,13 @@ impl<
 
 impl<
     T,
+    V,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     F: GetBeginEndOption<T, R>,
     I: Iterator<Item = S>,
-    C: CpCmp<T>,
-> Iterator for ConsolidateChecker<T, R, S, F, I, C>
+    C: IncDecCpCmp<T, V>,
+> Iterator for ConsolidateChecker<T, V, R, S, F, I, C>
 {
     type Item = Result<ConsolidateMrsP<T, R, S>, (&'static str, ConsolidateMrsP<T, R, S>)>;
 

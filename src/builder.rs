@@ -118,6 +118,10 @@ where
         }
         return None;
     }
+
+    fn cp_v(&self, v: &V) -> V {
+        return *v;
+    }
 }
 impl<T> NumberIncDecCpCmp<T>
 where
@@ -256,6 +260,9 @@ pub trait CpCmp<T> {
 ///         if *b<=0 { return None}
 ///         return a.clone().checked_add(b.clone())
 ///     }
+///     fn cp_v(&self,v:&i32) ->i32 {
+///         return *v;
+///     }
 /// }
 /// ```
 ///
@@ -265,6 +272,8 @@ pub trait IncDecCpCmp<T, V>: CpCmp<T> {
 
     /// Should safely decrement a by b.  The value should always go down... if not then it should return None.
     fn dec(&self, a: &T, b: &V) -> Option<T>;
+
+    fn cp_v(&self, v: &V) -> V;
 
     /// Returns the raw adjusted start value.
     ///   - [std::ops::Bound::Unbounded] becomes self.min()
@@ -335,6 +344,9 @@ macro_rules! impl_inc_dec_cp_cmp_trait_i {
                     if *b<=0 { return None}
                     return a.clone().checked_add(b.clone())
                 }
+                fn cp_v(&self,v: &$t) ->$t {
+                    return *v;
+                }
             }
 
             impl DefaultValues<$t,$t> for NumberIncDecCpCmp<$t> {
@@ -372,6 +384,9 @@ macro_rules! impl_inc_dec_cp_cmp_trait_u {
                 fn inc(&self, a: &$t, b: &$t) -> Option<$t> {
                     if *b==0 { return None}
                     return a.clone().checked_add(b.clone())
+                }
+                fn cp_v(&self,v: &$t) ->$t {
+                    return *v;
                 }
             }
 
@@ -411,6 +426,9 @@ macro_rules! impl_inc_dec_cp_cmp_trait_f {
                 fn inc(&self, a: &$t, b: &$t) -> Option<$t> {
                     let res=a + b;
                     if res.is_nan() || res <=*a { None } else { Some(res) }
+                }
+                fn cp_v(&self,v: &$t) ->$t {
+                    return *v;
                 }
             }
 

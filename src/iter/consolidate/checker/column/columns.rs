@@ -1,7 +1,7 @@
 use std::{
     cell::RefCell,
     mem,
-    ops::{Add, RangeInclusive, Sub},
+    ops::{Add, RangeBounds, RangeInclusive, Sub},
     rc::Rc,
 };
 
@@ -17,18 +17,19 @@ pub struct Columns<
     V,
     I: Iterator<Item = S>,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     C: IncDecCpCmp<T, V>,
     F: GetBeginEndOption<T, R> + Copy + Clone,
 > {
     isec: RefCell<Intersector<T, V, C, RangeInclusive<T>, RiFactory<T>>>,
     factory: F,
-    columns: RefCell<Vec<Column<T, R, S, F, I, C>>>,
+    columns: RefCell<Vec<Column<T, V, R, S, F, I, C>>>,
     cmp: C,
     order: ConsolidationOrder,
+    rebound: V,
 }
 
-impl<S: GetBeginEnd<T>, T: Copy + Clone + PartialOrd, I: Iterator<Item = S>>
+impl<S: RangeBounds<T>, T: Copy + Clone + PartialOrd, I: Iterator<Item = S>>
     Columns<T, T, I, RangeInclusive<T>, S, NumberIncDecCpCmp<T>, RiFactory<T>>
 where
     NumberIncDecCpCmp<T>: DefaultValues<T, T>,
@@ -68,7 +69,7 @@ where
     }
 }
 
-impl<S: GetBeginEnd<T>, T, V, I: Iterator<Item = S>>
+impl<S: RangeBounds<T>, T, V, I: Iterator<Item = S>>
     Columns<T, V, I, RangeInclusive<T>, S, AnyIncDecCpCmp<T>, RiFactory<T>>
 where
     V: Copy,
@@ -83,13 +84,14 @@ impl<
     V,
     I: Iterator<Item = S>,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     C: IncDecCpCmp<T, V> + Copy + Clone,
     F: GetBeginEndOption<T, R> + Copy + Clone,
 > Columns<T, V, I, R, S, C, F>
 {
     /// Creates a new instance of the [Columns] factory which can converted into an [Iterator] of [ColumnsIter].
     pub fn new(order: ConsolidationOrder, cmp: C, factory: F, step: V, rebound: V) -> Self {
+        let rb = cmp.cp_v(&rebound);
         return Self {
             isec: RefCell::new(Intersector::new(
                 Vec::new(),
@@ -102,14 +104,15 @@ impl<
             columns: RefCell::new(Vec::new()),
             cmp,
             order,
+            rebound: rb,
         };
     }
 
     /// Tries to add the column to the set of columns.
     ///  - Ok([usize]) is the id of the column
     ///  - Err([Column]) is the column that failed to be added.
-    pub fn add_column(&self, iter: I) -> Result<usize, Column<T, R, S, F, I, C>> {
-        let con = Consolidate::new(iter, self.cmp, self.factory);
+    pub fn add_column(&self, iter: I) -> Result<usize, Column<T, V, R, S, F, I, C>> {
+        let con = Consolidate::new(iter, self.cmp, self.factory, self.cmp.cp_v(&self.rebound));
         let checker = ConsolidateChecker::new(self.order, con);
         match Column::new(&mut *self.isec.borrow_mut(), checker) {
             Ok(res) => {
@@ -134,7 +137,7 @@ impl<
     V,
     I: Iterator<Item = S>,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     C: IncDecCpCmp<T, V> + Copy + Clone,
     F: GetBeginEndOption<T, R> + Copy + Clone,
 > IntoIterator for Columns<T, V, I, R, S, C, F>
@@ -164,12 +167,12 @@ pub struct ColumnsIter<
     V,
     I: Iterator<Item = S>,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     C: IncDecCpCmp<T, V>,
     F: GetBeginEndOption<T, R> + Copy + Clone,
 > {
     iter: RefCell<OverlapIter<T, V, C, RangeInclusive<T>, RiFactory<T>>>,
-    cols: Vec<Column<T, R, S, F, I, C>>,
+    cols: Vec<Column<T, V, R, S, F, I, C>>,
     order: ConsolidationOrder,
     needs_init: bool,
 }
@@ -178,7 +181,7 @@ impl<
     V,
     I: Iterator<Item = S>,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     C: IncDecCpCmp<T, V>,
     F: GetBeginEndOption<T, R> + Copy + Clone,
 > ColumnsIter<T, V, I, R, S, C, F>
@@ -186,7 +189,7 @@ impl<
     /// Constructs a new instance of [ColumnsIter].
     pub fn new(
         iter: OverlapIter<T, V, C, RangeInclusive<T>, RiFactory<T>>,
-        cols: Vec<Column<T, R, S, F, I, C>>,
+        cols: Vec<Column<T, V, R, S, F, I, C>>,
         order: ConsolidationOrder,
         needs_init: bool,
     ) -> Self {
@@ -198,13 +201,13 @@ impl<
         }
     }
 
-    pub fn get_column<'a>(&self, idx: usize) -> Option<&'a Column<T, R, S, F, I, C>> {
+    pub fn get_column<'a>(&self, idx: usize) -> Option<&'a Column<T, V, R, S, F, I, C>> {
         let res = self.cols.get(idx);
 
         return unsafe {
             mem::transmute::<
-                Option<&'_ Column<T, R, S, F, I, C>>,
-                Option<&'a Column<T, R, S, F, I, C>>,
+                Option<&'_ Column<T, V, R, S, F, I, C>>,
+                Option<&'a Column<T, V, R, S, F, I, C>>,
             >(res)
         };
     }
@@ -214,7 +217,7 @@ impl<
         self,
     ) -> (
         OverlapIter<T, V, C, RangeInclusive<T>, RiFactory<T>>,
-        Vec<Column<T, R, S, F, I, C>>,
+        Vec<Column<T, V, R, S, F, I, C>>,
         ConsolidationOrder,
         bool,
     ) {
@@ -249,7 +252,7 @@ impl<
     V,
     I: Iterator<Item = S>,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     C: IncDecCpCmp<T, V>,
     F: GetBeginEndOption<T, R> + Copy + Clone,
 > Iterator for ColumnsIter<T, V, I, R, S, C, F>

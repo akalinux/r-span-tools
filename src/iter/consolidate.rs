@@ -3,12 +3,12 @@ pub mod checker;
 use std::{
     marker::PhantomData,
     mem,
-    ops::{Add, RangeInclusive, Sub},
+    ops::{Add, RangeBounds, RangeInclusive, Sub},
 };
 
 use crate::{
-    AnyIncDecCpCmp, CpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, NumberIncDecCpCmp,
-    RangeRelation, RiFactory, iter::consolidate::checker::ConsolidateChecker,
+    AnyIncDecCpCmp, CpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, IncDecCpCmp,
+    NumberIncDecCpCmp, RangeRelation, RiFactory, iter::consolidate::checker::ConsolidateChecker,
 };
 use crate::{range_relation, utils::consolidate};
 
@@ -135,11 +135,12 @@ impl ConsolidationOrder {
 /// Consolidates duplicate and overlapping ranges.
 pub struct Consolidate<
     T,
+    V,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     F: GetBeginEndOption<T, R>,
     I: Iterator<Item = S>,
-    C: CpCmp<T>,
+    C: IncDecCpCmp<T, V>,
 > {
     iter: I,
     last: Option<(R, Vec<(usize, S)>)>,
@@ -147,20 +148,22 @@ pub struct Consolidate<
     cmp: C,
     facotry: F,
     offset: usize,
+    rebound: V,
     _p: PhantomData<(T, S)>,
 }
 impl<
     T,
+    V,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     F: GetBeginEndOption<T, R>,
     I: Iterator<Item = S>,
-    C: CpCmp<T>,
-> Consolidate<T, R, S, F, I, C>
+    C: IncDecCpCmp<T, V>,
+> Consolidate<T, V, R, S, F, I, C>
 {
-    pub fn new(mut iter: I, cmp: C, factory: F) -> Self {
+    pub fn new(mut iter: I, cmp: C, factory: F, rebound: V) -> Self {
         let mut last = None;
-        let (offset, next) = consolidate(&mut last, &mut iter, &cmp, &factory, 0);
+        let (offset, next) = consolidate(&mut last, &mut iter, &cmp, &rebound, &factory, 0);
         return Self {
             iter,
             last,
@@ -168,6 +171,7 @@ impl<
             cmp: cmp,
             facotry: factory,
             offset,
+            rebound,
             _p: PhantomData,
         };
     }
@@ -185,35 +189,36 @@ impl<
 
 impl<
     T,
+    V,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     F: GetBeginEndOption<T, R>,
     I: Iterator<Item = S>,
-    C: CpCmp<T>,
-> Consolidate<T, R, S, F, I, C>
+    C: IncDecCpCmp<T, V>,
+> Consolidate<T, V, R, S, F, I, C>
 {
     /// Converts the current instance to [ConsolidateChecker] instance.
     pub fn to_consolidate_checker(
         self,
         order: ConsolidationOrder,
-    ) -> ConsolidateChecker<T, R, S, F, I, C> {
+    ) -> ConsolidateChecker<T, V, R, S, F, I, C> {
         return ConsolidateChecker::new(order, self);
     }
 }
 
 impl<T, I: Iterator<Item = RangeInclusive<T>>>
-    Consolidate<T, RangeInclusive<T>, RangeInclusive<T>, RiFactory<T>, I, NumberIncDecCpCmp<T>>
+    Consolidate<T, T, RangeInclusive<T>, RangeInclusive<T>, RiFactory<T>, I, NumberIncDecCpCmp<T>>
 where
     NumberIncDecCpCmp<T>: DefaultValues<T, T>,
     T: Copy + Clone,
 {
     pub fn num(iter: I, cmp: NumberIncDecCpCmp<T>, factory: RiFactory<T>) -> Self {
-        return Self::new(iter, cmp, factory);
+        return Self::new(iter, cmp, factory, cmp.default_rebound());
     }
 }
 
 impl<T, I: Iterator<Item = RangeInclusive<T>>>
-    Consolidate<T, RangeInclusive<T>, RangeInclusive<T>, RiFactory<T>, I, NumberIncDecCpCmp<T>>
+    Consolidate<T, T, RangeInclusive<T>, RangeInclusive<T>, RiFactory<T>, I, NumberIncDecCpCmp<T>>
 where
     NumberIncDecCpCmp<T>: DefaultValues<T, T>,
     T: Copy + Clone,
@@ -225,34 +230,42 @@ where
     }
 }
 
-impl<R: GetBeginEnd<T>, S: GetBeginEnd<T>, T, I: Iterator<Item = S>, F: GetBeginEndOption<T, R>>
-    Consolidate<T, R, S, F, I, AnyIncDecCpCmp<T>>
+impl<V, R: GetBeginEnd<T>, S: RangeBounds<T>, T, I: Iterator<Item = S>, F: GetBeginEndOption<T, R>>
+    Consolidate<T, V, R, S, F, I, AnyIncDecCpCmp<T>>
 where
-    T: PartialOrd + Clone + Copy,
+    V: Copy,
+    T: PartialOrd + Copy + Add<V, Output = T> + Sub<V, Output = T>,
 {
-    pub fn any(iter: I, cmp: AnyIncDecCpCmp<T>, factory: F) -> Self {
-        return Self::new(iter, cmp, factory);
+    pub fn any(iter: I, cmp: AnyIncDecCpCmp<T>, factory: F, rebound: V) -> Self {
+        return Self::new(iter, cmp, factory, rebound);
     }
 }
 
-impl<T, I: Iterator<Item = RangeInclusive<T>>>
-    Consolidate<T, RangeInclusive<T>, RangeInclusive<T>, RiFactory<T>, I, AnyIncDecCpCmp<T>>
+impl<T, V, I: Iterator<Item = RangeInclusive<T>>>
+    Consolidate<T, V, RangeInclusive<T>, RangeInclusive<T>, RiFactory<T>, I, AnyIncDecCpCmp<T>>
 where
-    T: PartialOrd + Clone + Copy + Add<T, Output = T> + Sub<T, Output = T>,
+    V: Copy,
+    T: PartialOrd + Copy + Add<V, Output = T> + Sub<V, Output = T>,
 {
-    pub fn any_defaults(iter: I, min: T, max: T) -> Self {
-        return Self::any(iter, AnyIncDecCpCmp::new(min, max), RiFactory::new());
+    pub fn any_defaults(iter: I, min: T, max: T, rebound: V) -> Self {
+        return Self::any(
+            iter,
+            AnyIncDecCpCmp::new(min, max),
+            RiFactory::new(),
+            rebound,
+        );
     }
 }
 
 impl<
     T,
+    V,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     F: GetBeginEndOption<T, R>,
     I: Iterator<Item = S>,
-    C: CpCmp<T>,
-> Iterator for Consolidate<T, R, S, F, I, C>
+    C: IncDecCpCmp<T, V>,
+> Iterator for Consolidate<T, V, R, S, F, I, C>
 {
     type Item = RangeRelation<(R, Vec<(usize, S)>)>;
 
@@ -268,6 +281,7 @@ impl<
             &mut self.last,
             &mut self.iter,
             &self.cmp,
+            &self.rebound,
             &self.facotry,
             self.offset,
         );

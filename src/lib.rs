@@ -165,7 +165,7 @@ pub struct MrsP<'r, T, R: GetBeginEnd<T>> {
 pub struct ConsolidateMrsP<T, R, S>
 where
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
 {
     r: R,
     src: Vec<(usize, S)>,
@@ -175,7 +175,7 @@ where
 impl<T, R, S> ConsolidateMrsP<T, R, S>
 where
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
 {
     /// Wwraps the data set and makes it operate as if it is the instance src.0.
     pub fn new(src: (R, Vec<(usize, S)>)) -> Self {
@@ -197,7 +197,7 @@ where
     }
 }
 
-impl<T, R: GetBeginEnd<T>, S: GetBeginEnd<T>> GetBeginEnd<T> for ConsolidateMrsP<T, R, S> {
+impl<T, R: GetBeginEnd<T>, S: RangeBounds<T>> GetBeginEnd<T> for ConsolidateMrsP<T, R, S> {
     /// Wrapper for internal [Mrs] instance.
     fn get_begin(&self) -> &T {
         return self.r.get_begin();
@@ -215,7 +215,7 @@ impl<T, R: GetBeginEnd<T>, S: GetBeginEnd<T>> GetBeginEnd<T> for ConsolidateMrsP
     }
 }
 
-impl<T, R: GetBeginEnd<T>, S: GetBeginEnd<T>> RangeBounds<T> for ConsolidateMrsP<T, R, S> {
+impl<T, R: GetBeginEnd<T>, S: RangeBounds<T>> RangeBounds<T> for ConsolidateMrsP<T, R, S> {
     /// Wraps the return value from self.get_begin() in a [std::ops::Bound::Included].
     fn start_bound(&self) -> Bound<&T> {
         return Bound::Included(&self.get_begin());

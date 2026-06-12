@@ -309,6 +309,9 @@ impl IncDecCpCmp<Point, Point> for CustomIncDecCpCmp {
             None => None,
         }
     }
+    fn cp_v(&self, v: &Point) -> Point {
+        return *v;
+    }
 }
 
 fn main() {
@@ -691,7 +694,7 @@ Other implementations:
 * [rangetools][__link81]
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQb9VjYolhv0SgbmG7hf_FqnrYbnXriPCiNoaob2uYwAfBO_2thZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbfJorAQVX_nMb3YwRdoD_v4sb-c9lzqOBTtwbXzIaTsDeorxhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
  [__link10]: https://crates.io/crates/common-range-tools/0.1.0

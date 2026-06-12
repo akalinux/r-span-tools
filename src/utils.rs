@@ -2,7 +2,14 @@
 //! The static methods are exposed for general use and testing.
 
 use crate::{CpCmp, GetBeginEnd, GetBeginEndOption, Mrs, builder::IncDecCpCmp};
-use std::{cmp::Ordering, mem, ops::RangeBounds};
+use std::{
+    cmp::Ordering,
+    mem,
+    ops::{
+        Bound::{Excluded, Included, Unbounded},
+        RangeBounds,
+    },
+};
 
 /// This enum is used to represent positional relationships between 2 ranges.
 ///  - before a range: [RangeRelation::Before]
@@ -608,24 +615,45 @@ pub fn grow<
 /// This function is the stateless implementation of [crate::Consolidate].
 pub fn consolidate<
     T,
+    V,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
-    C: CpCmp<T>,
+    S: RangeBounds<T>,
+    C: IncDecCpCmp<T, V>,
     F: GetBeginEndOption<T, R>,
     I: Iterator<Item = S>,
 >(
     last: &mut Option<(R, Vec<(usize, S)>)>,
     iter: &mut I,
     t: &C,
+    rebound: &V,
     f: &F,
     mut offset: usize,
 ) -> (usize, Option<RangeRelation<(R, Vec<(usize, S)>)>>) {
     // this value will become our next offset when we are called again!
     for range in iter {
-        let mut ar = (
-            f.new_range(t.cp_tpl_ref(range.to_tuple_ref())),
-            vec![(offset, range)],
-        );
+        let r = range_bounds_to_values(&range, rebound, t);
+        let mut ar;
+        match r {
+            Some(src) => ar = (f.new_range(src), vec![(offset, range)]),
+            None => {
+                let a;
+                match range.start_bound() {
+                    Included(s) => a = t.cp(s),
+                    Excluded(s) => a = t.cp(s),
+                    Unbounded => a = t.min(),
+                }
+                let b;
+                match range.start_bound() {
+                    Included(s) => b = t.cp(s),
+                    Excluded(s) => b = t.cp(s),
+                    Unbounded => b = t.max(),
+                }
+                ar = (f.new_range((a, b)), vec![(offset, range)]);
+                offset += 1;
+                *last = None;
+                return (offset, Some(RangeRelation::Invalid(ar)));
+            }
+        }
 
         offset += 1;
 

@@ -103,6 +103,9 @@ mod iter_tests {
                 None => None,
             }
         }
+        fn cp_v(&self, v: &Point) -> Point {
+            return *v;
+        }
     }
 
     #[derive(Clone, Copy, Debug, PartialEq)]
@@ -343,7 +346,7 @@ fn consolidator_forward_num_tests() {
 
 #[test]
 fn consolidator_any_defaults() {
-    let mut iter = Consolidate::any_defaults(mrs_set().into_iter(), 0, 22);
+    let mut iter = Consolidate::any_defaults(mrs_set().into_iter(), 0, 22, 1);
 
     assert_eq!(iter.next().unwrap().unwrap().0, 0..=3);
     assert_eq!(iter.next().unwrap().unwrap().0, 4..=6);
@@ -492,6 +495,7 @@ fn column_tests_positive() {
         vec![Mrs::new(1, 2), Mrs::new(1, 1), Mrs::new(3, 3)].into_iter(),
         t,
         RiFactory::new(),
+        1,
     );
     let checker = ConsolidateChecker::new(ConsolidationOrder::Forward, con);
 

@@ -409,7 +409,7 @@ fn consolidate_tests() {
     let t = NumberIncDecCpCmp::defaults();
     let mut iter = vec![Mrs::new(1, 2)].into_iter();
     let mut last = None;
-    let (_, mut next) = consolidate(&mut last, &mut iter, &t, &f, 0);
+    let (_, mut next) = consolidate(&mut last, &mut iter, &t, &1, &f, 0);
 
     let mut res = next.unwrap();
     matches!(last, None);
@@ -438,7 +438,7 @@ fn consolidate_tests() {
     last = None;
     // Block A results
     let mut offset;
-    (offset, next) = consolidate(&mut last, &mut iter, &t, &f, 0);
+    (offset, next) = consolidate(&mut last, &mut iter, &t, &1, &f, 0);
     assert!(!last.is_none());
     assert!(!next.is_none());
     res = next.unwrap();
@@ -452,7 +452,7 @@ fn consolidate_tests() {
     assert_eq!(set[1].1.to_tuple_ref(), (&1, &2));
 
     // Block B
-    (offset, next) = consolidate(&mut last, &mut iter, &t, &f, offset);
+    (offset, next) = consolidate(&mut last, &mut iter, &t, &1, &f, offset);
     assert!(!last.is_none());
     assert!(!next.is_none());
 
@@ -465,7 +465,7 @@ fn consolidate_tests() {
     assert_eq!(set[0].1.to_tuple_ref(), (&4, &4));
 
     // Block C
-    (offset, next) = consolidate(&mut last, &mut iter, &t, &f, offset);
+    (offset, next) = consolidate(&mut last, &mut iter, &t, &1, &f, offset);
     assert!(!last.is_none());
     assert!(!next.is_none());
     res = next.unwrap();
@@ -477,7 +477,7 @@ fn consolidate_tests() {
     assert_eq!(&set[0].0, &3);
 
     // Block D
-    (offset, next) = consolidate(&mut last, &mut iter, &t, &f, offset);
+    (offset, next) = consolidate(&mut last, &mut iter, &t, &1, &f, offset);
     assert!(!last.is_none());
     assert!(!next.is_none());
     res = next.unwrap();
@@ -490,7 +490,7 @@ fn consolidate_tests() {
     assert_eq!(&set[1].0, &5);
     assert_eq!(set[1].1.to_tuple_ref(), (&6, &7));
 
-    (_, next) = consolidate(&mut last, &mut iter, &t, &f, offset);
+    (_, next) = consolidate(&mut last, &mut iter, &t, &1, &f, offset);
     assert!(last.is_none());
     assert!(!next.is_none());
     res = next.unwrap();
@@ -500,7 +500,7 @@ fn consolidate_tests() {
     assert_eq!(set.len(), 1);
     assert_eq!(&set[0].0, &6);
     assert_eq!(set[0].1.to_tuple_ref(), (&8, &8));
-    (_, next) = consolidate(&mut last, &mut iter, &t, &f, offset);
+    (_, next) = consolidate(&mut last, &mut iter, &t, &1, &f, offset);
     assert!(last.is_none());
     assert!(next.is_none());
 }

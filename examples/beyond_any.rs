@@ -47,6 +47,9 @@ impl IncDecCpCmp<Point, Point> for CustomIncDecCpCmp {
             None => None,
         }
     }
+    fn cp_v(&self, v: &Point) -> Point {
+        return *v;
+    }
 }
 
 fn main() {

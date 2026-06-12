@@ -1,36 +1,38 @@
-use std::{cell::RefCell, mem, rc::Rc};
+use std::{cell::RefCell, mem, ops::RangeBounds, rc::Rc};
 pub mod columns;
 
 use crate::{
-    ConsolidateChecker, ConsolidateMrsP, CpCmp, GetBeginEnd, GetBeginEndOption, IncDecCpCmp,
-    Intersector, OverlapIter,
+    ConsolidateChecker, ConsolidateMrsP, GetBeginEnd, GetBeginEndOption, IncDecCpCmp, Intersector,
+    OverlapIter,
 };
 
 /// Represents a column in an instance of [OverlapIter] in which the [Column] itself is an [Iterator].
 pub struct Column<
     T,
+    V,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     F: GetBeginEndOption<T, R>,
     I: Iterator<Item = S>,
-    C: CpCmp<T>,
+    C: IncDecCpCmp<T, V>,
 > {
     col: Result<usize, &'static str>,
-    checker: RefCell<ConsolidateChecker<T, R, S, F, I, C>>,
+    checker: RefCell<ConsolidateChecker<T, V, R, S, F, I, C>>,
     rows: RefCell<Vec<Rc<ConsolidateMrsP<T, R, S>>>>,
     err: Result<(), &'static str>,
 }
 
 impl<
     T,
+    V,
     R: GetBeginEnd<T>,
-    S: GetBeginEnd<T>,
+    S: RangeBounds<T>,
     F: GetBeginEndOption<T, R>,
     I: Iterator<Item = S>,
-    C: CpCmp<T>,
-> Column<T, R, S, F, I, C>
+    C: IncDecCpCmp<T, V>,
+> Column<T, V, R, S, F, I, C>
 {
-    fn update_iter<V, Q: GetBeginEnd<T>, X: GetBeginEndOption<T, Q>>(
+    fn update_iter<Q: GetBeginEnd<T>, X: GetBeginEndOption<T, Q>>(
         &mut self,
         iter: &mut OverlapIter<T, V, C, Q, X>,
         idx: usize,
@@ -51,7 +53,7 @@ impl<
         return unsafe { mem::transmute(checker.get_cmp()) };
     }
 
-    pub fn update_column<V, Q: GetBeginEnd<T>, X: GetBeginEndOption<T, Q>>(
+    pub fn update_column<Q: GetBeginEnd<T>, X: GetBeginEndOption<T, Q>>(
         &mut self,
         last: &Q,
         iter: &mut OverlapIter<T, V, C, Q, X>,
@@ -185,13 +187,13 @@ impl<
     ) -> (
         Result<usize, &'static str>,
         Vec<Rc<ConsolidateMrsP<T, R, S>>>,
-        ConsolidateChecker<T, R, S, F, I, C>,
+        ConsolidateChecker<T, V, R, S, F, I, C>,
     ) {
         return (self.col, self.rows.into_inner(), self.checker.into_inner());
     }
-    pub fn new<V, Q: GetBeginEnd<T>, X: GetBeginEndOption<T, Q>>(
+    pub fn new<Q: GetBeginEnd<T>, X: GetBeginEndOption<T, Q>>(
         isec: &mut Intersector<T, V, C, Q, X>,
-        mut checker: ConsolidateChecker<T, R, S, F, I, C>,
+        mut checker: ConsolidateChecker<T, V, R, S, F, I, C>,
     ) -> Result<Self, Self>
     where
         C: IncDecCpCmp<T, V>,
@@ -232,7 +234,7 @@ impl<
     pub fn builder(
         inner: (
             Result<usize, &'static str>,
-            ConsolidateChecker<T, R, S, F, I, C>,
+            ConsolidateChecker<T, V, R, S, F, I, C>,
             Vec<Rc<ConsolidateMrsP<T, R, S>>>,
         ),
     ) -> Self {
