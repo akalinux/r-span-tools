@@ -491,7 +491,7 @@ fn main() {
 
 ### Intersections of multiple Itertors
 
-The [Columns][__link58] object is a factory can be used to construct an [Iterator][__link59] that can step through multiple [Iterator][__link60] instances of ranges that can contain duplicate
+The [Columns][__link58] object is a factory can be used to construct an [Iterator][__link59] that steps through multiple [Iterator][__link60] instances of ranges that can contain duplicate
 and overlapping ranges that intersect with one another.  Each [Column][__link61] added to [Columns][__link62] is wrapped in an instance of [ConsolidateChecker][__link63] to ensure that the consolidation is occuring in the expected [ConsolidationOrder][__link64].
 The ranges returned by the [Iterator][__link65] must be in [ConsolidationOrder][__link66], see: [Consolidation of ranges](#consolidation-of-ranges) for more information.
 This example demonstrates how to create a [ColumnsIter][__link67] from a [Columns][__link68] instance and walk the results.
@@ -676,7 +676,7 @@ Other implementations:
 * [rangetools][__link72]
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQb_2nSx-645WEb6tIZVPJ1UIcbpkZq6rw5MXQb69-cNCvvr3VhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbOZ9qxRugLmobqf2VDHDC_N4b9tcS-vv2hFcb08K5eJzPzFNhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
  [__link10]: https://crates.io/crates/common-range-tools/0.1.0

@@ -86,7 +86,7 @@
 #![doc = "\n```"]
 //!
 //! ## Intersections of multiple Itertors
-//! The [Columns] object is a factory can be used to construct an [Iterator] that can step through multiple [Iterator] instances of ranges that can contain duplicate
+//! The [Columns] object is a factory can be used to construct an [Iterator] that steps through multiple [Iterator] instances of ranges that can contain duplicate
 //! and overlapping ranges that intersect with one another.  Each [Column] added to [Columns] is wrapped in an instance of [ConsolidateChecker] to ensure that the consolidation is occuring in the expected [ConsolidationOrder].
 //! The ranges returned by the [Iterator] must be in [ConsolidationOrder], see: [Consolidation of ranges](#consolidation-of-ranges) for more information.
 //! This example demonstrates how to create a [ColumnsIter] from a [Columns] instance and walk the results.
