@@ -8,7 +8,7 @@ For dealing with ranges beyond just intersections of
 numbers see: [Generic Data Types](#generic-data-types).  For working with custom data structures see: [Beyond Generics](#beyond-generics).
 For working with custom Ranges and range factories see: [Internal Range Trait](#internal-range-trait).
 For consolidating duplicate and overlapping ranges see [Consolidation of ranges](#consolidation-of-ranges).
-For finding intersections between muliple consolidated [Iterator][__link2] data sets see: [Intersections of Itertors](#intersections-of-itertors).
+For finding intersections between muliple [Iterator][__link2] instances, see: [Intersections of Itertors](#intersections-of-itertors).
 
 ### Example
 
@@ -169,7 +169,7 @@ fn main() {
 
 ### Working with Floats
 
-When working with floaing points, its nessesary to understand how floats are handled by the [NumberIncDecCpCmp][__link10].
+When working with floating points, its nessesary to understand how floats are handled by the [NumberIncDecCpCmp][__link10].
 Floating point numbers are in a word *imprecise*; The internals of [NumberIncDecCpCmp][__link11] does not check [f32][__link12] or [f64][__link13] for over or underflow;
 The internals of [NumberIncDecCpCmp][__link14] simply checks that the values properly increment and decrement.
 
@@ -660,7 +660,7 @@ Other implementations:
 * [rangetools][__link64]
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbwPGk9WFE6gwb7Mpp5XTpHRAbCrndMvqU-vIbFaHbGvvs2UlhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbcmlJfmP3MtkbgaL9PxQR7tcbnoObhkjMH4AbOKWcbnZvSothZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
  [__link10]: https://crates.io/crates/NumberIncDecCpCmp

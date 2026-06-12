@@ -5,7 +5,7 @@
 //! numbers see: [Generic Data Types](#generic-data-types).  For working with custom data structures see: [Beyond Generics](#beyond-generics).
 //! For working with custom Ranges and range factories see: [Internal Range Trait](#internal-range-trait).
 //! For consolidating duplicate and overlapping ranges see [Consolidation of ranges](#consolidation-of-ranges).
-//! For finding intersections between muliple consolidated [Iterator] data sets see: [Intersections of Itertors](#intersections-of-itertors).
+//! For finding intersections between muliple [Iterator] instances, see: [Intersections of Itertors](#intersections-of-itertors).
 //!
 //! ## Example
 //! This is the most basic example, using the default values from [NumberIncDecCpCmp].  The [OverlapIter] is a [DoubleEndedIterator] and can be reversed.
@@ -36,7 +36,7 @@
 #![doc = "\n```"]
 //!
 //! ## Working with Floats
-//! When working with floaing points, its nessesary to understand how floats are handled by the [NumberIncDecCpCmp].
+//! When working with floating points, its nessesary to understand how floats are handled by the [NumberIncDecCpCmp].
 //! Floating point numbers are in a word *imprecise*; The internals of [NumberIncDecCpCmp] does not check [f32] or [f64] for over or underflow;
 //! The internals of [NumberIncDecCpCmp] simply checks that the values properly increment and decrement.
 #![doc = "```rust\n"]
