@@ -219,7 +219,7 @@ The [AnyIncDecCpCmp][__link17] object supports working with any data type, provi
 When working with generics, the value used by step and rebound values do not have to be the same type as the values used by a range.
 A practical example of this is how [std::time::Duration][__link23] and [std::time::SystemTime][__link24] handle [std::ops::Add][__link25] and [std::ops::Sub][__link26].
 
-This is an example that shows how to use [std::time::Duration][__link27] to provide the step and rebound values and [std::time::SystemTime][__link28] to operate as the range values:
+This is an example that shows how to use [std::time::Duration][__link27] to provide the *step* and *rebound* values and [std::time::SystemTime][__link28] to operate as the range *values*:
 
 ```rust
 
@@ -664,7 +664,7 @@ Other implementations:
 * [rangetools][__link70]
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQb9DJ3mFo_Xr4b2bqa37xvJgwbyKx60POQxhobhYuJd5MOiO5hZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbwW8zvbXB3l0bHq0E-kT9aI4bRaaGBT2FzNUb9juVMJBB8XRhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
  [__link10]: https://crates.io/crates/common-range-tools/0.1.0
