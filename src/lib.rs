@@ -46,7 +46,7 @@
 #![doc = "\n```"]
 //!
 //! ## Generic Data types
-//! The [AnyIncDecCpCmp] object supports working with any data type provided it implements: [PartialOrd], [std::ops::Add], [std::ops::Sub], [Copy], and [Clone].
+//! The [AnyIncDecCpCmp] object supports working with any data type, provided it implements: [PartialOrd], [std::ops::Add], [std::ops::Sub], [Copy], and [Clone].
 //! WHen working with generics, the value used by step and rebound do not have to be the same type as the values used by a range.
 //! A practical example of why this is useful is [std::time::Duration] and [std::time::SystemTime].
 #![doc = "```rust\n"]

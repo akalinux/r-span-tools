@@ -215,7 +215,7 @@ fn main() {
 
 ### Generic Data types
 
-The [AnyIncDecCpCmp][__link17] object supports working with any data type provided it implements: [PartialOrd][__link18], [std::ops::Add][__link19], [std::ops::Sub][__link20], [Copy][__link21], and [Clone][__link22].
+The [AnyIncDecCpCmp][__link17] object supports working with any data type, provided it implements: [PartialOrd][__link18], [std::ops::Add][__link19], [std::ops::Sub][__link20], [Copy][__link21], and [Clone][__link22].
 WHen working with generics, the value used by step and rebound do not have to be the same type as the values used by a range.
 A practical example of why this is useful is [std::time::Duration][__link23] and [std::time::SystemTime][__link24].
 
@@ -662,7 +662,7 @@ Other implementations:
 * [rangetools][__link66]
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbC4N6JcE7pgcblfWfguXjQZQbp3px8mmzYmobQ0th7oNiIIJhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQb2o_SNWoR6AAb3_T-k0ODPHwbnQW7uS_D2XsbjVFFtK-lC3BhYvVhcoQbaAU88HKQhEUbBPf098X_luQb_jG4opFQ8F8bhp28f-vYw89hZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
  [__link10]: https://crates.io/crates/common-range-tools/0.1.0
