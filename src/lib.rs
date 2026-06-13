@@ -5,7 +5,7 @@
 //! numbers see: [Generic Data Types](#generic-data-types).  For working with custom data structures see: [Beyond Generics](#beyond-generics).
 //! For working with custom Ranges and range factories see: [Internal Range Trait](#internal-range-trait).
 //! For consolidating duplicate and overlapping ranges see [Consolidation of ranges](#consolidation-of-ranges).
-//! For finding intersections between muliple [Iterator] instances, see: [Intersections of multiple Itertors](#intersections-of-multiple-itertors).
+//! For finding intersections between muliple [Iterator] instances, see: [Intersections of multiple Iterators](#intersections-of-multiple-iterators).
 //!
 //! ## Example
 //! This is the most basic example, using the default values from [NumberIncDecCpCmp].  The [OverlapIter] is a [DoubleEndedIterator] and can be reversed.
@@ -65,8 +65,8 @@
 //! ## Internal Range Trait
 //! Rust has no single trait representing rages aside from [std::ops::RangeBounds], which can require recomputing the begin and or end
 //! values of a range on each evaluation.  To work around this the internals of this [crate] use a common trait range type of [GetBeginEnd].
-//! There is also a factory trait for creating instances called [GetBeginEndOption].  This example shows how to create and use both the
-//! factory: [GetBeginEndOption] and the range: [GetBeginEnd].  As a note the [GetBeginEnd] trait is implemnted for [std::ops::RangeInclusive] for the
+//! There is also a factory trait for creating the interal range trait type: [GetBeginEndOption].  This example shows how to implement both a
+//! factory of: [GetBeginEndOption] and a range of: [GetBeginEnd].  As a note the [GetBeginEnd] trait is implemnted for [std::ops::RangeInclusive] for the
 //! internals of this [crate].
 #![doc = "```rust\n"]
 #![doc = include_str!("../examples/getbeginend.rs")]
@@ -85,7 +85,7 @@
 #![doc = include_str!("../examples/overlaps.rs")]
 #![doc = "\n```"]
 //!
-//! ## Intersections of multiple Itertors
+//! ## Intersections of multiple Iterators
 //! The [Columns] object is a factory can be used to construct an [Iterator] that steps through multiple [Iterator] instances of ranges that can contain duplicate
 //! and overlapping ranges that intersect with one another.  Each [Column] added to [Columns] is wrapped in an instance of [ConsolidateChecker] to ensure that the consolidation is occuring in the expected [ConsolidationOrder].
 //! The ranges returned by the [Iterator] must be in [ConsolidationOrder], see: [Consolidation of ranges](#consolidation-of-ranges) for more information.
