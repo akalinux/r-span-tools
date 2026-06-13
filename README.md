@@ -1,4 +1,4 @@
-# common-range-tools ![License: MIT](https://img.shields.io/badge/license-MIT-blue) [![common-range-tools on crates.io](https://img.shields.io/crates/v/common-range-tools)](https://crates.io/crates/common-range-tools) [![common-range-tools on docs.rs](https://docs.rs/common-range-tools/badge.svg)](https://docs.rs/common-range-tools) [![Rust Unit Tests](https://github.com/akalinux/r-span-tools/actions/workflows/test.yaml/badge.svg)](https://github.com/akalinux/r-span-tools/actions/workflows/test.yaml)
+# common-range-tools ![License: MIT](https://img.shields.io/badge/license-MIT-blue) [![common-range-tools on crates.io](https://img.shields.io/crates/v/common-range-tools)](https://crates.io/crates/common-range-tools) [![common-range-tools on docs.rs](https://docs.rs/common-range-tools/badge.svg)](https://docs.rs/common-range-tools) [![Source Code Repository](https://img.shields.io/badge/Code-On%20GitHub-blue?logo=GitHub)](https://github.com/akalinux/r-span-tools) [![Rust Unit Tests](https://github.com/akalinux/r-span-tools/actions/workflows/test.yaml/badge.svg)](https://github.com/akalinux/r-span-tools/actions/workflows/test.yaml)
 
 ## Overview
 
@@ -8,7 +8,7 @@ For dealing with ranges beyond just intersections of
 numbers see: [Generic Data Types](#generic-data-types).  For working with custom data structures see: [Beyond Generics](#beyond-generics).
 For working with custom Ranges and range factories see: [Internal Range Trait](#internal-range-trait).
 For consolidating duplicate and overlapping ranges see [Consolidation of ranges](#consolidation-of-ranges).
-For finding intersections between muliple [Iterator][__link2] instances, see: [Intersections of multiple Itertors](#intersections-of-multiple-itertors).
+For finding intersections between muliple [Iterator][__link2] instances, see: [Intersections of multiple Iterators](#intersections-of-multiple-iterators).
 
 ### Example
 
@@ -351,8 +351,8 @@ fn main() {
 
 Rust has no single trait representing rages aside from [std::ops::RangeBounds][__link35], which can require recomputing the begin and or end
 values of a range on each evaluation.  To work around this the internals of this [crate][__link36] use a common trait range type of [GetBeginEnd][__link37].
-There is also a factory trait for creating instances called [GetBeginEndOption][__link38].  This example shows how to create and use both the
-factory: [GetBeginEndOption][__link39] and the range: [GetBeginEnd][__link40].  As a note the [GetBeginEnd][__link41] trait is implemnted for [std::ops::RangeInclusive][__link42] for the
+There is also a factory trait for creating the interal range trait type: [GetBeginEndOption][__link38].  This example shows how to implement both a
+factory of: [GetBeginEndOption][__link39] and a range of: [GetBeginEnd][__link40].  As a note the [GetBeginEnd][__link41] trait is implemnted for [std::ops::RangeInclusive][__link42] for the
 internals of this [crate][__link43].
 
 ```rust
@@ -492,7 +492,7 @@ fn main() {
 
 ```
 
-### Intersections of multiple Itertors
+### Intersections of multiple Iterators
 
 The [Columns][__link58] object is a factory can be used to construct an [Iterator][__link59] that steps through multiple [Iterator][__link60] instances of ranges that can contain duplicate
 and overlapping ranges that intersect with one another.  Each [Column][__link61] added to [Columns][__link62] is wrapped in an instance of [ConsolidateChecker][__link63] to ensure that the consolidation is occuring in the expected [ConsolidationOrder][__link64].
@@ -694,10 +694,10 @@ Other implementations:
 * [rangetools][__link81]
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbCE3c_NrEBr4bfU9krIQ4M7obtIv1tShSAvsb23AYoC0iJPFhYvRhcoQbfJorAQVX_nMb3YwRdoD_v4sb-c9lzqOBTtwbXzIaTsDeorxhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMC4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbCE3c_NrEBr4bfU9krIQ4M7obtIv1tShSAvsb23AYoC0iJPFhYvRhcoQbAZ9A_e9i4UMbOLzLvtaUgRQbU5KFCZaLfZcb5z2FKlYIPO1hZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMS4wLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
- [__link10]: https://crates.io/crates/common-range-tools/0.1.0
+ [__link10]: https://crates.io/crates/common-range-tools/1.0.0
  [__link11]: https://doc.rust-lang.org/stable/std/?search=ops::Bound::Excluded
  [__link12]: https://crates.io/crates/NumberIncDecCpCmp
  [__link13]: https://crates.io/crates/NumberIncDecCpCmp
@@ -725,15 +725,15 @@ Other implementations:
  [__link33]: https://doc.rust-lang.org/stable/std/clone/trait.Clone.html
  [__link34]: https://crates.io/crates/OverlapIter
  [__link35]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
- [__link36]: https://crates.io/crates/common-range-tools/0.1.0
- [__link37]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/trait.GetBeginEnd.html
+ [__link36]: https://crates.io/crates/common-range-tools/1.0.0
+ [__link37]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/trait.GetBeginEnd.html
  [__link38]: https://crates.io/crates/GetBeginEndOption
  [__link39]: https://crates.io/crates/GetBeginEndOption
  [__link4]: https://crates.io/crates/OverlapIter
- [__link40]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/trait.GetBeginEnd.html
- [__link41]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/trait.GetBeginEnd.html
+ [__link40]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/trait.GetBeginEnd.html
+ [__link41]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/trait.GetBeginEnd.html
  [__link42]: https://doc.rust-lang.org/stable/std/?search=ops::RangeInclusive
- [__link43]: https://crates.io/crates/common-range-tools/0.1.0
+ [__link43]: https://crates.io/crates/common-range-tools/1.0.0
  [__link44]: https://crates.io/crates/Consolidate
  [__link45]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
  [__link46]: https://crates.io/crates/Consolidate
@@ -743,9 +743,9 @@ Other implementations:
  [__link5]: https://doc.rust-lang.org/stable/std/iter/trait.DoubleEndedIterator.html
  [__link50]: https://crates.io/crates/ConsolidationOrder
  [__link51]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Forward
- [__link52]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/?search=sort_forward
+ [__link52]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/?search=sort_forward
  [__link53]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Reverse
- [__link54]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/?search=sort_reverse
+ [__link54]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/?search=sort_reverse
  [__link55]: https://crates.io/crates/Consolidate
  [__link56]: https://crates.io/crates/ConsolidateChecker
  [__link57]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Forward
@@ -765,12 +765,12 @@ Other implementations:
  [__link7]: https://doc.rust-lang.org/stable/std/?search=ops::RangeInclusive
  [__link70]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
  [__link71]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Forward
- [__link72]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/?search=sort_forward
+ [__link72]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/?search=sort_forward
  [__link73]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Reverse
- [__link74]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/?search=sort_reverse
+ [__link74]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/?search=sort_reverse
  [__link75]: https://crates.io/crates/ColumnsIter
  [__link76]: https://crates.io/crates/Columns
- [__link77]: https://docs.rs/common-range-tools/0.1.0/common_range_tools/?search=sort_forward
+ [__link77]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/?search=sort_forward
  [__link78]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
  [__link79]: https://docs.rs/range-ext/0.3.0/range_ext/index.html
  [__link8]: https://crates.io/crates/NumberIncDecCpCmp
