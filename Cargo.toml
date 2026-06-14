@@ -1,11 +1,11 @@
 [package]
 name = "common-range-tools"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2024"
 license = "MIT"
 homepage = "https://github.com/akalinux/r-span-tools"
 repository = "https://github.com/akalinux/r-span-tools"
 description = "Library to find Common Range Intersections"
 readme = "README.md"
-keywords = ["range","intersection","common"]
+keywords = ["find","range","intersections","intersection","common"]
 categories = ["algorithms","data-structures","science"]

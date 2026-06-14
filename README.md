@@ -17,11 +17,12 @@ This is the most basic example, using the default values from [NumberIncDecCpCmp
 ```rust
 
 use common_range_tools::Intersector;
+use std::ops::RangeInclusive;
 
 fn main() {
     // RangeInclusive used to make this more readable.
     let src = [1..=4, 0..=3, 3..=11, 10..=22];
-    // Forwards
+
     println!("Forwards");
     for r in Intersector::num_from(&src) {
         println!("Common Range: {}->{}", r.start(), r.end());
@@ -37,7 +38,8 @@ fn main() {
     //  Common Range: 12->22
 
     // add a small bumper to the output
-    print!("\n\n");
+    print!("\n");
+
     // Backwards
     println!("Backwards");
     for r in Intersector::num_from(&src).rev() {
@@ -52,6 +54,60 @@ fn main() {
     //  Common Range: 3->3
     //  Common Range: 1->2
     //  Common Range: 0->0
+
+    // add a small bumper to the output
+    print!("\n");
+
+    // This creates an iterator for both the intersection and a ref to the source range.
+    let mut iter = Intersector::num_from_ol(&src);
+    println!("Foward with source Ranges");
+    overlaps_info(&mut iter);
+    // Output will be:
+    //  Foward with source Ranges
+    //    Common Range:  0->0  Count: 1 Ranges: 0->3
+    //    Common Range:  1->2  Count: 2 Ranges: 1->4, 0->3
+    //    Common Range:  3->3  Count: 3 Ranges: 1->4, 0->3, 3->11
+    //    Common Range:  4->4  Count: 2 Ranges: 1->4, 3->11
+    //    Common Range:  5->9  Count: 1 Ranges: 3->11
+    //    Common Range: 10->11 Count: 2 Ranges: 3->11, 10->22
+    //    Common Range: 12->22 Count: 1 Ranges: 10->22
+
+    // add a small bumper to the output
+    print!("\n");
+
+    // we can just reset the iterator
+    iter.reset();
+    println!("Reverse, with source Ranges");
+    // now we set it to reverse
+    overlaps_info(&mut &mut iter.rev());
+    // Output will be:
+    //  Reverse, with source Ranges
+    //    Common Range: 12->22 Count: 1 Ranges: 10->22
+    //    Common Range: 10->11 Count: 2 Ranges: 3->11, 10->22
+    //    Common Range:  5->9  Count: 1 Ranges: 3->11
+    //    Common Range:  4->4  Count: 2 Ranges: 1->4, 3->11
+    //    Common Range:  3->3  Count: 3 Ranges: 1->4, 0->3, 3->11
+    //    Common Range:  1->2  Count: 2 Ranges: 1->4, 0->3
+    //    Common Range:  0->0  Count: 1 Ranges: 0->3
+}
+
+// Format the output for our  Intersections with the source Ranges!
+fn overlaps_info<'a, I: Iterator<Item = &'a RangeInclusive<i32>>>(
+    iter: &mut impl Iterator<Item = (RangeInclusive<i32>, I)>,
+) {
+    for (r, isec) in iter {
+        print!(
+            "  Common Range: {:^6}",
+            format!("{}->{}", r.start(), r.end())
+        );
+        let mut src = Vec::new();
+        // grab all of our overlapping ranges!
+        for i in isec {
+            src.push(format!("{}->{}", i.start(), i.end()));
+        }
+        print!(" Count: {}", src.len());
+        println!(" Ranges: {}", src.join(", "));
+    }
 }
 
 
@@ -694,10 +750,10 @@ Other implementations:
 * [rangetools][__link81]
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbCE3c_NrEBr4bfU9krIQ4M7obtIv1tShSAvsb23AYoC0iJPFhYvRhcoQbAZ9A_e9i4UMbOLzLvtaUgRQbU5KFCZaLfZcb5z2FKlYIPO1hZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMS4wLjByY29tbW9uX3JhbmdlX3Rvb2xz
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbCE3c_NrEBr4bfU9krIQ4M7obtIv1tShSAvsb23AYoC0iJPFhYvRhcoQbxBZrzu0oeBkbUrCCvAsRXK0bnwAV8mKMksMbTv_tWtYr7lxhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMS4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
- [__link10]: https://crates.io/crates/common-range-tools/1.0.0
+ [__link10]: https://crates.io/crates/common-range-tools/1.1.0
  [__link11]: https://doc.rust-lang.org/stable/std/?search=ops::Bound::Excluded
  [__link12]: https://crates.io/crates/NumberIncDecCpCmp
  [__link13]: https://crates.io/crates/NumberIncDecCpCmp
@@ -725,15 +781,15 @@ Other implementations:
  [__link33]: https://doc.rust-lang.org/stable/std/clone/trait.Clone.html
  [__link34]: https://crates.io/crates/OverlapIter
  [__link35]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
- [__link36]: https://crates.io/crates/common-range-tools/1.0.0
- [__link37]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/trait.GetBeginEnd.html
+ [__link36]: https://crates.io/crates/common-range-tools/1.1.0
+ [__link37]: https://docs.rs/common-range-tools/1.1.0/common_range_tools/trait.GetBeginEnd.html
  [__link38]: https://crates.io/crates/GetBeginEndOption
  [__link39]: https://crates.io/crates/GetBeginEndOption
  [__link4]: https://crates.io/crates/OverlapIter
- [__link40]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/trait.GetBeginEnd.html
- [__link41]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/trait.GetBeginEnd.html
+ [__link40]: https://docs.rs/common-range-tools/1.1.0/common_range_tools/trait.GetBeginEnd.html
+ [__link41]: https://docs.rs/common-range-tools/1.1.0/common_range_tools/trait.GetBeginEnd.html
  [__link42]: https://doc.rust-lang.org/stable/std/?search=ops::RangeInclusive
- [__link43]: https://crates.io/crates/common-range-tools/1.0.0
+ [__link43]: https://crates.io/crates/common-range-tools/1.1.0
  [__link44]: https://crates.io/crates/Consolidate
  [__link45]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
  [__link46]: https://crates.io/crates/Consolidate
@@ -743,9 +799,9 @@ Other implementations:
  [__link5]: https://doc.rust-lang.org/stable/std/iter/trait.DoubleEndedIterator.html
  [__link50]: https://crates.io/crates/ConsolidationOrder
  [__link51]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Forward
- [__link52]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/?search=sort_forward
+ [__link52]: https://docs.rs/common-range-tools/1.1.0/common_range_tools/?search=sort_forward
  [__link53]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Reverse
- [__link54]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/?search=sort_reverse
+ [__link54]: https://docs.rs/common-range-tools/1.1.0/common_range_tools/?search=sort_reverse
  [__link55]: https://crates.io/crates/Consolidate
  [__link56]: https://crates.io/crates/ConsolidateChecker
  [__link57]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Forward
@@ -765,12 +821,12 @@ Other implementations:
  [__link7]: https://doc.rust-lang.org/stable/std/?search=ops::RangeInclusive
  [__link70]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
  [__link71]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Forward
- [__link72]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/?search=sort_forward
+ [__link72]: https://docs.rs/common-range-tools/1.1.0/common_range_tools/?search=sort_forward
  [__link73]: https://docs.rs/ConsolidationOrder/latest/ConsolidationOrder/?search=Reverse
- [__link74]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/?search=sort_reverse
+ [__link74]: https://docs.rs/common-range-tools/1.1.0/common_range_tools/?search=sort_reverse
  [__link75]: https://crates.io/crates/ColumnsIter
  [__link76]: https://crates.io/crates/Columns
- [__link77]: https://docs.rs/common-range-tools/1.0.0/common_range_tools/?search=sort_forward
+ [__link77]: https://docs.rs/common-range-tools/1.1.0/common_range_tools/?search=sort_forward
  [__link78]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
  [__link79]: https://docs.rs/range-ext/0.3.0/range_ext/index.html
  [__link8]: https://crates.io/crates/NumberIncDecCpCmp
