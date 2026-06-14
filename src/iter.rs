@@ -1,5 +1,5 @@
 use crate::{
-    AnyIncDecCpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, IncDecCpCmp, MrsP,
+    AnyIncDecCpCmp, CpCmp, DefaultValues, GetBeginEnd, GetBeginEndOption, IncDecCpCmp, MrsP,
     NumberIncDecCpCmp, RangeRelation, RiFactory, first_range_begin_end, last_range_begin_end,
     next_range_begin_end, previous_range_begin_end, range_bounds_to_values, range_relation,
 };
@@ -30,20 +30,32 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
 {
     /// Creates a new [OverlapIter] from the slice of R.
     pub fn new(src: Vec<R>, step: V, cmp: C, factory: F) -> Self {
-        let next = factory.factory(first_range_begin_end(&src, &step, &cmp));
-        let back = factory.factory(last_range_begin_end(&src, &step, &cmp));
-
-        Self {
+        let mut res = Self {
             src,
             step,
             cmp,
-            next,
-            back,
+            next: None,
+            back: None,
             last_next: None,
             last_back: None,
             factory,
             _marker: PhantomData,
-        }
+        };
+        res.reset();
+        return res;
+    }
+
+    /// Resets this instance to it's starting state.
+    pub fn reset(&mut self) {
+        let src = &self.src;
+        let step = &self.step;
+        let cmp = &self.cmp;
+        let next = self.factory.factory(first_range_begin_end(src, step, cmp));
+        let back = self.factory.factory(last_range_begin_end(src, step, cmp));
+        self.next = next;
+        self.back = back;
+        self.last_back = None;
+        self.last_next = None;
     }
 
     /// Tries to copy the src ref range via the internals.
@@ -214,6 +226,42 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>>
         }
         return back;
     }
+
+    pub fn next_overlaps<'r, 'a>(&mut self) -> Option<(R, OverlapsIter<'r, 'a, T, C, R, R>)> {
+        match self.next() {
+            Some(next) => {
+                if let Some(ln) = &self.last_next {
+                    let i: OverlapsIter<'_, '_, T, C, R, R> =
+                        OverlapsIter::new(&self.cmp, ln, &self.src);
+                    return Some((next, unsafe { mem::transmute(i) }));
+                } else {
+                    return None;
+                }
+            }
+            None => None,
+        }
+    }
+
+    pub fn next_back_overlaps<'r, 'a>(&mut self) -> Option<(R, OverlapsIter<'r, 'a, T, C, R, R>)> {
+        match self.next_back() {
+            Some(next) => {
+                if let Some(lb) = &self.last_back {
+                    let i: OverlapsIter<'_, '_, T, C, R, R> =
+                        OverlapsIter::new(&self.cmp, lb, &self.src);
+                    return Some((next, unsafe { mem::transmute(i) }));
+                } else {
+                    return None;
+                }
+            }
+            None => None,
+        }
+    }
+    /// Converts self to an instance of [OverlapIterWithOverlaps].
+    pub fn into_iter_overlaps<'r, 'a, S: GetBeginEnd<T> + 'r + 'a>(
+        self,
+    ) -> OverlapIterWithOverlaps<'r, 'a, T, V, C, R, S, F> {
+        return OverlapIterWithOverlaps::new(self);
+    }
 }
 
 impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> Iterator
@@ -279,6 +327,13 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, B: GetBeginEndOption<T, R>>
             _r: PhantomData,
         }
     }
+
+    /// Converts self to an instance of [OverlapIterWithOverlaps].
+    pub fn into_iter_overlaps<'r, 'a, S: GetBeginEnd<T> + 'r + 'a>(
+        self,
+    ) -> OverlapIterWithOverlaps<'r, 'a, T, V, C, R, S, B> {
+        return OverlapIterWithOverlaps::new(self.into_iter());
+    }
 }
 
 impl<T, V> Intersector<T, V, AnyIncDecCpCmp<T>, RangeInclusive<T>, RiFactory<T>>
@@ -303,6 +358,7 @@ where
         }
     }
 
+    /// Creates a new [DoubleEndedIterator] of [OverlapIter].
     pub fn any_from(
         step: V,
         rebound: V,
@@ -315,6 +371,30 @@ where
             i.add_range(r);
         }
         return i.into_iter();
+    }
+
+    /// Creates a new [DoubleEndedIterator] of [OverlapsIter].
+    pub fn any_from_ol<'r, 'a>(
+        step: V,
+        rebound: V,
+        min: T,
+        max: T,
+        src: &[impl RangeBounds<T>],
+    ) -> OverlapIterWithOverlaps<
+        'r,
+        'a,
+        T,
+        V,
+        AnyIncDecCpCmp<T>,
+        RangeInclusive<T>,
+        RangeInclusive<T>,
+        RiFactory<T>,
+    > {
+        let mut i = Self::any(step, rebound, min, max);
+        for r in src {
+            i.add_range(r);
+        }
+        return i.into_iter_overlaps();
     }
 }
 
@@ -372,6 +452,26 @@ where
         return i.into_iter();
     }
 
+    /// Creates a new [DoubleEndedIterator] of [OverlapIter].
+    pub fn num_from_ol<'r, 'a>(
+        src: &[impl RangeBounds<T>],
+    ) -> OverlapIterWithOverlaps<
+        'r,
+        'a,
+        T,
+        T,
+        NumberIncDecCpCmp<T>,
+        RangeInclusive<T>,
+        RangeInclusive<T>,
+        RiFactory<T>,
+    > {
+        let mut i = Self::num_defaults();
+        for r in src {
+            i.add_range(r);
+        }
+        return i.into_iter_overlaps();
+    }
+
     /// Takes any list of range of numbers and converts them to an instance of [OverlapIter], with the step and rebound value set to sr.
     pub fn num_sr_from(
         sr: T,
@@ -382,6 +482,26 @@ where
             i.add_range(r);
         }
         return i.into_iter();
+    }
+    /// Creates a new [DoubleEndedIterator] of [OverlapsIter].
+    pub fn num_from_sr_ol<'r, 'a>(
+        sr: T,
+        src: &[impl RangeBounds<T>],
+    ) -> OverlapIterWithOverlaps<
+        'r,
+        'a,
+        T,
+        T,
+        NumberIncDecCpCmp<T>,
+        RangeInclusive<T>,
+        RangeInclusive<T>,
+        RiFactory<T>,
+    > {
+        let mut i = Self::num_sr(sr);
+        for r in src {
+            i.add_range(r);
+        }
+        return i.into_iter_overlaps();
     }
 }
 
@@ -486,5 +606,111 @@ impl<T, V, C: IncDecCpCmp<T, V>, R: GetBeginEnd<T>, F: GetBeginEndOption<T, R>> 
     /// Converts the current instance of [Intersector] into an instance of [OverlapIter].
     fn into_iter(self) -> Self::IntoIter {
         return OverlapIter::new(self.list, self.step, self.cmp, self.factory);
+    }
+}
+
+pub struct OverlapsIter<'r, 'a, T, C: CpCmp<T> + 'r, R: GetBeginEnd<T> + 'r, S: GetBeginEnd<T> + 'a>
+{
+    cmp: &'r C,
+    pos: usize,
+    range: &'r R,
+    list: &'r Vec<S>,
+    _t: PhantomData<(T, &'a S)>,
+}
+
+impl<'r, 'a, C: CpCmp<T>, T, R: GetBeginEnd<T>, S: GetBeginEnd<T> + 'a>
+    OverlapsIter<'r, 'a, T, C, R, S>
+{
+    pub fn new(cmp: &'r C, range: &'r R, list: &'r Vec<S>) -> Self {
+        return Self {
+            cmp,
+            pos: 0,
+            range,
+            list,
+            _t: PhantomData,
+        };
+    }
+
+    pub fn get_range(&self) -> &'r R {
+        return self.range;
+    }
+}
+
+impl<'r, 'a, C: CpCmp<T>, T, R: GetBeginEnd<T>, S: GetBeginEnd<T> + 'a> Iterator
+    for OverlapsIter<'r, 'a, T, C, R, S>
+{
+    type Item = &'a S;
+    fn next(&mut self) -> Option<Self::Item> {
+        let range = self.pos..self.list.len();
+        if range.is_empty() {
+            return None;
+        }
+        let (a, b) = self.range.to_tuple_ref();
+        for pos in range {
+            let cmp = &self.list[pos];
+            self.pos = pos + 1;
+            let (c, d) = cmp.to_tuple_ref();
+            if self.cmp.overlap(a, b, c, d) {
+                return Some(unsafe { mem::transmute(cmp) });
+            }
+        }
+
+        return None;
+    }
+}
+
+pub struct OverlapIterWithOverlaps<
+    'r,
+    'a,
+    T,
+    V,
+    C: IncDecCpCmp<T, V> + 'r,
+    R: GetBeginEnd<T> + 'r,
+    S: GetBeginEnd<T> + 'a,
+    F: GetBeginEndOption<T, R>,
+> {
+    iter: OverlapIter<T, V, C, R, F>,
+    _marker: PhantomData<(&'r C, &'r R, &'a S)>,
+}
+
+impl<
+    'r,
+    'a,
+    T,
+    V,
+    C: IncDecCpCmp<T, V> + 'r,
+    R: GetBeginEnd<T> + 'r,
+    S: GetBeginEnd<T> + 'a,
+    F: GetBeginEndOption<T, R>,
+> OverlapIterWithOverlaps<'r, 'a, T, V, C, R, S, F>
+{
+    pub fn new(iter: OverlapIter<T, V, C, R, F>) -> Self {
+        return Self {
+            iter,
+            _marker: PhantomData,
+        };
+    }
+    pub fn reset(&mut self) {
+        self.iter.reset();
+    }
+}
+
+impl<'r, 'a, T, V, C: IncDecCpCmp<T, V>> Iterator
+    for OverlapIterWithOverlaps<'r, 'a, T, V, C, RangeInclusive<T>, RangeInclusive<T>, RiFactory<T>>
+{
+    type Item = (
+        RangeInclusive<T>,
+        OverlapsIter<'r, 'a, T, C, RangeInclusive<T>, RangeInclusive<T>>,
+    );
+    fn next(&mut self) -> Option<Self::Item> {
+        return self.iter.next_overlaps();
+    }
+}
+
+impl<'r, 'a, T, V, C: IncDecCpCmp<T, V>> DoubleEndedIterator
+    for OverlapIterWithOverlaps<'r, 'a, T, V, C, RangeInclusive<T>, RangeInclusive<T>, RiFactory<T>>
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        return self.iter.next_back_overlaps();
     }
 }

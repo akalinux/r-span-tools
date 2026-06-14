@@ -114,6 +114,7 @@
 //!   - [range-overlap](https://docs.rs/range-overlap/latest/range_overlap/)
 //!   - [rangetools](https://crates.io/crates/rangetools)
 use std::marker::PhantomData;
+use std::mem;
 use std::ops::{Bound, RangeBounds, RangeInclusive};
 
 // re-export to be nice!
@@ -229,8 +230,11 @@ impl<T, R: GetBeginEnd<T>, S: RangeBounds<T>> RangeBounds<T> for ConsolidateMrsP
 
 impl<'r, T, R: GetBeginEnd<T>> MrsP<'r, T, R> {
     /// Creates a new instance of [MrsP].
-    pub fn new(r: &'r R) -> Self {
-        return Self { r, _t: PhantomData };
+    pub fn new(r: &R) -> Self {
+        return Self {
+            r: unsafe { mem::transmute(r) },
+            _t: PhantomData,
+        };
     }
 }
 

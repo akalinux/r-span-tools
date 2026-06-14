@@ -4,7 +4,8 @@ use std::ops::RangeInclusive;
 
 use common_range_tools::{
     AnyIncDecCpCmp, Column, Columns, Consolidate, ConsolidateChecker, ConsolidationOrder,
-    GetBeginEnd, Intersector, Mrs, MrsFactory, NumberIncDecCpCmp, RangeRelation, RiFactory,
+    GetBeginEnd, IncDecCpCmp, Intersector, Mrs, MrsFactory, NumberIncDecCpCmp,
+    OverlapIterWithOverlaps, RangeRelation, RiFactory,
 };
 
 use crate::iter_tests::mrs_set;
@@ -982,4 +983,59 @@ fn reverse_iter_complex_test() {
     assert_eq!(iter.next().unwrap().to_tuple_ref(), (&3, &3));
     assert_eq!(iter.next().unwrap().to_tuple_ref(), (&1, &2));
     assert_eq!(iter.next().unwrap().to_tuple_ref(), (&0, &0));
+}
+
+#[test]
+fn overlapsiter() {
+    let src = [0..=3, 2..=4];
+    ol_common(Intersector::num_from_ol(&src));
+    ol_common(Intersector::num_from_sr_ol(1, &src));
+    ol_common(Intersector::any_from_ol(1, 1, 0, 4, &src));
+    ol_common(Intersector::num_from(&src).into_iter_overlaps());
+}
+
+fn ol_common<C: IncDecCpCmp<i32, i32>>(
+    mut iter: OverlapIterWithOverlaps<
+        i32,
+        i32,
+        C,
+        RangeInclusive<i32>,
+        RangeInclusive<i32>,
+        RiFactory<i32>,
+    >,
+) {
+    let (mut r, mut ol) = iter.next().unwrap();
+    assert_eq!(r.to_tuple_ref(), (&0, &1));
+    assert_eq!(ol.get_range().to_tuple_ref(), (&0, &1));
+    assert_eq!(ol.next().unwrap().to_tuple_ref(), (&0, &3));
+    assert_eq!(ol.get_range().to_tuple_ref(), (&0, &1));
+    assert!(ol.next().is_none());
+    (r, ol) = iter.next().unwrap();
+    assert_eq!(r.to_tuple_ref(), (&2, &3));
+    assert_eq!(ol.next().unwrap().to_tuple_ref(), (&0, &3));
+    assert_eq!(ol.next().unwrap().to_tuple_ref(), (&2, &4));
+    assert!(ol.next().is_none());
+    (r, ol) = iter.next().unwrap();
+    assert_eq!(r.to_tuple_ref(), (&4, &4));
+    assert_eq!(ol.next().unwrap().to_tuple_ref(), (&2, &4));
+    assert!(ol.next().is_none());
+    assert!(iter.next().is_none());
+
+    // Now we test backwards!
+    iter.reset();
+    (r, ol) = iter.next_back().unwrap();
+    assert_eq!(r.to_tuple_ref(), (&4, &4));
+    assert_eq!(ol.next().unwrap().to_tuple_ref(), (&2, &4));
+    assert!(ol.next().is_none());
+    (r, ol) = iter.next_back().unwrap();
+    assert_eq!(r.to_tuple_ref(), (&2, &3));
+    assert_eq!(ol.next().unwrap().to_tuple_ref(), (&0, &3));
+    assert_eq!(ol.next().unwrap().to_tuple_ref(), (&2, &4));
+    assert!(ol.next().is_none());
+    (r, ol) = iter.next_back().unwrap();
+    assert_eq!(r.to_tuple_ref(), (&0, &1));
+    assert_eq!(ol.get_range().to_tuple_ref(), (&0, &1));
+    assert_eq!(ol.next().unwrap().to_tuple_ref(), (&0, &3));
+
+    assert!(iter.next_back().is_none());
 }
