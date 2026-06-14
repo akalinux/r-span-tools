@@ -100,13 +100,13 @@ fn overlaps_info<'a, I: Iterator<Item = &'a RangeInclusive<i32>>>(
             "  Common Range: {:^6}",
             format!("{}->{}", r.start(), r.end())
         );
-        let mut src = Vec::new();
+        let mut txt = Vec::new();
         // grab all of our overlapping ranges!
-        for i in isec {
-            src.push(format!("{}->{}", i.start(), i.end()));
+        for src_range in isec {
+            txt.push(format!("{}->{}", src_range.start(), src_range.end()));
         }
-        print!(" Count: {}", src.len());
-        println!(" Ranges: {}", src.join(", "));
+        print!(" Count: {}", txt.len());
+        println!(" Ranges: {}", txt.join(", "));
     }
 }
 
@@ -750,7 +750,7 @@ Other implementations:
 * [rangetools][__link81]
 
 
- [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbCE3c_NrEBr4bfU9krIQ4M7obtIv1tShSAvsb23AYoC0iJPFhYvRhcoQbxBZrzu0oeBkbUrCCvAsRXK0bnwAV8mKMksMbTv_tWtYr7lxhZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMS4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
+ [__cargo_doc2readme_dependencies_info]: ggGmYW0CYXZlMC43LjJhdIQbCE3c_NrEBr4bfU9krIQ4M7obtIv1tShSAvsb23AYoC0iJPFhYvRhcoQbmsr7PMrPo6YbGQ5y0wnunr4b692q83eTrKUbihXWxP_AF11hZIuCbkFueUluY0RlY0NwQ21w9oJmQ29sdW1u9oJnQ29sdW1uc_aCa0NvbHVtbnNJdGVy9oJrQ29uc29saWRhdGX2gnJDb25zb2xpZGF0ZUNoZWNrZXL2gnJDb25zb2xpZGF0aW9uT3JkZXL2gnFHZXRCZWdpbkVuZE9wdGlvbvaCcU51bWJlckluY0RlY0NwQ21w9oJrT3ZlcmxhcEl0ZXL2g3Jjb21tb24tcmFuZ2UtdG9vbHNlMS4xLjByY29tbW9uX3JhbmdlX3Rvb2xz
  [__link0]: https://doc.rust-lang.org/stable/std/?search=ops::RangeBounds
  [__link1]: https://crates.io/crates/NumberIncDecCpCmp
  [__link10]: https://crates.io/crates/common-range-tools/1.1.0
